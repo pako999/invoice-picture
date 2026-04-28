@@ -1,0 +1,37 @@
+{
+  "name": "invoice-picture",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "db:push": "drizzle-kit generate && drizzle-kit migrate",
+    "db:studio": "drizzle-kit studio",
+    "check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.90.0",
+    "@trpc/client": "11.7.2",
+    "@trpc/react-query": "11.7.2",
+    "@trpc/server": "11.7.2",
+    "@trpc/next": "11.7.2",
+    "drizzle-orm": "^0.44.7",
+    "mysql2": "^3.16.0",
+    "next": "15.3.2",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "resend": "^6.12.2",
+    "superjson": "^1.13.3",
+    "zod": "^4.2.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "drizzle-kit": "^0.31.8",
+    "postcss": "^8.5.0",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.9.0"
+  }
+}
