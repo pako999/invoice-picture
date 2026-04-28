@@ -1,15 +1,21 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { invoices } from "@/lib/schema";
-import { desc } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
+import { requireSession } from "@/lib/session";
 
 export async function GET() {
   try {
+    const { userId } = await requireSession();
     const db = getDb();
-    const rows = await db.select().from(invoices).orderBy(desc(invoices.createdAt)).limit(100);
+    const rows = await db
+      .select()
+      .from(invoices)
+      .where(eq(invoices.userId, userId))
+      .orderBy(desc(invoices.createdAt))
+      .limit(100);
     return NextResponse.json(rows);
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "DB error";
-    return NextResponse.json({ error: msg }, { status: 500 });
+  } catch {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 }
