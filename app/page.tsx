@@ -105,8 +105,9 @@ export default function LandingPage() {
         </h1>
 
         <p className="text-xl text-gray-500 dark:text-slate-400 max-w-2xl mx-auto mb-6 leading-relaxed">
-          Naš app je preprost most med papirnatim računom in vašim računovodskim programom.
-          Samo nastavite email za posredovanje — vse ostalo naredite z enim fotografiranjem.
+          Z enim klikom fotografirate fizični račun, aplikacija pa ga samodejno pošlje na vaš e-mail ali neposredno na OCR e-mail, kjer ga vaš računovodski program obdela naprej.
+          <br /><br />
+          Brez ročnega vnosa, brez kompliciranja — hitro, enostavno in učinkovito.
         </p>
 
         <div className="inline-flex items-start gap-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 text-amber-800 dark:text-amber-300 text-sm px-5 py-3.5 rounded-2xl mb-10 max-w-xl mx-auto text-left">
