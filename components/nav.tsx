@@ -3,11 +3,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { SignInButton, SignUpButton, UserButton, useUser } from "@clerk/nextjs";
 
-const links = [
+const appLinks = [
   { href: "/scan",     label: "Skeniraj",  icon: "📷" },
   { href: "/invoices", label: "Računi",     icon: "📋" },
   { href: "/settings", label: "Nastavitve", icon: "⚙️" },
-  { href: "/contact",  label: "Kontakt",    icon: "📨" },
 ];
 
 export function Nav() {
@@ -22,24 +21,33 @@ export function Nav() {
           🧾 <span className="hidden sm:inline">Invoice Picture</span>
         </Link>
 
-        {isSignedIn && (
-          <nav className="flex items-center gap-1">
-            {links.map((l) => (
-              <Link
-                key={l.href}
-                href={l.href}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                  path === l.href
-                    ? "bg-blue-600 text-white"
-                    : "text-gray-600 hover:bg-gray-100 dark:text-slate-300 dark:hover:bg-slate-800"
-                }`}
-              >
-                <span>{l.icon}</span>
-                <span className="hidden sm:inline">{l.label}</span>
-              </Link>
-            ))}
-          </nav>
-        )}
+        <nav className="flex items-center gap-1">
+          {isSignedIn && appLinks.map((l) => (
+            <Link
+              key={l.href}
+              href={l.href}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                path === l.href
+                  ? "bg-blue-600 text-white"
+                  : "text-gray-600 hover:bg-gray-100 dark:text-slate-300 dark:hover:bg-slate-800"
+              }`}
+            >
+              <span>{l.icon}</span>
+              <span className="hidden sm:inline">{l.label}</span>
+            </Link>
+          ))}
+          <Link
+            href="/contact"
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+              path === "/contact"
+                ? "bg-blue-600 text-white"
+                : "text-gray-600 hover:bg-gray-100 dark:text-slate-300 dark:hover:bg-slate-800"
+            }`}
+          >
+            <span>📨</span>
+            <span className="hidden sm:inline">Kontakt</span>
+          </Link>
+        </nav>
 
         <div className="flex items-center gap-2 ml-auto">
           {!isLoaded ? null : isSignedIn ? (

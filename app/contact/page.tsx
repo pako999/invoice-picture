@@ -40,9 +40,6 @@ export default function ContactPage() {
           <h1 className="text-4xl sm:text-5xl font-extrabold text-gray-900 dark:text-white tracking-tight mb-4">
             Pišite nam
           </h1>
-          <p className="text-gray-500 dark:text-slate-400 text-lg max-w-md mx-auto">
-            Odgovorimo v enem delovnem dnevu.
-          </p>
         </div>
 
         <div className="grid lg:grid-cols-5 gap-8">
@@ -72,15 +69,20 @@ export default function ContactPage() {
                     futurecode.si
                   </a>
                 </ContactRow>
-                <ContactRow icon="⏰" label="Odzivni čas">
-                  1 delovni dan
+                <ContactRow icon="📞" label="Telefon">
+                  <a href="tel:+38641580250" className="text-blue-600 dark:text-blue-400 hover:underline">
+                    041 580 250
+                  </a>
+                </ContactRow>
+                <ContactRow icon="⏰" label="Povprečni odzivni čas">
+                  ~ 2 uri
                 </ContactRow>
               </div>
             </div>
 
-            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-3xl p-6 text-sm text-blue-700 dark:text-blue-300 leading-relaxed">
-              <strong className="block mb-2">⚠️ Pred pisanjem preverite:</strong>
-              Ali ima vaš računovodski program vklopljeno sprejemanje računov po emailu z OCR obdelavo? To je pogoj za delovanje aplikacije.
+            <div className="bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-3xl p-6 text-sm text-gray-600 dark:text-slate-300 leading-relaxed">
+              <strong className="block mb-2 text-gray-900 dark:text-white">Tehnična podpora</strong>
+              Za vprašanja glede nastavitev, integracije z računovodskim programom ali težav pri pošiljanju nam opišite situacijo — pomagamo pri vsem.
             </div>
           </div>
 
