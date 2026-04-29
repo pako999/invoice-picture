@@ -14,7 +14,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <html lang="sl">
         <body>
           <Nav />
-          <main>{children}</main>
+          <main className="pb-20 md:pb-0">{children}</main>
         </body>
       </html>
     </ClerkProvider>
