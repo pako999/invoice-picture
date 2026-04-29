@@ -30,11 +30,11 @@ function SettingsContent() {
         body: JSON.stringify({ recipientEmail: email.trim() }),
       });
       const json = await res.json();
-      if (!res.ok) { setError(json.error ?? "Napaka"); return; }
+      if (!res.ok) { setError(json.error ?? "Napaka pri shranjevanju."); return; }
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch {
-      setError("Napaka pri shranjevanju");
+      setError("Ni povezave. Preverite internet in poskusite znova.");
     } finally {
       setSaving(false);
     }
@@ -43,36 +43,39 @@ function SettingsContent() {
   return (
     <div className="max-w-xl mx-auto px-4 py-10">
       <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white mb-2">Nastavitve</h1>
-      <p className="text-gray-500 dark:text-slate-400 mb-8">Konfiguracija tvojega računa.</p>
+      <p className="text-gray-500 dark:text-slate-400 mb-8">Enkrat nastavite — vsak račun bo poslan na ta email.</p>
 
       {isWelcome && (
         <div className="mb-6 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 px-4 py-3 rounded-xl text-sm font-medium">
-          🎉 Dobrodošel! Nastavi email, na katerega bodo prihajali računi.
+          🎉 Dobrodošel! Nastavi email račuovodskega programa in začni slikati račune.
         </div>
       )}
 
       {/* Recipient email */}
       <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-2xl p-6 mb-5">
-        <div className="flex items-center gap-3 mb-4">
+        <div className="flex items-center gap-3 mb-1">
           <span className="text-2xl">📧</span>
-          <div>
-            <h2 className="font-bold text-gray-900 dark:text-white">Email računovodskega programa</h2>
-            <p className="text-xs text-gray-500 dark:text-slate-400">Email za uvoz računov iz vašega programa (Minimax, Birokrat…)</p>
-          </div>
+          <h2 className="font-bold text-gray-900 dark:text-white">Email računovodskega programa</h2>
         </div>
+        <p className="text-xs text-gray-500 dark:text-slate-400 mb-4 ml-9">
+          Vsak poslan račun bo posredovan posebej na ta email naslov. Nastavite ga enkrat, potem samo slikate.
+        </p>
 
         {loading ? (
           <div className="h-12 bg-gray-100 dark:bg-slate-800 rounded-xl animate-pulse" />
         ) : (
           <div className="space-y-3">
             {error && (
-              <p className="text-sm text-red-500">{error}</p>
+              <div className="flex items-start gap-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-xl text-sm">
+                <span>⚠️</span>
+                <span>{error}</span>
+              </div>
             )}
             <input
               type="email"
               value={email}
-              onChange={(e) => { setEmail(e.target.value); setSaved(false); }}
-              placeholder="racuni@podjetje.si"
+              onChange={(e) => { setEmail(e.target.value); setSaved(false); setError(""); }}
+              placeholder="uvoz@minimax.si"
               className="w-full border border-gray-200 dark:border-slate-600 rounded-xl px-4 py-3 text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
             <button
@@ -94,7 +97,7 @@ function SettingsContent() {
       <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-2xl p-5">
         <p className="text-sm text-amber-800 dark:text-amber-300 leading-relaxed">
           <strong>Kje dobim email naslov?</strong><br />
-          V svojem računovodskem programu (Minimax, Birokrat, Pantheon…) poiščite nastavitve za uvoz računov po emailu. Program vam dodeli poseben email naslov, ki ga vnesete sem.
+          V svojem računovodskem programu (Minimax, Birokrat, Pantheon…) poiščite nastavitve za uvoz računov po emailu. Program vam dodeli poseben email naslov, ki ga vnesete sem. Vsak račun bo poslan posebej — ne v paketu.
         </p>
       </div>
     </div>

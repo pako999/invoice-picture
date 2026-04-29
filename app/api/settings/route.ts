@@ -9,9 +9,13 @@ export async function GET() {
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const db = getDb();
-  const [row] = await db.select().from(userSettings).where(eq(userSettings.clerkUserId, userId)).limit(1);
-  return NextResponse.json({ recipientEmail: row?.recipientEmail ?? "" });
+  try {
+    const db = getDb();
+    const [row] = await db.select().from(userSettings).where(eq(userSettings.clerkUserId, userId)).limit(1);
+    return NextResponse.json({ recipientEmail: row?.recipientEmail ?? "" });
+  } catch {
+    return NextResponse.json({ recipientEmail: "" });
+  }
 }
 
 export async function PUT(req: NextRequest) {
@@ -30,7 +34,8 @@ export async function PUT(req: NextRequest) {
     }
     return NextResponse.json({ success: true });
   } catch (err) {
-    const msg = err instanceof Error ? err.message : "Napaka";
-    return NextResponse.json({ error: msg }, { status: 400 });
+    const isValidation = err instanceof z.ZodError;
+    const msg = isValidation ? "Vnesite veljaven email naslov." : "Napaka pri shranjevanju. Poskusite znova.";
+    return NextResponse.json({ error: msg }, { status: isValidation ? 400 : 500 });
   }
 }
