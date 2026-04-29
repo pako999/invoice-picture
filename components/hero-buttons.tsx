@@ -5,9 +5,7 @@ import { SignInButton, SignUpButton, useUser } from "@clerk/nextjs";
 export function HeroButtons() {
   const { isSignedIn, isLoaded } = useUser();
 
-  if (!isLoaded) return null;
-
-  if (isSignedIn) {
+  if (isLoaded && isSignedIn) {
     return (
       <div className="flex flex-wrap gap-4 justify-center mb-16">
         <Link
