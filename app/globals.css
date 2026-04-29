@@ -3,18 +3,48 @@
 @tailwind utilities;
 
 :root {
-  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --parchment: #F4EFE4;
+  --parchment-dark: #EBE4D5;
+  --ink: #0D0A06;
+  --ink-soft: #3D3A34;
+  --ink-muted: #8A8175;
+  --accent: #C94A1A;
+  --accent-hover: #A83C14;
+  --border: #DDD5C8;
+  --surface: #FFFFFF;
 }
 
 * { box-sizing: border-box; }
 
 body {
-  font-family: var(--font-sans);
-  background: #f9fafb;
-  color: #111827;
+  font-family: var(--font-syne, ui-sans-serif, system-ui, sans-serif);
+  background: var(--parchment);
+  color: var(--ink);
   margin: 0;
+  -webkit-font-smoothing: antialiased;
 }
 
-@media (prefers-color-scheme: dark) {
-  body { background: #0f172a; color: #f1f5f9; }
+/* --- Animations --- */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(22px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
+
+@keyframes float {
+  0%, 100% { transform: rotate(2.5deg) translateY(0px); }
+  50%       { transform: rotate(2.5deg) translateY(-10px); }
+}
+
+@keyframes ticker {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+.anim-1 { animation: fadeUp 0.7s 0.05s cubic-bezier(0.16,1,0.3,1) both; }
+.anim-2 { animation: fadeUp 0.7s 0.15s cubic-bezier(0.16,1,0.3,1) both; }
+.anim-3 { animation: fadeUp 0.7s 0.25s cubic-bezier(0.16,1,0.3,1) both; }
+.anim-4 { animation: fadeUp 0.7s 0.35s cubic-bezier(0.16,1,0.3,1) both; }
+.anim-5 { animation: fadeUp 0.7s 0.45s cubic-bezier(0.16,1,0.3,1) both; }
+
+.animate-float { animation: float 4s ease-in-out infinite; }
+.animate-ticker { animation: ticker 28s linear infinite; width: max-content; }

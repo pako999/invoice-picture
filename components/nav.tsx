@@ -19,7 +19,8 @@ export function Nav() {
   return (
     <>
       {/* ── Top header ── */}
-      <header className="sticky top-0 z-50 bg-white/90 dark:bg-slate-900/90 backdrop-blur border-b border-gray-200 dark:border-slate-700">
+      <header className="sticky top-0 z-50 backdrop-blur-md border-b"
+        style={{ background: "rgba(244,239,228,0.92)", borderColor: "#DDD5C8" }}>
         <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between gap-4">
 
           {/* Logo */}
@@ -34,11 +35,12 @@ export function Nav() {
                 <Link
                   key={l.href}
                   href={l.href}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
                     path === l.href
-                      ? "bg-blue-600 text-white"
-                      : "text-gray-600 hover:bg-gray-100 dark:text-slate-300 dark:hover:bg-slate-800"
+                      ? "text-white"
+                      : "hover:bg-black/5"
                   }`}
+                  style={path === l.href ? { background: "#C94A1A", color: "#fff" } : { color: "#3D3A34" }}
                 >
                   <span>{l.icon}</span>
                   <span>{l.label}</span>
@@ -47,19 +49,12 @@ export function Nav() {
             </nav>
           )}
 
-          {/* Contact always visible on desktop when not signed in */}
           {!isSignedIn && (
             <nav className="hidden md:flex items-center gap-1">
-              <Link
-                href="/contact"
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                  path === "/contact"
-                    ? "bg-blue-600 text-white"
-                    : "text-gray-600 hover:bg-gray-100 dark:text-slate-300 dark:hover:bg-slate-800"
-                }`}
-              >
-                <span>📨</span>
-                <span>Kontakt</span>
+              <Link href="/contact"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors hover:bg-black/5"
+                style={{ color: "#3D3A34" }}>
+                <span>📨</span><span>Kontakt</span>
               </Link>
             </nav>
           )}
@@ -88,27 +83,25 @@ export function Nav() {
 
       {/* ── Mobile bottom nav — only for signed-in users ── */}
       {isSignedIn && (
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-slate-900 border-t border-gray-200 dark:border-slate-700 flex">
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 flex"
+          style={{ background: "#F4EFE4", borderTop: "1px solid #DDD5C8" }}>
           {appLinks.map((l) => {
             const active = path === l.href;
             return (
               <Link
                 key={l.href}
                 href={l.href}
-                className={`flex-1 flex flex-col items-center justify-center gap-1 py-2.5 transition-colors ${
-                  active
-                    ? "text-blue-600 dark:text-blue-400"
-                    : "text-gray-400 dark:text-slate-500 hover:text-gray-700 dark:hover:text-slate-300"
-                }`}
+                className="flex-1 flex flex-col items-center justify-center gap-1 py-2.5 transition-colors"
+                style={{ color: active ? "#C94A1A" : "#8A8175" }}
               >
                 <span className={`text-2xl leading-none transition-transform ${active ? "scale-110" : ""}`}>
                   {l.icon}
                 </span>
-                <span className={`text-[10px] font-semibold tracking-wide ${active ? "text-blue-600 dark:text-blue-400" : ""}`}>
+                <span className="text-[10px] font-semibold tracking-wide">
                   {l.label}
                 </span>
                 {active && (
-                  <span className="absolute bottom-0 w-8 h-0.5 rounded-full bg-blue-600 dark:bg-blue-400" />
+                  <span className="absolute bottom-0 w-8 h-0.5 rounded-full" style={{ background: "#C94A1A" }} />
                 )}
               </Link>
             );
