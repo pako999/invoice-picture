@@ -240,21 +240,81 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* CTA */}
+      {/* Pricing */}
       <section className="py-20">
-        <div className="max-w-2xl mx-auto px-6 text-center">
-          <div className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-3xl p-12 shadow-2xl shadow-blue-200 dark:shadow-none">
-            <h2 className="text-4xl font-extrabold text-white mb-4">Začnite danes</h2>
-            <p className="text-blue-100 text-lg mb-8">
-              Prihranite čas pri vnosu računov. Vaš računovodja bo zadovoljen.
-            </p>
-            <Link
-              href="/scan"
-              className="inline-flex items-center gap-2 bg-white text-blue-600 font-bold px-8 py-4 rounded-2xl text-base hover:bg-blue-50 transition-colors"
-            >
-              📷 Odpri aplikacijo
-            </Link>
+        <div className="max-w-5xl mx-auto px-6">
+          <p className="text-xs font-bold text-blue-600 dark:text-blue-400 tracking-widest text-center mb-3 uppercase">Cenik</p>
+          <h2 className="text-4xl font-extrabold text-gray-900 dark:text-white text-center tracking-tight mb-4">
+            Začnite danes
+          </h2>
+          <p className="text-gray-500 dark:text-slate-400 text-center mb-12 max-w-xl mx-auto text-lg">
+            Prihranite dragoceni čas pri ročnem vnosu računov. En klik nadomesti minute tipkanja.
+          </p>
+
+          <div className="grid sm:grid-cols-2 gap-6 max-w-3xl mx-auto">
+            {/* Monthly */}
+            <div className="bg-white dark:bg-slate-900 rounded-3xl border border-gray-200 dark:border-slate-700 p-8 flex flex-col gap-6">
+              <div>
+                <div className="text-sm font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider mb-2">Mesečno</div>
+                <div className="flex items-end gap-2">
+                  <span className="text-5xl font-extrabold text-gray-900 dark:text-white">9,90</span>
+                  <span className="text-gray-500 dark:text-slate-400 mb-1.5">EUR / mesec</span>
+                </div>
+                <p className="text-sm text-gray-400 dark:text-slate-500 mt-1">Mesečno obnovitev, kadarkoli odpoveš.</p>
+              </div>
+              <PricingFeatures />
+              <Link
+                href="/sign-up"
+                className="mt-auto w-full text-center bg-gray-900 dark:bg-white hover:bg-gray-700 dark:hover:bg-gray-100 text-white dark:text-gray-900 font-bold px-6 py-3.5 rounded-2xl text-sm transition-colors"
+              >
+                Začni mesečno →
+              </Link>
+            </div>
+
+            {/* Yearly — highlighted */}
+            <div className="relative bg-blue-600 rounded-3xl p-8 flex flex-col gap-6 shadow-2xl shadow-blue-200 dark:shadow-none">
+              <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
+                <div className="bg-amber-400 text-amber-900 text-xs font-extrabold px-4 py-1.5 rounded-full whitespace-nowrap">
+                  ✦ PRIPOROČAMO · prihrani 20 %
+                </div>
+              </div>
+              <div>
+                <div className="text-sm font-bold text-blue-200 uppercase tracking-wider mb-2">Letno</div>
+                <div className="flex items-end gap-2">
+                  <span className="text-5xl font-extrabold text-white">7,92</span>
+                  <span className="text-blue-200 mb-1.5">EUR / mesec</span>
+                </div>
+                <p className="text-sm text-blue-200 mt-1">
+                  <span className="line-through text-blue-300">118,80 EUR</span>
+                  {" "}→{" "}
+                  <strong className="text-white">95,04 EUR / leto</strong> — enkratno plačilo
+                </p>
+              </div>
+              <PricingFeaturesLight />
+              <Link
+                href="/sign-up"
+                className="mt-auto w-full text-center bg-white hover:bg-blue-50 text-blue-600 font-bold px-6 py-3.5 rounded-2xl text-sm transition-colors"
+              >
+                Začni letno — prihrani 23,76 EUR →
+              </Link>
+            </div>
           </div>
+
+          <p className="text-center text-sm text-gray-400 dark:text-slate-500 mt-8">
+            Brez skritih stroškov · Brez vezave · Odpoveš kadarkoli
+          </p>
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section className="py-12 pb-20">
+        <div className="max-w-2xl mx-auto px-6 text-center">
+          <p className="text-gray-400 dark:text-slate-500 text-sm">
+            Vprašanja? Pišite nam na{" "}
+            <a href="mailto:info@futurecode.si" className="underline underline-offset-2 hover:text-gray-600 dark:hover:text-slate-300 transition-colors">
+              info@futurecode.si
+            </a>
+          </p>
         </div>
       </section>
 
@@ -266,6 +326,45 @@ export default function LandingPage() {
         </a>
       </footer>
     </div>
+  );
+}
+
+const pricingFeatures = [
+  "Neomejeno fotografiranje računov",
+  "Pošiljanje na kateri koli email",
+  "Deluje z Minimax, Birokrat, Pantheon, SAOP, E-računi, Eurofaktura",
+  "OCR obdelava v vašem računovodskem programu",
+  "Arhiv vseh poslanih računov s predogledom",
+  "Status pošiljanja v realnem času",
+  "Podpora JPG, PNG, WEBP formatov",
+  "Mobilno optimizirana aplikacija",
+  "Varen dostop prek Clerk avtentikacije",
+  "Shramba zgodovine brez omejitev",
+];
+
+function PricingFeatures() {
+  return (
+    <ul className="flex flex-col gap-2.5">
+      {pricingFeatures.map((f) => (
+        <li key={f} className="flex items-start gap-2.5 text-sm text-gray-600 dark:text-slate-300">
+          <span className="text-green-500 mt-0.5 flex-shrink-0">✓</span>
+          {f}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function PricingFeaturesLight() {
+  return (
+    <ul className="flex flex-col gap-2.5">
+      {pricingFeatures.map((f) => (
+        <li key={f} className="flex items-start gap-2.5 text-sm text-blue-100">
+          <span className="text-blue-200 mt-0.5 flex-shrink-0">✓</span>
+          {f}
+        </li>
+      ))}
+    </ul>
   );
 }
 
