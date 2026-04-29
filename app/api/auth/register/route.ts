@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
       email: body.email,
       passwordHash,
       name: body.name ?? null,
-    }).$returningId();
+    }).returning({ id: users.id });
 
     await db.insert(userSettings).values({ userId: result.id, recipientEmail: null });
 

@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
       imageMime: data.mime,
       filename: data.filename,
       status: "pending",
-    }).$returningId();
+    }).returning({ id: invoices.id });
 
     const id = result.id;
 
