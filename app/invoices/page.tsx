@@ -22,10 +22,78 @@ function fmt(d: string | Date | null) {
   });
 }
 
+function PreviewModal({ inv, onClose }: { inv: Invoice; onClose: () => void }) {
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+      onClick={onClose}
+    >
+      <div
+        className="relative bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-slate-700">
+          <div>
+            <p className="font-bold text-gray-900 dark:text-white">{inv.subject}</p>
+            <p className="text-sm text-gray-500 dark:text-slate-400">Za: {inv.recipientEmail}</p>
+            <p className="text-xs text-gray-400 dark:text-slate-500 mt-0.5">{fmt(inv.createdAt)}</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <StatusBadge status={inv.status} />
+            <button
+              onClick={onClose}
+              className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-500 dark:text-slate-400 text-xl"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+
+        {/* Image / PDF */}
+        <div className="p-4">
+          {inv.imageMime === "application/pdf" ? (
+            <div className="flex flex-col items-center justify-center py-16 gap-3 text-gray-400">
+              <span className="text-6xl">📋</span>
+              <p className="font-semibold text-gray-600 dark:text-slate-300">PDF dokument</p>
+              <p className="text-sm">{inv.filename ?? "račun.pdf"}</p>
+            </div>
+          ) : inv.imageData ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={`data:${inv.imageMime};base64,${inv.imageData}`}
+              alt="Račun"
+              className="w-full rounded-xl border border-gray-200 dark:border-slate-700"
+            />
+          ) : (
+            <div className="flex flex-col items-center justify-center py-16 gap-3 text-gray-400">
+              <span className="text-5xl">📄</span>
+              <p className="text-sm">Predogled ni na voljo</p>
+            </div>
+          )}
+        </div>
+
+        {inv.status === "failed" && inv.errorMessage && (
+          <div className="mx-4 mb-4 p-3 bg-red-50 dark:bg-red-900/20 rounded-xl text-sm text-red-600 dark:text-red-400">
+            {inv.errorMessage}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function InvoicesPage() {
   const [list, setList] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState<number | null>(null);
+  const [preview, setPreview] = useState<Invoice | null>(null);
 
   async function load() {
     setLoading(true);
@@ -42,7 +110,8 @@ export default function InvoicesPage() {
 
   useEffect(() => { load(); }, []);
 
-  async function handleDelete(id: number) {
+  async function handleDelete(e: React.MouseEvent, id: number) {
+    e.stopPropagation();
     if (!confirm("Res želiš izbrisati ta račun?")) return;
     setDeleting(id);
     await fetch(`/api/invoices/${id}`, { method: "DELETE" });
@@ -55,6 +124,8 @@ export default function InvoicesPage() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-10">
+      {preview && <PreviewModal inv={preview} onClose={() => setPreview(null)} />}
+
       <div className="flex items-center justify-between mb-8 flex-wrap gap-3">
         <div>
           <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white">Poslani računi</h1>
@@ -98,7 +169,8 @@ export default function InvoicesPage() {
           {list.map((inv) => (
             <div
               key={inv.id}
-              className="flex items-start gap-4 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-2xl p-4"
+              onClick={() => setPreview(inv)}
+              className="flex items-start gap-4 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-2xl p-4 cursor-pointer hover:border-blue-300 dark:hover:border-blue-600 hover:shadow-md transition-all"
             >
               {/* Thumbnail */}
               {inv.imageMime === "application/pdf" ? (
@@ -134,15 +206,18 @@ export default function InvoicesPage() {
                 )}
               </div>
 
-              {/* Delete */}
-              <button
-                onClick={() => handleDelete(inv.id)}
-                disabled={deleting === inv.id}
-                className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-400 hover:text-red-500 transition-colors disabled:opacity-40"
-                title="Izbriši"
-              >
-                🗑️
-              </button>
+              {/* Preview hint + Delete */}
+              <div className="flex-shrink-0 flex items-center gap-1">
+                <span className="text-xs text-gray-400 dark:text-slate-500 hidden sm:block">Klikni za predogled</span>
+                <button
+                  onClick={(e) => handleDelete(e, inv.id)}
+                  disabled={deleting === inv.id}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-gray-400 hover:text-red-500 transition-colors disabled:opacity-40"
+                  title="Izbriši"
+                >
+                  🗑️
+                </button>
+              </div>
             </div>
           ))}
         </div>
