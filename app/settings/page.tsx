@@ -56,8 +56,8 @@ function SettingsContent() {
         <div className="flex items-center gap-3 mb-4">
           <span className="text-2xl">📧</span>
           <div>
-            <h2 className="font-bold text-gray-900 dark:text-white">Email za prejemanje računov</h2>
-            <p className="text-xs text-gray-500 dark:text-slate-400">Na ta naslov bodo poslani vsi tvoji računi</p>
+            <h2 className="font-bold text-gray-900 dark:text-white">Email računovodskega programa</h2>
+            <p className="text-xs text-gray-500 dark:text-slate-400">Email za uvoz računov iz vašega programa (Minimax, Birokrat…)</p>
           </div>
         </div>
 
@@ -90,37 +90,11 @@ function SettingsContent() {
         )}
       </div>
 
-      {/* Resend info */}
-      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-2xl p-6 mb-5">
-        <div className="flex items-center gap-3 mb-3">
-          <span className="text-2xl">🔑</span>
-          <h2 className="font-bold text-gray-900 dark:text-white">Resend API ključ</h2>
-        </div>
-        <p className="text-sm text-gray-600 dark:text-slate-300 leading-relaxed">
-          Nastavi <code className="bg-blue-100 dark:bg-blue-900 px-1.5 py-0.5 rounded text-xs font-mono">RESEND_API_KEY</code> in{" "}
-          <code className="bg-blue-100 dark:bg-blue-900 px-1.5 py-0.5 rounded text-xs font-mono">RESEND_FROM</code> v{" "}
-          Vercel → Settings → Environment Variables.
-        </p>
-        <a
-          href="https://resend.com/api-keys"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 mt-3 text-blue-600 dark:text-blue-400 text-sm font-semibold hover:underline"
-        >
-          Ustvari ključ na resend.com →
-        </a>
-      </div>
-
-      {/* DB info */}
-      <div className="bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-2xl p-6">
-        <div className="flex items-center gap-3 mb-3">
-          <span className="text-2xl">🗄️</span>
-          <h2 className="font-bold text-gray-900 dark:text-white">Baza podatkov</h2>
-        </div>
-        <p className="text-sm text-gray-600 dark:text-slate-300">
-          <code className="bg-gray-200 dark:bg-slate-700 px-1.5 py-0.5 rounded text-xs font-mono">DATABASE_URL</code>{" "}
-          nastavi v Vercel. Po nastavitvi poženi:{" "}
-          <code className="bg-gray-200 dark:bg-slate-700 px-1.5 py-0.5 rounded text-xs font-mono">npm run db:push</code>
+      {/* Help tip */}
+      <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-2xl p-5">
+        <p className="text-sm text-amber-800 dark:text-amber-300 leading-relaxed">
+          <strong>Kje dobim email naslov?</strong><br />
+          V svojem računovodskem programu (Minimax, Birokrat, Pantheon…) poiščite nastavitve za uvoz računov po emailu. Program vam dodeli poseben email naslov, ki ga vnesete sem.
         </p>
       </div>
     </div>
