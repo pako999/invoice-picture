@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import { HeroButtons } from "@/components/hero-buttons";
 
 const integrations = [
   {
@@ -115,20 +116,7 @@ export default function LandingPage() {
           </span>
         </div>
 
-        <div className="flex flex-wrap gap-4 justify-center mb-16">
-          <Link
-            href="/scan"
-            className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold px-8 py-4 rounded-2xl text-base transition-colors shadow-lg shadow-blue-200 dark:shadow-none"
-          >
-            📷 Začni skenirati
-          </Link>
-          <Link
-            href="/sign-up"
-            className="inline-flex items-center gap-2 border border-gray-200 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-800 text-gray-700 dark:text-slate-300 font-semibold px-8 py-4 rounded-2xl text-base transition-colors"
-          >
-            Ustvari račun →
-          </Link>
-        </div>
+        <HeroButtons />
 
         {/* Flow diagram */}
         <div className="flex items-center justify-center gap-3 sm:gap-5 flex-wrap">
