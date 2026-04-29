@@ -250,16 +250,16 @@ export default function LandingPage() {
             Prihranite dragoceni čas pri ročnem vnosu računov. En klik nadomesti minute tipkanja.
           </p>
 
-          <div className="grid sm:grid-cols-2 gap-6 max-w-3xl mx-auto">
+          <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
             {/* Monthly */}
             <div className="bg-white dark:bg-slate-900 rounded-3xl border border-gray-200 dark:border-slate-700 p-8 flex flex-col gap-6">
               <div>
-                <div className="text-sm font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider mb-2">Mesečno</div>
+                <div className="text-xs font-bold text-gray-400 dark:text-slate-500 uppercase tracking-wider mb-2">Osnovno · Mesečno</div>
                 <div className="flex items-end gap-2">
                   <span className="text-5xl font-extrabold text-gray-900 dark:text-white">9,90</span>
                   <span className="text-gray-500 dark:text-slate-400 mb-1.5">€ / mesec</span>
                 </div>
-                <p className="text-sm text-gray-400 dark:text-slate-500 mt-1">Mesečno obnovitev, kadarkoli odpoveš.</p>
+                <p className="text-sm text-gray-400 dark:text-slate-500 mt-1">Mesečna obnova, kadarkoli odpoveš.</p>
               </div>
               <PricingFeatures />
               <Link
@@ -278,7 +278,7 @@ export default function LandingPage() {
                 </div>
               </div>
               <div>
-                <div className="text-sm font-bold text-blue-200 uppercase tracking-wider mb-2">Letno</div>
+                <div className="text-xs font-bold text-blue-200 uppercase tracking-wider mb-2">Osnovno · Letno</div>
                 <div className="flex items-end gap-2">
                   <span className="text-5xl font-extrabold text-white">7,92</span>
                   <span className="text-blue-200 mb-1.5">€ / mesec</span>
@@ -295,6 +295,35 @@ export default function LandingPage() {
                 className="mt-auto w-full text-center bg-white hover:bg-blue-50 text-blue-600 font-bold px-6 py-3.5 rounded-2xl text-sm transition-colors"
               >
                 Začni letno — prihrani 23,76 € →
+              </Link>
+            </div>
+
+            {/* PRO — Računovodstvo */}
+            <div className="relative bg-slate-900 dark:bg-slate-800 rounded-3xl p-8 flex flex-col gap-6 shadow-2xl shadow-slate-300 dark:shadow-none border border-slate-700">
+              <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
+                <div className="bg-violet-500 text-white text-xs font-extrabold px-4 py-1.5 rounded-full whitespace-nowrap">
+                  🏢 PRO · Računovodstvo
+                </div>
+              </div>
+              <div>
+                <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Pro · Mesečno / Letno</div>
+                <div className="flex items-end gap-2">
+                  <span className="text-5xl font-extrabold text-white">19,90</span>
+                  <span className="text-slate-400 mb-1.5">€ / mesec</span>
+                </div>
+                <p className="text-sm text-slate-400 mt-1">
+                  ali{" "}
+                  <span className="line-through text-slate-500">238,80 €</span>
+                  {" "}→{" "}
+                  <strong className="text-violet-400">191,04 € / leto</strong> — prihrani 20 %
+                </p>
+              </div>
+              <PricingFeaturesPro />
+              <Link
+                href="/sign-up"
+                className="mt-auto w-full text-center bg-violet-600 hover:bg-violet-500 text-white font-bold px-6 py-3.5 rounded-2xl text-sm transition-colors"
+              >
+                Začni PRO →
               </Link>
             </div>
           </div>
@@ -334,12 +363,25 @@ const pricingFeatures = [
   "Pošiljanje na kateri koli email",
   "Deluje z Minimax, Birokrat, Pantheon, SAOP, E-računi, Eurofaktura",
   "OCR obdelava v vašem računovodskem programu",
-  "Arhiv vseh poslanih računov s predogledom",
+  "Arhiv poslanih računov s predogledom",
   "Status pošiljanja v realnem času",
-  "Podpora JPG, PNG, WEBP formatov",
+  "Podpora JPG, PNG, WEBP in PDF",
   "Mobilno optimizirana aplikacija",
   "Varen dostop prek Clerk avtentikacije",
   "Shramba zgodovine brez omejitev",
+];
+
+const proFeatures = [
+  "Vse iz osnovnega paketa",
+  "Upravljanje neomejeno podjetij",
+  "Ločen OCR email za vsako podjetje",
+  "Hitri preklop med podjetji pri skeniranju",
+  "En račun — vsa podjetja na enem mestu",
+  "Deluje z Minimax, Birokrat, Pantheon, SAOP, E-računi, Eurofaktura",
+  "Arhiv računov ločen po podjetjih",
+  "Mobilno optimizirana aplikacija",
+  "Varen dostop prek Clerk avtentikacije",
+  "Prednostna podpora",
 ];
 
 function PricingFeatures() {
@@ -361,6 +403,19 @@ function PricingFeaturesLight() {
       {pricingFeatures.map((f) => (
         <li key={f} className="flex items-start gap-2.5 text-sm text-blue-100">
           <span className="text-blue-200 mt-0.5 flex-shrink-0">✓</span>
+          {f}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function PricingFeaturesPro() {
+  return (
+    <ul className="flex flex-col gap-2.5">
+      {proFeatures.map((f) => (
+        <li key={f} className="flex items-start gap-2.5 text-sm text-slate-300">
+          <span className="text-violet-400 mt-0.5 flex-shrink-0">✓</span>
           {f}
         </li>
       ))}
