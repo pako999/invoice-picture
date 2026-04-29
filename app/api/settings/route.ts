@@ -35,7 +35,8 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ success: true });
   } catch (err) {
     const isValidation = err instanceof z.ZodError;
-    const msg = isValidation ? "Vnesite veljaven email naslov." : "Napaka pri shranjevanju. Poskusite znova.";
+    if (!isValidation) console.error("[settings PUT]", err);
+    const msg = isValidation ? "Vnesite veljaven email naslov." : `Napaka: ${err instanceof Error ? err.message : String(err)}`;
     return NextResponse.json({ error: msg }, { status: isValidation ? 400 : 500 });
   }
 }
