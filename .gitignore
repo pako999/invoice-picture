@@ -9,3 +9,4 @@ dist/
 # clerk configuration (can include secrets)
 /.clerk/
 .vercel
+.env.production.local
