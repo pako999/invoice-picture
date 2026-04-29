@@ -1,6 +1,7 @@
 "use client";
 import { useState, useRef, useCallback, useEffect } from "react";
 import Link from "next/link";
+import type { Company } from "@/lib/schema";
 
 function readFileAsBase64(file: File): Promise<{ base64: string; mime: string }> {
   return new Promise((resolve, reject) => {
@@ -48,6 +49,8 @@ function isPdf(mime: string) {
 export default function ScanPage() {
   const [file, setFile] = useState<{ url: string; base64: string; mime: string; name: string } | null>(null);
   const [recipientEmail, setRecipientEmail] = useState<string | null>(null);
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [selectedCompanyId, setSelectedCompanyId] = useState<number | null>(null);
   const [subject, setSubject] = useState("Račun");
   const [status, setStatus] = useState<"idle" | "sending" | "ok" | "err">("idle");
   const [errMsg, setErrMsg] = useState("");
@@ -57,10 +60,15 @@ export default function ScanPage() {
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    fetch("/api/settings")
-      .then((r) => r.json())
-      .then((d) => setRecipientEmail(d.recipientEmail || null))
-      .catch(() => {});
+    Promise.all([
+      fetch("/api/settings").then(r => r.json()).catch(() => ({})),
+      fetch("/api/companies").then(r => r.json()).catch(() => []),
+    ]).then(([settings, comps]) => {
+      setRecipientEmail(settings.recipientEmail || null);
+      const list: Company[] = Array.isArray(comps) ? comps : [];
+      setCompanies(list);
+      if (list.length > 0) setSelectedCompanyId(list[0].id);
+    });
   }, []);
 
   async function handleFile(f: File) {
@@ -83,19 +91,25 @@ export default function ScanPage() {
     if (dropped) handleFile(dropped);
   }, []);
 
+  const selectedCompany = companies.find(c => c.id === selectedCompanyId) ?? null;
+  const hasRecipient = selectedCompany !== null || !!recipientEmail;
+  const sentToLabel = selectedCompany ? selectedCompany.name : recipientEmail;
+
   async function handleSend() {
     if (!file) return;
     setStatus("sending");
     try {
+      const body: Record<string, unknown> = {
+        subject: subject || "Račun",
+        imageBase64: file.base64,
+        filename: file.name,
+        mime: file.mime,
+      };
+      if (selectedCompanyId) body.companyId = selectedCompanyId;
       const res = await fetch("/api/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          subject: subject || "Račun",
-          imageBase64: file.base64,
-          filename: file.name,
-          mime: file.mime,
-        }),
+        body: JSON.stringify(body),
       });
       const json = await res.json();
       if (!res.ok || !json.success) throw new Error(json.error ?? "Napaka");
@@ -115,8 +129,44 @@ export default function ScanPage() {
         Fotografirajte ali naložite račun (slika ali PDF) in ga pošljite z enim klikom.
       </p>
 
-      {/* Recipient email banner */}
-      {recipientEmail ? (
+      {/* Company selector or email banner */}
+      {companies.length > 0 ? (
+        <div className="mb-6 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl overflow-hidden">
+          <div className="px-4 py-2 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
+            <span className="text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">Podjetje</span>
+            <Link href="/settings" className="text-xs text-blue-600 dark:text-blue-400 font-semibold hover:underline">
+              Uredi →
+            </Link>
+          </div>
+          <div className="p-2 flex flex-col gap-1">
+            {companies.map(c => (
+              <button
+                key={c.id}
+                onClick={() => setSelectedCompanyId(c.id)}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors ${
+                  selectedCompanyId === c.id
+                    ? "bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800"
+                    : "hover:bg-gray-50 dark:hover:bg-slate-800 border border-transparent"
+                }`}
+              >
+                <span className={`w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${
+                  selectedCompanyId === c.id
+                    ? "border-blue-500 bg-blue-500"
+                    : "border-gray-300 dark:border-slate-500"
+                }`}>
+                  {selectedCompanyId === c.id && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-white" />
+                  )}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{c.name}</p>
+                  <p className="text-xs text-gray-400 dark:text-slate-500 truncate">{c.recipientEmail}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : recipientEmail ? (
         <div className="mb-6 flex items-center justify-between gap-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 px-4 py-3 rounded-xl">
           <div className="flex items-center gap-2 text-sm">
             <span>📧</span>
@@ -143,7 +193,7 @@ export default function ScanPage() {
       {/* Notifications */}
       {status === "ok" && (
         <div className="mb-5 flex items-center gap-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 px-4 py-3 rounded-xl text-sm font-medium">
-          ✅ Račun uspešno poslan na {recipientEmail}!
+          ✅ Račun uspešno poslan{sentToLabel ? ` — ${sentToLabel}` : ""}!
         </div>
       )}
       {status === "err" && (
@@ -253,7 +303,7 @@ export default function ScanPage() {
 
       <button
         onClick={handleSend}
-        disabled={!file || !recipientEmail || status === "sending"}
+        disabled={!file || !hasRecipient || status === "sending"}
         className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold py-4 rounded-2xl text-base transition-colors"
       >
         {status === "sending" ? (

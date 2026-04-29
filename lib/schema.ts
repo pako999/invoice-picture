@@ -28,5 +28,14 @@ export const invoices = pgTable("invoices", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
+export const companies = pgTable("companies", {
+  id: serial("id").primaryKey(),
+  clerkUserId: varchar("clerkUserId", { length: 255 }).notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  recipientEmail: varchar("recipientEmail", { length: 320 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
 export type UserSettings = typeof userSettings.$inferSelect;
 export type Invoice = typeof invoices.$inferSelect;
+export type Company = typeof companies.$inferSelect;

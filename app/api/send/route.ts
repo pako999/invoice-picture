@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { getDb } from "@/lib/db";
-import { invoices, userSettings } from "@/lib/schema";
+import { invoices, userSettings, companies } from "@/lib/schema";
 import { sendInvoiceEmail } from "@/lib/resend";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { z } from "zod";
 
 const schema = z.object({
@@ -11,6 +11,7 @@ const schema = z.object({
   imageBase64: z.string().min(1),
   filename: z.string().min(1),
   mime: z.string().default("image/jpeg"),
+  companyId: z.number().optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -21,8 +22,18 @@ export async function POST(req: NextRequest) {
     const data = schema.parse(await req.json());
     const db = getDb();
 
-    const [settings] = await db.select().from(userSettings).where(eq(userSettings.clerkUserId, userId)).limit(1);
-    const recipientEmail = settings?.recipientEmail;
+    let recipientEmail: string | null | undefined;
+
+    if (data.companyId) {
+      const [company] = await db.select().from(companies)
+        .where(and(eq(companies.id, data.companyId), eq(companies.clerkUserId, userId)))
+        .limit(1);
+      recipientEmail = company?.recipientEmail;
+    } else {
+      const [settings] = await db.select().from(userSettings).where(eq(userSettings.clerkUserId, userId)).limit(1);
+      recipientEmail = settings?.recipientEmail;
+    }
+
     if (!recipientEmail) {
       return NextResponse.json({ success: false, error: "Nastavi email prejemnika v Nastavitvah." }, { status: 422 });
     }
