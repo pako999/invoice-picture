@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
+import { LogoWordmark } from "@/components/logo";
 
 export default function ContactPage() {
   const [form, setForm] = useState({ name: "", email: "", company: "", message: "" });
@@ -48,9 +49,8 @@ export default function ContactPage() {
           <div className="lg:col-span-2 flex flex-col gap-6">
             <div className="bg-white dark:bg-slate-800 rounded-3xl border border-gray-200 dark:border-slate-700 p-8">
               <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-xl">🧾</div>
                 <div>
-                  <div className="font-bold text-gray-900 dark:text-white text-sm">Invoice Picture</div>
+                  <LogoWordmark className="text-sm" />
                   <div className="text-xs text-gray-400 dark:text-slate-500">Sport Group d.o.o.</div>
                 </div>
               </div>

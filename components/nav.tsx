@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { SignInButton, SignUpButton, UserButton, useUser } from "@clerk/nextjs";
+import { LogoWordmark } from "@/components/logo";
 
 const appLinks = [
   { href: "/scan",     label: "Skeniraj",   icon: "📷" },
@@ -22,8 +23,8 @@ export function Nav() {
         <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between gap-4">
 
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 font-bold text-lg text-gray-900 dark:text-white flex-shrink-0">
-            🧾 <span className="hidden sm:inline">Invoice Picture</span>
+          <Link href="/" className="flex-shrink-0 text-lg">
+            <LogoWordmark />
           </Link>
 
           {/* Desktop nav links — hidden on mobile (bottom nav takes over) */}

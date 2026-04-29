@@ -320,7 +320,7 @@ export default function LandingPage() {
 
       {/* Footer */}
       <footer className="border-t border-gray-200 dark:border-slate-700 py-8 text-center text-sm text-gray-400 dark:text-slate-500">
-        🧾 Invoice Picture · © 2026 · Created by{" "}
+        SlikajRačun · © 2026 · Created by{" "}
         <a href="https://futurecode.si" target="_blank" rel="noopener noreferrer" className="hover:text-gray-600 dark:hover:text-slate-300 underline underline-offset-2 transition-colors">
           futurecode.si
         </a>

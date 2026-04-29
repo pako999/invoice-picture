@@ -4,7 +4,7 @@ import "./globals.css";
 import { Nav } from "@/components/nav";
 
 export const metadata: Metadata = {
-  title: "Invoice Picture — Pošlji račun z emailom",
+  title: "SlikajRačun — Pošlji račun z emailom",
   description: "Fotografiraj račun in ga pošlji na email v sekundi.",
 };
 

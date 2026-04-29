@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
         <div style="font-family:system-ui,sans-serif;max-width:600px;margin:0 auto;padding:32px 24px">
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:28px">
             <span style="font-size:22px">🧾</span>
-            <span style="font-size:20px;font-weight:700;color:#111">Invoice Picture</span>
+            <span style="font-size:20px;font-weight:700;color:#111">SlikajRačun</span>
           </div>
           <h2 style="font-size:20px;font-weight:700;color:#111;margin:0 0 24px">Novo sporočilo</h2>
           <table style="width:100%;border-collapse:collapse;font-size:15px;margin-bottom:24px">
@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
           </table>
           <div style="background:#f9fafb;border-radius:12px;padding:20px;font-size:15px;color:#374151;line-height:1.6;white-space:pre-wrap">${data.message}</div>
           <hr style="border:none;border-top:1px solid #e5e7eb;margin:32px 0" />
-          <p style="color:#9ca3af;font-size:12px;margin:0">Invoice Picture · Sport Group d.o.o.</p>
+          <p style="color:#9ca3af;font-size:12px;margin:0">SlikajRačun · Sport Group d.o.o.</p>
         </div>
       `,
     });
