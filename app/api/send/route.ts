@@ -27,7 +27,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: "Nastavi email prejemnika v Nastavitvah." }, { status: 422 });
     }
 
-    const thumbData = data.imageBase64.length > 88000 ? data.imageBase64.slice(0, 88000) : data.imageBase64;
+    const isPdf = data.mime === "application/pdf";
+    const thumbData = isPdf ? null : (data.imageBase64.length > 88000 ? data.imageBase64.slice(0, 88000) : data.imageBase64);
 
     const [result] = await db.insert(invoices).values({
       clerkUserId: userId,

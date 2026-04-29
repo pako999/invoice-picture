@@ -96,7 +96,12 @@ export default function InvoicesPage() {
               className="flex items-start gap-4 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-2xl p-4"
             >
               {/* Thumbnail */}
-              {inv.imageData ? (
+              {inv.imageMime === "application/pdf" ? (
+                <div className="w-16 h-16 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800 flex flex-col items-center justify-center flex-shrink-0 gap-0.5">
+                  <span className="text-xl">📋</span>
+                  <span className="text-xs font-bold text-red-500 uppercase tracking-wide">PDF</span>
+                </div>
+              ) : inv.imageData ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={`data:${inv.imageMime};base64,${inv.imageData}`}
