@@ -1,20 +1,22 @@
 import type { Metadata } from "next";
+import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 import { Nav } from "@/components/nav";
 
 export const metadata: Metadata = {
   title: "Invoice Picture — Pošlji račun z emailom",
-  description: "Fotografiraj račun in ga pošlji na email v sekundi. Preprosto, hitro, brez registracije.",
-  icons: { icon: "/favicon.ico" },
+  description: "Fotografiraj račun in ga pošlji na email v sekundi.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="sl">
-      <body>
-        <Nav />
-        <main>{children}</main>
-      </body>
-    </html>
+    <ClerkProvider>
+      <html lang="sl">
+        <body>
+          <Nav />
+          <main>{children}</main>
+        </body>
+      </html>
+    </ClerkProvider>
   );
 }

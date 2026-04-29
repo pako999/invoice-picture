@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
+import { SignInButton, SignUpButton, UserButton, useUser } from "@clerk/nextjs";
 
 const links = [
   { href: "/scan",     label: "Skeniraj",  icon: "📷" },
@@ -11,36 +11,8 @@ const links = [
 
 export function Nav() {
   const path = usePathname();
-  const router = useRouter();
-  const [email, setEmail] = useState<string | null>(null);
-
-  useEffect(() => {
-    // Try to get session info — if 401 user is logged out
-    fetch("/api/settings")
-      .then((r) => {
-        if (!r.ok) { setEmail(null); return null; }
-        return r.json();
-      })
-      .then(() => {
-        // We just need to know if authed; read email from cookie via whoami
-      })
-      .catch(() => {});
-
-    // Read email from a lightweight endpoint
-    fetch("/api/auth/me")
-      .then((r) => r.ok ? r.json() : null)
-      .then((d) => d?.email ? setEmail(d.email) : setEmail(null))
-      .catch(() => setEmail(null));
-  }, [path]);
-
-  async function logout() {
-    await fetch("/api/auth/logout", { method: "POST" });
-    setEmail(null);
-    router.push("/");
-    router.refresh();
-  }
-
-  const isPublic = path === "/" || path === "/login" || path === "/register";
+  const { isSignedIn, isLoaded } = useUser();
+  const isPublic = path === "/" || path === "/sign-in" || path === "/sign-up";
 
   return (
     <header className="sticky top-0 z-50 bg-white/90 dark:bg-slate-900/90 backdrop-blur border-b border-gray-200 dark:border-slate-700">
@@ -49,7 +21,7 @@ export function Nav() {
           🧾 <span className="hidden sm:inline">Invoice Picture</span>
         </Link>
 
-        {!isPublic && (
+        {isSignedIn && (
           <nav className="flex items-center gap-1">
             {links.map((l) => (
               <Link
@@ -69,27 +41,20 @@ export function Nav() {
         )}
 
         <div className="flex items-center gap-2 ml-auto">
-          {email ? (
-            <>
-              <span className="text-xs text-gray-500 dark:text-slate-400 hidden md:inline truncate max-w-40">{email}</span>
-              <button
-                onClick={logout}
-                className="text-xs px-3 py-1.5 rounded-lg border border-gray-200 dark:border-slate-600 text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 font-medium transition-colors"
-              >
-                Odjava
-              </button>
-            </>
+          {!isLoaded ? null : isSignedIn ? (
+            <UserButton />
           ) : isPublic ? (
             <>
-              <Link href="/login" className="text-sm text-gray-600 dark:text-slate-300 hover:text-gray-900 font-medium">
-                Prijava
-              </Link>
-              <Link
-                href="/register"
-                className="text-sm bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-1.5 rounded-lg transition-colors"
-              >
-                Registracija
-              </Link>
+              <SignInButton mode="modal">
+                <button className="text-sm text-gray-600 dark:text-slate-300 hover:text-gray-900 font-medium px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-colors">
+                  Prijava
+                </button>
+              </SignInButton>
+              <SignUpButton mode="modal">
+                <button className="text-sm bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-1.5 rounded-lg transition-colors">
+                  Registracija
+                </button>
+              </SignUpButton>
             </>
           ) : null}
         </div>

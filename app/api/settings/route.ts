@@ -1,34 +1,33 @@
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@clerk/nextjs/server";
 import { z } from "zod";
 import { getDb } from "@/lib/db";
 import { userSettings } from "@/lib/schema";
 import { eq } from "drizzle-orm";
-import { requireSession } from "@/lib/session";
 
 export async function GET() {
-  try {
-    const { userId } = await requireSession();
-    const db = getDb();
-    const [row] = await db.select().from(userSettings).where(eq(userSettings.userId, userId)).limit(1);
-    return NextResponse.json({ recipientEmail: row?.recipientEmail ?? "" });
-  } catch {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const { userId } = await auth();
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const db = getDb();
+  const [row] = await db.select().from(userSettings).where(eq(userSettings.clerkUserId, userId)).limit(1);
+  return NextResponse.json({ recipientEmail: row?.recipientEmail ?? "" });
 }
 
 export async function PUT(req: NextRequest) {
+  const { userId } = await auth();
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   try {
-    const { userId } = await requireSession();
     const { recipientEmail } = z.object({ recipientEmail: z.string().email() }).parse(await req.json());
     const db = getDb();
 
-    const existing = await db.select({ id: userSettings.id }).from(userSettings).where(eq(userSettings.userId, userId)).limit(1);
+    const existing = await db.select({ id: userSettings.id }).from(userSettings).where(eq(userSettings.clerkUserId, userId)).limit(1);
     if (existing.length > 0) {
-      await db.update(userSettings).set({ recipientEmail }).where(eq(userSettings.userId, userId));
+      await db.update(userSettings).set({ recipientEmail }).where(eq(userSettings.clerkUserId, userId));
     } else {
-      await db.insert(userSettings).values({ userId, recipientEmail });
+      await db.insert(userSettings).values({ clerkUserId: userId, recipientEmail });
     }
-
     return NextResponse.json({ success: true });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Napaka";

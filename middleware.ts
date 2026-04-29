@@ -1,34 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
-import { jwtVerify } from "jose";
+import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
-const secret = new TextEncoder().encode(
-  process.env.JWT_SECRET ?? "dev-secret-change-in-production-min-32-chars"
-);
+const isProtected = createRouteMatcher(["/scan(.*)", "/invoices(.*)", "/settings(.*)"]);
 
-const PROTECTED = ["/scan", "/invoices", "/settings"];
-
-export async function middleware(req: NextRequest) {
-  const { pathname } = req.nextUrl;
-
-  if (!PROTECTED.some((p) => pathname.startsWith(p))) {
-    return NextResponse.next();
-  }
-
-  const token = req.cookies.get("auth_token")?.value;
-  if (!token) {
-    return NextResponse.redirect(new URL(`/login?from=${encodeURIComponent(pathname)}`, req.url));
-  }
-
-  try {
-    await jwtVerify(token, secret);
-    return NextResponse.next();
-  } catch {
-    const res = NextResponse.redirect(new URL("/login", req.url));
-    res.cookies.set("auth_token", "", { maxAge: 0, path: "/" });
-    return res;
-  }
-}
+export default clerkMiddleware(async (auth, req) => {
+  if (isProtected(req)) await auth.protect();
+});
 
 export const config = {
-  matcher: ["/scan", "/invoices", "/settings"],
+  matcher: ["/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)", "/(api|trpc)(.*)"],
 };
