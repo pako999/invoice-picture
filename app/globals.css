@@ -48,3 +48,11 @@ body {
 
 .animate-float { animation: float 4s ease-in-out infinite; }
 .animate-ticker { animation: ticker 28s linear infinite; width: max-content; }
+
+.integration-card {
+  background: #161410;
+  border: 1px solid #2A2720;
+}
+.integration-card:hover {
+  border-color: #C94A1A;
+}

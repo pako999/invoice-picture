@@ -158,10 +158,7 @@ export default function LandingPage() {
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {integrations.map((p) => (
               <a key={p.name} href={p.href} target="_blank" rel="noopener noreferrer"
-                className="group flex items-center gap-4 px-5 py-4 rounded-xl transition-all duration-200"
-                style={{ background: "#161410", border: `1px solid #2A2720` }}
-                onMouseEnter={e => (e.currentTarget.style.borderColor = ACCENT)}
-                onMouseLeave={e => (e.currentTarget.style.borderColor = "#2A2720")}>
+                className="integration-card group flex items-center gap-4 px-5 py-4 rounded-xl transition-all duration-200">
                 <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden"
                   style={{ background: "#1F1C16" }}>
                   <Image src={`https://www.google.com/s2/favicons?domain=${p.domain}&sz=64`}
