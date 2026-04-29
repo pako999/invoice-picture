@@ -257,7 +257,7 @@ export default function LandingPage() {
                 <div className="text-sm font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider mb-2">Mesečno</div>
                 <div className="flex items-end gap-2">
                   <span className="text-5xl font-extrabold text-gray-900 dark:text-white">9,90</span>
-                  <span className="text-gray-500 dark:text-slate-400 mb-1.5">EUR / mesec</span>
+                  <span className="text-gray-500 dark:text-slate-400 mb-1.5">€ / mesec</span>
                 </div>
                 <p className="text-sm text-gray-400 dark:text-slate-500 mt-1">Mesečno obnovitev, kadarkoli odpoveš.</p>
               </div>
@@ -281,12 +281,12 @@ export default function LandingPage() {
                 <div className="text-sm font-bold text-blue-200 uppercase tracking-wider mb-2">Letno</div>
                 <div className="flex items-end gap-2">
                   <span className="text-5xl font-extrabold text-white">7,92</span>
-                  <span className="text-blue-200 mb-1.5">EUR / mesec</span>
+                  <span className="text-blue-200 mb-1.5">€ / mesec</span>
                 </div>
                 <p className="text-sm text-blue-200 mt-1">
-                  <span className="line-through text-blue-300">118,80 EUR</span>
+                  <span className="line-through text-blue-300">118,80 €</span>
                   {" "}→{" "}
-                  <strong className="text-white">95,04 EUR / leto</strong> — enkratno plačilo
+                  <strong className="text-white">95,04 € / leto</strong> — enkratno plačilo
                 </p>
               </div>
               <PricingFeaturesLight />
@@ -294,7 +294,7 @@ export default function LandingPage() {
                 href="/sign-up"
                 className="mt-auto w-full text-center bg-white hover:bg-blue-50 text-blue-600 font-bold px-6 py-3.5 rounded-2xl text-sm transition-colors"
               >
-                Začni letno — prihrani 23,76 EUR →
+                Začni letno — prihrani 23,76 € →
               </Link>
             </div>
           </div>
