@@ -55,36 +55,36 @@ const integrations = [
 const steps = [
   {
     icon: "⚙️",
-    title: "Nastavi email programa",
-    desc: "V nastavitvah vnesi email naslov, na katerega tvoj računovodski program sprejema račune (npr. uvoz@minimax.si).",
+    title: "Enkrat nastavi email",
+    desc: "V nastavitvah vnesite email naslov, ki vam ga da vaš računovodski program za uvoz računov (npr. uvoz@minimax.si). To storite samo enkrat.",
   },
   {
     icon: "📱",
-    title: "Fotografiraj račun",
-    desc: "Odpri aplikacijo, pritisni gumb za kamero ali naloži sliko papirnate ga računa.",
+    title: "Fotografirajte račun",
+    desc: "Odprite aplikacijo in s telefonom poslikajte papirnat račun. Podpira JPG, PNG in WEBP.",
   },
   {
-    icon: "🚀",
-    title: "Pošlji — OCR naredi ostalo",
-    desc: "Račun prispe v računovodski program v sekundi. OCR samodejno prebere znesek, datum in dobavitelja.",
+    icon: "📤",
+    title: "En klik — poslano",
+    desc: "Pritisnite Pošlji. Račun prispe na email vašega programa v sekundi. OCR obdelava poteka v programu — ne pri nas.",
   },
 ];
 
 const features = [
   {
     icon: "📷",
-    title: "Ena fotografija, en klik",
-    desc: "Poslikaj papirnat račun s telefonom. Brez skeniranja, brez pretipkavanja. Aplikacija je optimizirana za mobilne naprave.",
+    title: "En klik — račun poslan",
+    desc: "Poslikajte papirnat račun in pritisnite Pošlji. Nič tipkanja, nič prenašanja datotek. Optimizirano za mobilne naprave.",
   },
   {
-    icon: "🤖",
-    title: "OCR v računovodskem programu",
-    desc: "Sliko pošljemo neposredno v Minimax, Birokrat, Pantheon ali kateri koli drug program, ki sprejema račune po emailu.",
+    icon: "📧",
+    title: "Posredovanje na vaš program",
+    desc: "App pošlje sliko na email, ki ga nastavi vaš računovodski program. OCR obdelavo opravi program — Minimax, Birokrat, Pantheon in drugi.",
   },
   {
     icon: "📋",
     title: "Arhiv vseh pošiljanj",
-    desc: "Vsi poslani računi so shranjeni z datumom, statusom in predogledom. Brišeš kadarkoli.",
+    desc: "Vsi poslani računi so shranjeni z datumom, statusom dostave in predogledom. Kadarkoli preverite, ali je bil račun poslan.",
   },
 ];
 
@@ -99,14 +99,21 @@ export default function LandingPage() {
         </div>
 
         <h1 className="text-5xl sm:text-6xl font-extrabold text-gray-900 dark:text-white leading-tight tracking-tight mb-6">
-          Papirnat račun direktno{" "}
-          <span className="text-blue-600 dark:text-blue-400">v računovodski program</span>
+          Slikaj račun in ga pošlji{" "}
+          <span className="text-blue-600 dark:text-blue-400">z enim klikom</span>
         </h1>
 
-        <p className="text-xl text-gray-500 dark:text-slate-400 max-w-2xl mx-auto mb-12 leading-relaxed">
-          Fotografirajte račun, pritisnite Pošlji. Program za obdelavo računov ga
-          prejme v sekundi in samodejno obdela z <strong className="text-gray-700 dark:text-slate-300">OCR tehnologijo</strong>.
+        <p className="text-xl text-gray-500 dark:text-slate-400 max-w-2xl mx-auto mb-6 leading-relaxed">
+          Naš app je preprost most med papirnatim računom in vašim računovodskim programom.
+          Samo nastavite email za posredovanje — vse ostalo naredite z enim fotografiranjem.
         </p>
+
+        <div className="inline-flex items-start gap-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 text-amber-800 dark:text-amber-300 text-sm px-5 py-3.5 rounded-2xl mb-10 max-w-xl mx-auto text-left">
+          <span className="text-lg flex-shrink-0">⚠️</span>
+          <span>
+            <strong>Pogoj za uporabo:</strong> V vašem računovodskem programu mora biti vklopljeno sprejemanje računov po emailu z OCR obdelavo. Preverite nastavitve pri Minimax, Birokrat, Pantheon ali vašem programu.
+          </span>
+        </div>
 
         <div className="flex flex-wrap gap-4 justify-center mb-16">
           <Link
@@ -144,8 +151,11 @@ export default function LandingPage() {
           <h2 className="text-4xl font-extrabold text-gray-900 dark:text-white text-center tracking-tight mb-4">
             Deluje z vašim programom
           </h2>
-          <p className="text-gray-500 dark:text-slate-400 text-center mb-12 max-w-xl mx-auto">
-            Pošljite račun neposredno na email naslov, ki ga nastavi vaš računovodski program za uvoz.
+          <p className="text-gray-500 dark:text-slate-400 text-center mb-4 max-w-xl mx-auto">
+            App posreduje sliko računa na email vašega programa. OCR obdelavo — branje zneskov, datumov in dobaviteljev — opravi vaš računovodski program.
+          </p>
+          <p className="text-sm text-amber-600 dark:text-amber-400 text-center mb-12 font-medium">
+            ⚠️ V programu mora biti vklopljena funkcija sprejemanja računov po emailu z OCR obdelavo.
           </p>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -306,15 +316,16 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* CTA */}
+      {/* Contact CTA */}
       <section className="py-12 pb-20">
-        <div className="max-w-2xl mx-auto px-6 text-center">
-          <p className="text-gray-400 dark:text-slate-500 text-sm">
-            Vprašanja? Pišite nam na{" "}
-            <a href="mailto:info@futurecode.si" className="underline underline-offset-2 hover:text-gray-600 dark:hover:text-slate-300 transition-colors">
-              info@futurecode.si
-            </a>
-          </p>
+        <div className="max-w-xl mx-auto px-6 text-center">
+          <p className="text-gray-500 dark:text-slate-400 mb-4">Imate vprašanje ali potrebujete pomoč pri nastavitvi?</p>
+          <Link
+            href="/contact"
+            className="inline-flex items-center gap-2 border border-gray-200 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-800 text-gray-700 dark:text-slate-300 font-semibold px-6 py-3 rounded-2xl text-sm transition-colors"
+          >
+            📨 Kontaktirajte nas
+          </Link>
         </div>
       </section>
 

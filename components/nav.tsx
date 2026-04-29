@@ -7,6 +7,7 @@ const links = [
   { href: "/scan",     label: "Skeniraj",  icon: "📷" },
   { href: "/invoices", label: "Računi",     icon: "📋" },
   { href: "/settings", label: "Nastavitve", icon: "⚙️" },
+  { href: "/contact",  label: "Kontakt",    icon: "📨" },
 ];
 
 export function Nav() {
