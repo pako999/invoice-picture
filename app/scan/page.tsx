@@ -16,6 +16,31 @@ function readFileAsBase64(file: File): Promise<{ base64: string; mime: string }>
   });
 }
 
+// Compress image to max 1600px and 80% quality — keeps file small but preview-ready
+function compressImage(file: File): Promise<{ base64: string; mime: string }> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const MAX = 1600;
+      let { width, height } = img;
+      if (width > MAX || height > MAX) {
+        if (width > height) { height = Math.round((height * MAX) / width); width = MAX; }
+        else { width = Math.round((width * MAX) / height); height = MAX; }
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      canvas.getContext("2d")!.drawImage(img, 0, 0, width, height);
+      URL.revokeObjectURL(url);
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
+      const [, base64] = dataUrl.split(",");
+      resolve({ base64, mime: "image/jpeg" });
+    };
+    img.src = url;
+  });
+}
+
 function isPdf(mime: string) {
   return mime === "application/pdf";
 }
@@ -40,8 +65,14 @@ export default function ScanPage() {
 
   async function handleFile(f: File) {
     if (!f.type.startsWith("image/") && f.type !== "application/pdf") return;
-    const { base64, mime } = await readFileAsBase64(f);
-    setFile({ url: URL.createObjectURL(f), base64, mime, name: f.name });
+    const url = URL.createObjectURL(f);
+    if (f.type === "application/pdf") {
+      const { base64, mime } = await readFileAsBase64(f);
+      setFile({ url, base64, mime, name: f.name });
+    } else {
+      const { base64, mime } = await compressImage(f);
+      setFile({ url, base64, mime, name: f.name });
+    }
     setStatus("idle");
   }
 
