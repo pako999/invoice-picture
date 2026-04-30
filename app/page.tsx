@@ -1,4 +1,3 @@
-import Link from "next/link";
 import Image from "next/image";
 import { HeroButtons } from "@/components/hero-buttons";
 import { PricingSection } from "@/components/pricing-section";
@@ -287,33 +286,6 @@ export default function LandingPage() {
         <PricingSection />
       </div>
 
-      {/* ── CONTACT CTA ── */}
-      <section className="py-12 pb-20">
-        <div className="max-w-xl mx-auto px-6 text-center">
-          <p className="text-gray-500 dark:text-slate-400 mb-4">
-            Imate vprašanje ali potrebujete pomoč pri nastavitvi?
-          </p>
-          <Link
-            href="/contact"
-            className="inline-flex items-center gap-2 border border-gray-200 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-800 text-gray-700 dark:text-slate-300 font-semibold px-6 py-3 rounded-2xl text-sm transition-colors"
-          >
-            📨 Kontaktirajte nas
-          </Link>
-        </div>
-      </section>
-
-      {/* ── FOOTER ── */}
-      <footer className="border-t border-gray-200 dark:border-slate-700 py-8 text-center text-sm text-gray-400 dark:text-slate-500">
-        SlikajRačun · © 2026 · Created by{" "}
-        <a
-          href="https://futurecode.si"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="hover:text-gray-600 dark:hover:text-slate-300 underline underline-offset-2 transition-colors"
-        >
-          futurecode.si
-        </a>
-      </footer>
     </div>
   );
 }

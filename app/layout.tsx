@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 import { Nav } from "@/components/nav";
+import { Footer } from "@/components/footer";
 
 export const metadata: Metadata = {
   title: "SlikajRačun — Pošlji račun z emailom",
@@ -15,6 +16,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <body>
           <Nav />
           <main className="pb-20 md:pb-0">{children}</main>
+          <Footer />
         </body>
       </html>
     </ClerkProvider>
