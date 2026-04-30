@@ -11,9 +11,17 @@ const appLinks = [
   { href: "/contact",  label: "Kontakt",     icon: "📨" },
 ];
 
+const landingLinks = [
+  { href: "#kako-deluje",     label: "Kako deluje" },
+  { href: "#integracije",     label: "Integracije" },
+  { href: "#funkcionalnosti", label: "Funkcionalnosti" },
+  { href: "#cenik",           label: "Cenik" },
+];
+
 export function Nav() {
   const path = usePathname();
   const { isSignedIn, isLoaded } = useUser();
+  const isLanding = path === "/";
   const isPublic = path === "/" || path === "/sign-in" || path === "/sign-up";
 
   return (
@@ -27,7 +35,22 @@ export function Nav() {
             <LogoWordmark />
           </Link>
 
-          {/* Desktop nav links — hidden on mobile (bottom nav takes over) */}
+          {/* Landing page nav links — sections */}
+          {!isSignedIn && isLanding && (
+            <nav className="hidden md:flex items-center gap-1">
+              {landingLinks.map((l) => (
+                <a
+                  key={l.href}
+                  href={l.href}
+                  className="px-3 py-1.5 rounded-lg text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800 transition-colors"
+                >
+                  {l.label}
+                </a>
+              ))}
+            </nav>
+          )}
+
+          {/* App nav links — signed in */}
           {isSignedIn && (
             <nav className="hidden md:flex items-center gap-1">
               {appLinks.map((l) => (
@@ -47,8 +70,8 @@ export function Nav() {
             </nav>
           )}
 
-          {/* Contact always visible on desktop when not signed in */}
-          {!isSignedIn && (
+          {/* Contact link on non-landing public pages */}
+          {!isSignedIn && !isLanding && (
             <nav className="hidden md:flex items-center gap-1">
               <Link
                 href="/contact"
@@ -71,13 +94,14 @@ export function Nav() {
             ) : isPublic ? (
               <>
                 <SignInButton mode="modal">
-                  <button className="text-sm text-gray-600 dark:text-slate-300 hover:text-gray-900 font-medium px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-colors">
+                  <button className="text-sm text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white font-medium px-3 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors">
                     Prijava
                   </button>
                 </SignInButton>
                 <SignUpButton mode="modal">
-                  <button className="text-sm bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-1.5 rounded-lg transition-colors">
-                    Registracija
+                  <button className="text-sm bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-1.5 rounded-xl transition-colors flex items-center gap-1.5">
+                    <span>📷</span>
+                    <span>Začni skenirati</span>
                   </button>
                 </SignUpButton>
               </>
@@ -95,7 +119,7 @@ export function Nav() {
               <Link
                 key={l.href}
                 href={l.href}
-                className={`flex-1 flex flex-col items-center justify-center gap-1 py-2.5 transition-colors ${
+                className={`flex-1 flex flex-col items-center justify-center gap-1 py-2.5 transition-colors relative ${
                   active
                     ? "text-blue-600 dark:text-blue-400"
                     : "text-gray-400 dark:text-slate-500 hover:text-gray-700 dark:hover:text-slate-300"
