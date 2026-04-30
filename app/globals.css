@@ -10,11 +10,7 @@
 
 body {
   font-family: var(--font-sans);
-  background: #f9fafb;
+  background: #ffffff;
   color: #111827;
   margin: 0;
-}
-
-@media (prefers-color-scheme: dark) {
-  body { background: #0f172a; color: #f1f5f9; }
 }
