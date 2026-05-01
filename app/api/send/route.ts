@@ -3,7 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { getDb } from "@/lib/db";
 import { invoices, userSettings, companies } from "@/lib/schema";
 import { sendInvoiceEmail } from "@/lib/resend";
-import { getStatus } from "@/lib/subscription";
+import { FREE_MONTHLY_LIMIT, getStatus } from "@/lib/subscription";
 import { eq, and } from "drizzle-orm";
 import { z } from "zod";
 
@@ -29,6 +29,17 @@ export async function POST(req: NextRequest) {
         plan: status.plan,
       },
       { status: 402 },
+    );
+  }
+
+  if (status.isFree && status.monthlyUsage >= FREE_MONTHLY_LIMIT) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Dosegli ste mesečno omejitev 3 računov. Nadgradite na Osnovni paket za neomejeno obdelavo računov.",
+        code: "free_limit_reached",
+      },
+      { status: 403 },
     );
   }
 

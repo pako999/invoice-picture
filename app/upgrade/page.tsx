@@ -31,6 +31,9 @@ interface SubStatus {
   daysRemaining: number;
   trialActive: boolean;
   canSend: boolean;
+  isFree: boolean;
+  monthlyUsage: number;
+  monthlyLimit: number | null;
 }
 
 function UpgradePageInner() {
@@ -53,6 +56,8 @@ function UpgradePageInner() {
 
   const trialExpired = status && !status.canSend;
   const trialActive = status?.trialActive;
+  const isFree = status?.isFree;
+  const freeAtLimit = isFree && status?.monthlyLimit !== null && (status?.monthlyUsage ?? 0) >= (status?.monthlyLimit ?? 0);
 
   return (
     <div className="py-16 px-4 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 min-h-screen">
@@ -68,13 +73,29 @@ function UpgradePageInner() {
                 Da bi nadaljevali s pošiljanjem računov, izberite paket spodaj. Vaš arhiv ostane dostopen.
               </p>
             </>
+          ) : freeAtLimit ? (
+            <>
+              <h1 className="text-4xl sm:text-5xl tracking-tight mb-4 font-bold">
+                Mesečna omejitev dosežena
+              </h1>
+              <p className="text-lg text-slate-600 max-w-2xl mx-auto">
+                Dosegli ste {status?.monthlyUsage}/{status?.monthlyLimit} računov ta mesec. Nadgradite za neomejeno obdelavo.
+              </p>
+            </>
           ) : trialActive ? (
             <>
               <h1 className="text-4xl sm:text-5xl tracking-tight mb-4 font-bold">
                 Nadgradite že med preizkusno dobo
               </h1>
               <p className="text-lg text-slate-600 max-w-2xl mx-auto">
-                Preostali še {status.daysRemaining} dni preizkusne dobe. Z nadgradnjo se izognete prekinitvi storitve.
+                Preostali še {status!.daysRemaining} dni preizkusne dobe. Z nadgradnjo se izognete prekinitvi storitve.
+              </p>
+            </>
+          ) : isFree ? (
+            <>
+              <h1 className="text-4xl sm:text-5xl tracking-tight mb-4 font-bold">Nadgradite brezplačen paket</h1>
+              <p className="text-lg text-slate-600 max-w-2xl mx-auto">
+                Trenutno ste na brezplačnem paketu (3 računi/mesec). Nadgradite za neomejeno obdelavo.
               </p>
             </>
           ) : (

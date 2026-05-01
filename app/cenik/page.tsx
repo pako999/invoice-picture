@@ -3,11 +3,21 @@ import { useState } from "react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Check } from "lucide-react";
+import { Check, X } from "lucide-react";
 import { PaddleCheckoutButton } from "@/components/paddle-checkout";
 
+const freeFeatures = [
+  { text: "Do 3 računi na mesec", included: true },
+  { text: "1 podjetje", included: true },
+  { text: "Pošiljanje na kateri koli email", included: true },
+  { text: "Deluje z Minimax, Birokrat, Pantheon…", included: true },
+  { text: "Arhiv poslanih računov s predogledom", included: true },
+  { text: "Neomejeno pošiljanje računov", included: false },
+  { text: "Več podjetij", included: false },
+];
+
 const basicFeatures = [
-  "Neomejeno fotografiranje računov",
+  "Neomejeno pošiljanje računov",
   "Pošiljanje na kateri koli email",
   "Deluje z Minimax, Birokrat, Pantheon, SAOP, E-računi, Metakocka",
   "OCR obdelava v vašem računovodskem programu",
@@ -16,7 +26,7 @@ const basicFeatures = [
   "Podpora JPG, PNG, WEBP in PDF",
   "Mobilno optimizirana aplikacija",
   "Varen dostop prek Clerk avtentikacije",
-  "Shramba zgodovine brez omejitev",
+  "1 podjetje",
 ];
 
 const proFeatures = [
@@ -26,8 +36,6 @@ const proFeatures = [
   "Hitri preklop med podjetji pri skeniranju",
   "En račun — vsa podjetja na enem mestu",
   "Arhiv računov ločen po podjetjih",
-  "Mobilno optimizirana aplikacija",
-  "Varen dostop prek Clerk avtentikacije",
   "Prednostna podpora",
 ];
 
@@ -49,28 +57,9 @@ export default function Cenik() {
         <div className="text-center mb-16">
           <Badge className="mb-4 bg-blue-100 text-blue-700 hover:bg-blue-200 border-0">Cenik</Badge>
           <h1 className="text-4xl sm:text-5xl tracking-tight mb-6 font-bold">Preprosto in transparentno</h1>
-          <p className="text-xl text-slate-600 max-w-3xl mx-auto mb-6">
-            Prihranite dragoceni čas pri ročnem vnosu računov. En klik nadomesti minute tipkanja. Izberite paket, ki ustreza vašim potrebam.
+          <p className="text-xl text-slate-600 max-w-3xl mx-auto mb-10">
+            Začnite brezplačno. Nadgradite, ko boste pripravljeni. Brez skritih stroškov, brez vezave.
           </p>
-
-          <div className="relative max-w-3xl mx-auto mb-10">
-            <div className="absolute -inset-1 bg-gradient-to-r from-green-400 via-emerald-500 to-teal-500 rounded-3xl blur-lg opacity-30" />
-            <div className="relative bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 border-2 border-green-300 rounded-3xl px-8 py-7 shadow-lg">
-              <div className="flex flex-col sm:flex-row items-center gap-5 text-center sm:text-left">
-                <div className="flex-shrink-0 w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center text-3xl shadow-md">
-                  🎁
-                </div>
-                <div className="flex-1">
-                  <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight mb-1">
-                    7 dni <span className="text-green-600">brezplačno</span>
-                  </div>
-                  <p className="text-base text-slate-700">
-                    Preizkusite vse funkcije <strong>brez vnosa kreditne kartice</strong>. Odpovejte kadarkoli.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
 
           <div className="flex items-center justify-center gap-4 mb-8">
             <span className={`text-lg ${!isYearly ? "font-semibold text-slate-900" : "text-slate-600"}`}>Mesečno</span>
@@ -92,10 +81,47 @@ export default function Cenik() {
           </div>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+          {/* Free */}
           <Card className="border-slate-200">
             <CardHeader>
-              <CardTitle className="text-2xl">Osnovno</CardTitle>
+              <CardTitle className="text-2xl">Brezplačen</CardTitle>
+              <CardDescription className="text-base">Za občasno rabo</CardDescription>
+              <div className="mt-4">
+                <span className="text-5xl font-bold">0 €</span>
+                <span className="text-slate-600 text-xl"> / mesec</span>
+              </div>
+              <p className="text-sm text-slate-500 mt-1">Za vedno brezplačno</p>
+            </CardHeader>
+            <CardContent>
+              <Link
+                href="/sign-up"
+                className="w-full mb-6 flex items-center justify-center px-4 py-2.5 rounded-lg border border-slate-300 hover:bg-slate-50 text-sm font-semibold transition-colors"
+              >
+                Začni brezplačno →
+              </Link>
+              <ul className="space-y-3">
+                {freeFeatures.map((f) => (
+                  <li key={f.text} className="flex items-start gap-2">
+                    {f.included ? (
+                      <Check className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                    ) : (
+                      <X className="w-5 h-5 text-slate-300 flex-shrink-0 mt-0.5" />
+                    )}
+                    <span className={`text-sm ${f.included ? "" : "text-slate-400"}`}>{f.text}</span>
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
+
+          {/* Basic */}
+          <Card className="border-2 border-blue-600 shadow-xl relative">
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+              <Badge className="bg-blue-600 text-white border-0">Najbolj priljubljen</Badge>
+            </div>
+            <CardHeader>
+              <CardTitle className="text-2xl">Osnovni</CardTitle>
               <CardDescription className="text-base">
                 {isYearly ? "Letna obnova, kadarkoli odpoveš" : "Mesečna obnova, kadarkoli odpoveš"}
               </CardDescription>
@@ -109,8 +135,7 @@ export default function Cenik() {
               <PaddleCheckoutButton
                 tier="basic"
                 billing={isYearly ? "yearly" : "monthly"}
-                variant="outline"
-                className="w-full mb-6"
+                className="w-full mb-6 bg-blue-600 hover:bg-blue-700 text-white"
               >
                 Začni 7-dnevno preizkušnjo →
               </PaddleCheckoutButton>
@@ -125,7 +150,8 @@ export default function Cenik() {
             </CardContent>
           </Card>
 
-          <Card className="border-2 border-blue-600 shadow-xl relative">
+          {/* Pro */}
+          <Card className="border-slate-200 relative">
             <div className="absolute -top-3 left-1/2 -translate-x-1/2">
               <Badge className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white border-0">
                 🏢 PRO · Računovodstvo
