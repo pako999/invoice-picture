@@ -16,6 +16,7 @@ import {
   Archive,
   AlertCircle,
   ExternalLink,
+  Rocket,
 } from "lucide-react";
 
 const integrations = [
@@ -334,18 +335,18 @@ export default function Home() {
             </p>
 
             <div className="relative max-w-3xl mx-auto mb-10">
-              <div className="absolute -inset-1 bg-gradient-to-r from-green-400 via-emerald-500 to-teal-500 rounded-3xl blur-lg opacity-30" />
-              <div className="relative bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 border-2 border-green-300 rounded-3xl px-8 py-7 shadow-lg">
+              <div className="absolute -inset-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-violet-500 rounded-2xl blur-lg opacity-20" />
+              <div className="relative bg-white border border-slate-200 rounded-2xl px-8 py-7 shadow-sm">
                 <div className="flex flex-col sm:flex-row items-center gap-5 text-center sm:text-left">
-                  <div className="flex-shrink-0 w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center text-3xl shadow-md">
-                    🎁
+                  <div className="flex-shrink-0 w-14 h-14 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-md">
+                    <Rocket className="w-7 h-7 text-white" />
                   </div>
                   <div className="flex-1">
-                    <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight mb-1">
-                      7 dni <span className="text-green-600">brezplačno</span>
+                    <div className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight mb-1">
+                      7 dni <span className="text-blue-600">brezplačno</span>
                     </div>
-                    <p className="text-base text-slate-700">
-                      Preizkusite vse funkcije <strong>brez vnosa kreditne kartice</strong>. Odpovejte kadarkoli.
+                    <p className="text-base text-slate-500">
+                      Preizkusite vse funkcije <strong className="text-slate-700">brez vnosa kreditne kartice</strong>. Odpovejte kadarkoli.
                     </p>
                   </div>
                 </div>
