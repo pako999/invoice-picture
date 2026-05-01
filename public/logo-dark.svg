@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 80" width="320" height="80" role="img" aria-label="SlikajRačun">
+  <defs>
+    <linearGradient id="brand" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#2563EB"/>
+      <stop offset="100%" stop-color="#1D4ED8"/>
+    </linearGradient>
+    <style>
+      .word { font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, Arial, sans-serif; font-weight: 800; letter-spacing: -0.02em; }
+    </style>
+  </defs>
+
+  <!-- Icon -->
+  <g transform="translate(8 8)">
+    <rect width="64" height="64" rx="18" fill="url(#brand)"/>
+    <rect x="18" y="12" width="28" height="34" rx="4" fill="#ffffff" fill-opacity="0.12" stroke="#ffffff" stroke-opacity="0.95" stroke-width="3"/>
+    <line x1="24" y1="22" x2="40" y2="22" stroke="#ffffff" stroke-opacity="0.95" stroke-width="2.8" stroke-linecap="round"/>
+    <line x1="24" y1="29" x2="40" y2="29" stroke="#ffffff" stroke-opacity="0.95" stroke-width="2.8" stroke-linecap="round"/>
+    <line x1="24" y1="36" x2="34" y2="36" stroke="#ffffff" stroke-opacity="0.95" stroke-width="2.8" stroke-linecap="round"/>
+    <circle cx="44" cy="48" r="12" fill="#2563EB" stroke="#1D4ED8" stroke-width="2"/>
+    <circle cx="44" cy="48" r="10" fill="#1E40AF"/>
+    <circle cx="44" cy="48" r="5" fill="#ffffff" fill-opacity="0.9"/>
+    <circle cx="47" cy="45" r="1.6" fill="#ffffff"/>
+  </g>
+
+  <!-- Wordmark (white "Slikaj" + blue "Račun" — for dark backgrounds) -->
+  <g transform="translate(92 0)">
+    <text x="0" y="54" class="word" font-size="36" fill="#FFFFFF">Slikaj</text>
+    <text x="118" y="54" class="word" font-size="36" fill="#60A5FA">Račun</text>
+  </g>
+</svg>
