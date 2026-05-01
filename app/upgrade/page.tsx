@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
@@ -33,7 +33,7 @@ interface SubStatus {
   canSend: boolean;
 }
 
-export default function UpgradePage() {
+function UpgradePageInner() {
   const searchParams = useSearchParams();
   const planFromUrl = searchParams.get("plan"); // "basic" | "pro"
   const billingFromUrl = searchParams.get("billing"); // "monthly" | "yearly"
@@ -189,5 +189,13 @@ export default function UpgradePage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function UpgradePage() {
+  return (
+    <Suspense>
+      <UpgradePageInner />
+    </Suspense>
   );
 }
