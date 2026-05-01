@@ -129,8 +129,8 @@ export default function Piskotki() {
             <p className="text-slate-700">Za vprašanja v zvezi s piškotki nas kontaktirajte:</p>
             <p className="text-slate-700 mt-3">
               Email:{" "}
-              <a href="mailto:info@futurecode.si" className="text-blue-600 hover:underline">
-                info@futurecode.si
+              <a href="mailto:info@posljiracun.si" className="text-blue-600 hover:underline">
+                info@posljiracun.si
               </a>
             </p>
           </section>

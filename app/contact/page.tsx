@@ -54,8 +54,8 @@ export default function Kontakt() {
             </CardHeader>
             <CardContent>
               <p className="text-sm text-slate-600 mb-3">Pišite nam na email naslov</p>
-              <a href="mailto:info@futurecode.si" className="text-blue-600 hover:underline font-medium">
-                info@futurecode.si
+              <a href="mailto:info@posljiracun.si" className="text-blue-600 hover:underline font-medium">
+                info@posljiracun.si
               </a>
               <p className="text-xs text-slate-500 mt-3">Odgovorimo v 24 urah</p>
             </CardContent>
@@ -216,7 +216,7 @@ export default function Kontakt() {
           </p>
           <div className="text-center">
             <a
-              href="mailto:info@futurecode.si"
+              href="mailto:info@posljiracun.si"
               className="inline-flex items-center justify-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
               Kontaktirajte poslovno podporo

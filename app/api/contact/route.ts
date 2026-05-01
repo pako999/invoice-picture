@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
 
     await resend.emails.send({
       from,
-      to: "info@futurecode.si",
+      to: "info@posljiracun.si",
       replyTo: data.email,
       subject: `Kontaktni obrazec — ${data.name}${data.company ? ` (${data.company})` : ""}`,
       html: `

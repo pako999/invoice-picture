@@ -90,7 +90,7 @@ export default function Zasebnost() {
             </ul>
             <p className="text-slate-700 mt-3">
               Za uveljavljanje teh pravic nas kontaktirajte na{" "}
-              <a href="mailto:info@futurecode.si" className="text-blue-600 hover:underline">info@futurecode.si</a>
+              <a href="mailto:info@posljiracun.si" className="text-blue-600 hover:underline">info@posljiracun.si</a>
             </p>
           </section>
 
@@ -114,7 +114,7 @@ export default function Zasebnost() {
             <p className="text-slate-700">Za vprašanja v zvezi z zasebnostjo nas kontaktirajte:</p>
             <p className="text-slate-700 mt-3">
               Email:{" "}
-              <a href="mailto:info@futurecode.si" className="text-blue-600 hover:underline">info@futurecode.si</a>
+              <a href="mailto:info@posljiracun.si" className="text-blue-600 hover:underline">info@posljiracun.si</a>
               <br />
               Naslov: Sport Group d.o.o., Ljubljana, Slovenija
             </p>

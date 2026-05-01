@@ -38,8 +38,8 @@ export default function Pomoc() {
               </ul>
               <p className="text-sm text-slate-600 mt-4">
                 Kontaktirajte nas na{" "}
-                <a href="mailto:info@futurecode.si" className="text-blue-600 hover:underline">
-                  info@futurecode.si
+                <a href="mailto:info@posljiracun.si" className="text-blue-600 hover:underline">
+                  info@posljiracun.si
                 </a>{" "}
                 in dogovorimo se za video klic ali vam pošljemo podrobna navodila.
               </p>
