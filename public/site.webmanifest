@@ -1,0 +1,18 @@
+{
+  "name": "SlikajRačun",
+  "short_name": "SlikajRačun",
+  "description": "Pošlji račun z enim klikom — fotografiraj račun in ga pošlji na email računovodskega programa.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2563eb",
+  "lang": "sl",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

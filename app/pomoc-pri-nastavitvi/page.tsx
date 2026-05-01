@@ -3,7 +3,13 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Wrench, BookOpen, Video, Phone } from "lucide-react";
 
-export const metadata = { title: "Pomoč pri nastavitvi — SlikajRačun" };
+import { pageMetadata } from "@/lib/seo";
+
+export const metadata = pageMetadata({
+  title: "Pomoč pri nastavitvi",
+  description: "Pomagamo vam pri začetni nastavitvi: registracija, OCR email naslov, prvi test pošiljanja računa. Navodila za Minimax, Birokrat, Pantheon in SAOP.",
+  path: "/pomoc-pri-nastavitvi",
+});
 
 export default function Pomoc() {
   return (

@@ -2,7 +2,13 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Check, ExternalLink, AlertCircle } from "lucide-react";
 
-export const metadata = { title: "Integracije — SlikajRačun" };
+import { pageMetadata } from "@/lib/seo";
+
+export const metadata = pageMetadata({
+  title: "Integracije z računovodskimi programi",
+  description: "Deluje z vsem slovenskim računovodstvom: Minimax, Birokrat, Pantheon, SAOP, E-računi, Metakocka. Email uvoz + OCR obdelava brez ročnega vnosa.",
+  path: "/integracije",
+});
 
 const integrations = [
   {

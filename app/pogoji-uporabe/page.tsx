@@ -1,6 +1,12 @@
 import { Badge } from "@/components/ui/badge";
 
-export const metadata = { title: "Pogoji uporabe — SlikajRačun" };
+import { pageMetadata } from "@/lib/seo";
+
+export const metadata = pageMetadata({
+  title: "Pogoji uporabe",
+  description: "Pogoji uporabe aplikacije SlikajRačun: opis storitve, plačilni pogoji, odpoved naročnine, omejitve odgovornosti, intelektualna lastnina.",
+  path: "/pogoji-uporabe",
+});
 
 export default function Pogoji() {
   return (

@@ -3,7 +3,13 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BookOpen, Settings, Camera, Send, CheckCircle } from "lucide-react";
 
-export const metadata = { title: "Navodila za uporabo — SlikajRačun" };
+import { pageMetadata } from "@/lib/seo";
+
+export const metadata = pageMetadata({
+  title: "Navodila za uporabo",
+  description: "Vodnik po aplikaciji SlikajRačun: nastavitev OCR emaila, nasveti za fotografiranje, postopek pošiljanja, arhiv in zgodovina, podprti formati.",
+  path: "/navodila-za-uporabo",
+});
 
 export default function Navodila() {
   return (

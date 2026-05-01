@@ -1,7 +1,13 @@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-export const metadata = { title: "Politika piškotkov — SlikajRačun" };
+import { pageMetadata } from "@/lib/seo";
+
+export const metadata = pageMetadata({
+  title: "Politika piškotkov",
+  description: "Kakšne piškotke uporabljamo na SlikajRačun: nujno potrebni, funkcionalni, analitični, trženjski. Kako jih upravljati v brskalniku.",
+  path: "/piskotki",
+});
 
 export default function Piskotki() {
   return (

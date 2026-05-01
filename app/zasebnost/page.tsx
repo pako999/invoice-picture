@@ -1,7 +1,13 @@
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 
-export const metadata = { title: "Politika zasebnosti — SlikajRačun" };
+import { pageMetadata } from "@/lib/seo";
+
+export const metadata = pageMetadata({
+  title: "Politika zasebnosti",
+  description: "Kako zbiramo, uporabljamo in varujemo vaše podatke. GDPR pravice, varnost (HTTPS, Clerk), shranjevanje računov in posredovanje tretjim osebam.",
+  path: "/zasebnost",
+});
 
 export default function Zasebnost() {
   return (

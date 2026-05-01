@@ -2,7 +2,13 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Camera, Mail, Archive, Smartphone, Shield, Zap, Clock, FileCheck, Users, BarChart } from "lucide-react";
 
-export const metadata = { title: "Funkcionalnosti — SlikajRačun" };
+import { pageMetadata } from "@/lib/seo";
+
+export const metadata = pageMetadata({
+  title: "Funkcionalnosti",
+  description: "En klik za pošiljanje računa, neomejeno fotografij, arhiv s predogledom, status v realnem času, varna Clerk avtentikacija. Vse, kar potrebujete za hitro knjiženje.",
+  path: "/funkcionalnosti",
+});
 
 const features = [
   { Icon: Camera, color: "blue", title: "📷 En klik — račun poslan", desc: "Poslikajte papirnat račun in pritisnite Pošlji. Nič tipkanja, nič prenašanja datotek. Celoten proces traja manj kot 5 sekund. Aplikacija je optimizirana za mobilne naprave in omogoča izjemno hitro fotografiranje ter pošiljanje dokumentov." },
