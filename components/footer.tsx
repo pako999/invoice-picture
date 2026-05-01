@@ -18,6 +18,7 @@ const footerLinks = {
     { label: "Zasebnost", href: "/zasebnost" },
     { label: "Pogoji uporabe", href: "/pogoji-uporabe" },
     { label: "Piškotki", href: "/piskotki" },
+    { label: "Vračila", href: "/vracila" },
   ],
 };
 
