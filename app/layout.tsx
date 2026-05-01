@@ -81,9 +81,12 @@ const organizationJsonLd = {
   telephone: "+386 41 580 250",
   address: {
     "@type": "PostalAddress",
+    streetAddress: "Osojnikova 4",
+    postalCode: "2000",
+    addressLocality: "Maribor",
     addressCountry: "SI",
-    addressLocality: "Ljubljana",
   },
+  vatID: "SI72133449",
   sameAs: [],
 };
 

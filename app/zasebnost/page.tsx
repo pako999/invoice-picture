@@ -122,7 +122,9 @@ export default function Zasebnost() {
               Email:{" "}
               <a href="mailto:info@posljiracun.si" className="text-blue-600 hover:underline">info@posljiracun.si</a>
               <br />
-              Naslov: Sport Group d.o.o., Ljubljana, Slovenija
+              Sport Group d.o.o.<br />
+              Osojnikova 4, 2000 Maribor, Slovenija<br />
+              ID za DDV: SI72133449
             </p>
           </section>
         </div>

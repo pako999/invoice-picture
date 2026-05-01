@@ -3,7 +3,7 @@
 > Slovenska aplikacija za pošiljanje papirnatih računov na email računovodskega programa z enim klikom.
 
 URL: https://www.posljiracun.si
-Lastnik: Sport Group d.o.o., Ljubljana, Slovenija
+Lastnik: Sport Group d.o.o., Osojnikova 4, 2000 Maribor, Slovenija (ID za DDV: SI72133449)
 Kontakt: info@posljiracun.si · +386 41 580 250
 Jezik: slovenščina (sl_SI)
 

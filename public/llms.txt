@@ -6,7 +6,7 @@ SlikajRačun (posljiracun.si) rešuje konkretno težavo slovenskega knjigovodstv
 
 Pogoj za uporabo: računovodski program, ki podpira sprejemanje računov po emailu z OCR (Minimax, Birokrat, Pantheon, SAOP, E-računi, Metakocka in vsak drug, ki ima ta vmesnik).
 
-Lastništvo: Sport Group d.o.o., Ljubljana, Slovenija. Kontakt: info@posljiracun.si, 041 580 250.
+Lastništvo: Sport Group d.o.o., Osojnikova 4, 2000 Maribor, Slovenija (ID za DDV: SI72133449). Kontakt: info@posljiracun.si, 041 580 250.
 
 ## Glavne strani
 
