@@ -41,8 +41,8 @@ export default function UpgradePage() {
     fetch("/api/subscription").then((r) => (r.ok ? r.json() : null)).then(setStatus);
   }, []);
 
-  const basicMonthly = 9.9;
-  const proMonthly = 19.9;
+  const basicMonthly = 6.9;
+  const proMonthly = 17.9;
   const yearlyDiscount = 0.2;
   const basicPrice = isYearly ? (basicMonthly * 12 * (1 - yearlyDiscount)).toFixed(2) : basicMonthly.toFixed(2);
   const proPrice = isYearly ? (proMonthly * 12 * (1 - yearlyDiscount)).toFixed(2) : proMonthly.toFixed(2);

@@ -30,8 +30,8 @@ const integrations = [
 export default function Home() {
   const [isYearly, setIsYearly] = useState(false);
 
-  const basicMonthly = 9.9;
-  const proMonthly = 19.9;
+  const basicMonthly = 6.9;
+  const proMonthly = 17.9;
   const yearlyDiscount = 0.2;
 
   const basicPrice = isYearly ? (basicMonthly * 12 * (1 - yearlyDiscount)).toFixed(2) : basicMonthly.toFixed(2);
@@ -333,9 +333,23 @@ export default function Home() {
               Prihranite dragoceni čas pri ročnem vnosu računov. En klik nadomesti minute tipkanja.
             </p>
 
-            <div className="inline-flex items-center gap-2 bg-green-50 border border-green-200 text-green-800 px-4 py-2 rounded-full text-sm font-semibold mb-8">
-              <span>🎁</span>
-              <span>Brezplačna 7-dnevna preizkusna doba — brez kreditne kartice</span>
+            <div className="relative max-w-3xl mx-auto mb-10">
+              <div className="absolute -inset-1 bg-gradient-to-r from-green-400 via-emerald-500 to-teal-500 rounded-3xl blur-lg opacity-30" />
+              <div className="relative bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 border-2 border-green-300 rounded-3xl px-8 py-7 shadow-lg">
+                <div className="flex flex-col sm:flex-row items-center gap-5 text-center sm:text-left">
+                  <div className="flex-shrink-0 w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl flex items-center justify-center text-3xl shadow-md">
+                    🎁
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight mb-1">
+                      7 dni <span className="text-green-600">brezplačno</span>
+                    </div>
+                    <p className="text-base text-slate-700">
+                      Preizkusite vse funkcije <strong>brez vnosa kreditne kartice</strong>. Odpovejte kadarkoli.
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Pricing Toggle */}

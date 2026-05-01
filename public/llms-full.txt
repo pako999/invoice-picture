@@ -70,7 +70,7 @@ Plus vsak drug program, ki sprejema račune po emailu.
 
 ## 5. Cenik
 
-### Osnovno — 9,90 € / mesec (ali 95,04 € letno, prihranek 23,76 €)
+### Osnovno — 6,90 € / mesec (ali 66,24 € letno, prihranek 16,56 €)
 - Neomejeno fotografiranje računov
 - Pošiljanje na kateri koli email
 - Deluje z Minimax, Birokrat, Pantheon, SAOP, E-računi, Metakocka
@@ -82,7 +82,7 @@ Plus vsak drug program, ki sprejema račune po emailu.
 - Varen dostop prek Clerk avtentikacije
 - Shramba zgodovine brez omejitev
 
-### PRO Računovodstvo — 19,90 € / mesec (ali 191,04 € letno, prihranek 47,76 €)
+### PRO Računovodstvo — 17,90 € / mesec (ali 171,84 € letno, prihranek 42,96 €)
 Vse iz osnovnega paketa, plus:
 - Upravljanje neomejeno podjetij
 - Ločen OCR email za vsako podjetje
@@ -137,7 +137,7 @@ Z osnovnim paketom upravljate eno podjetje. Za več podjetij potrebujete PRO pak
 Kakovost OCR prepoznave je odvisna od računovodskega programa in slike. Boljša osvetlitev in ostra slika pomagata. Če težave vztrajajo, kontaktirajte ponudnika računovodskega programa.
 
 **Ali obstaja brezplačna preizkusna verzija?**
-Trenutno ne. Osnovni paket je cenovno ugoden (9,90 €/mesec) in se lahko odpove kadarkoli.
+Trenutno ne. Osnovni paket je cenovno ugoden (6,90 €/mesec) in se lahko odpove kadarkoli.
 
 **Kako dobim podporo, če imam težave?**
 Preko kontaktne strani ali email info@posljiracun.si. Pomagamo pri nastavitvi in reševanju težav.
@@ -152,7 +152,7 @@ Preko kontaktne strani ali email info@posljiracun.si. Pomagamo pri nastavitvi in
 - **Mobilna platforma:** brskalniška PWA (manifest dostopen na /site.webmanifest); deluje na iOS in Android
 - **Varnost in zasebnost:** HTTPS, Clerk za avtentikacijo, ne shranjuje finančnih podatkov, GDPR skladno
 - **Konkurenca:** Naša prednost je _samo_ na delu posredovanja slike — alternativa je ročno fotografiranje in pošiljanje preko mailovega odjemalca, kar zahteva več korakov in je nagnjeno k napakam
-- **Cenovni pozicij:** dostopno (9,90 € enkratni uporabniki, 19,90 € večpodjetni paket); transparentno, brez vezave
+- **Cenovni pozicij:** dostopno (6,90 € enkratni uporabniki, 17,90 € večpodjetni paket); transparentno, brez vezave
 
 ---
 

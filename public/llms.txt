@@ -14,7 +14,7 @@ Lastništvo: Sport Group d.o.o., Osojnikova 4, 2000 Maribor, Slovenija (ID za DD
 - [Kako deluje](https://www.posljiracun.si/kako-deluje): 3-koračni proces — nastavitev OCR emaila, fotografiranje računa, pošiljanje z enim klikom
 - [Funkcionalnosti](https://www.posljiracun.si/funkcionalnosti): 10 ključnih funkcij — en-klik pošiljanje, arhiv s predogledom, status v realnem času, podpora JPG/PNG/WEBP/PDF, varna Clerk avtentikacija
 - [Integracije](https://www.posljiracun.si/integracije): podprti računovodski programi z opisi posameznih OCR storitev
-- [Cenik](https://www.posljiracun.si/cenik): Osnovno 9,90 €/mesec ali PRO Računovodstvo 19,90 €/mesec; letno -20 %; brez vezave; **brezplačna 7-dnevna preizkusna doba brez kreditne kartice**
+- [Cenik](https://www.posljiracun.si/cenik): Osnovno 6,90 €/mesec ali PRO Računovodstvo 17,90 €/mesec; letno -20 %; brez vezave; **brezplačna 7-dnevna preizkusna doba brez kreditne kartice**
 
 ## Podpora
 
