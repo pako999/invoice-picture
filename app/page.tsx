@@ -39,8 +39,62 @@ export default function Home() {
   const basicMonthlySavings = (basicMonthly * 12 * yearlyDiscount).toFixed(2);
   const proMonthlySavings = (proMonthly * 12 * yearlyDiscount).toFixed(2);
 
+  const softwareJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    name: "SlikajRačun",
+    applicationCategory: "BusinessApplication",
+    operatingSystem: "Web, iOS, Android",
+    description:
+      "Fotografiraj papirnat račun in ga z enim klikom pošlji na email računovodskega programa. Deluje z Minimax, Birokrat, Pantheon, SAOP, E-računi in Metakocka.",
+    url: "https://www.posljiracun.si",
+    inLanguage: "sl-SI",
+    offers: [
+      {
+        "@type": "Offer",
+        name: "Osnovno",
+        price: basicMonthly.toFixed(2),
+        priceCurrency: "EUR",
+        priceSpecification: {
+          "@type": "UnitPriceSpecification",
+          price: basicMonthly.toFixed(2),
+          priceCurrency: "EUR",
+          unitText: "MONTH",
+        },
+      },
+      {
+        "@type": "Offer",
+        name: "PRO Računovodstvo",
+        price: proMonthly.toFixed(2),
+        priceCurrency: "EUR",
+        priceSpecification: {
+          "@type": "UnitPriceSpecification",
+          price: proMonthly.toFixed(2),
+          priceCurrency: "EUR",
+          unitText: "MONTH",
+        },
+      },
+    ],
+    featureList: [
+      "Fotografiranje papirnatih računov z mobilno kamero",
+      "Pošiljanje na email računovodskega programa z enim klikom",
+      "Arhiv vseh poslanih računov s predogledom",
+      "Status pošiljanja v realnem času",
+      "Podpora za JPG, PNG, WEBP in PDF",
+      "Upravljanje več podjetij (PRO)",
+    ],
+    publisher: {
+      "@type": "Organization",
+      name: "Sport Group d.o.o.",
+    },
+  };
+
   return (
     <div className="bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareJsonLd) }}
+      />
       {/* Hero Section */}
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 bg-grid-slate-100 [mask-image:linear-gradient(0deg,transparent,black)] opacity-50" />

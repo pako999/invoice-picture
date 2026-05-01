@@ -29,9 +29,26 @@ const faqs = [
   { question: "Kako dobim podporo, če imam težave?", answer: "Kontaktirajte nas preko kontaktne strani ali pišite na našo podporo. Z veseljem vam pomagamo pri nastavitvi in reševanju težav." },
 ];
 
+const faqJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: faqs.map((f) => ({
+    "@type": "Question",
+    name: f.question,
+    acceptedAnswer: {
+      "@type": "Answer",
+      text: f.answer,
+    },
+  })),
+};
+
 export default function PogostaPrasanja() {
   return (
     <div className="py-24 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 min-h-screen">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+      />
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
           <Badge className="mb-4 bg-purple-100 text-purple-700 hover:bg-purple-200 border-0">Pogosta vprašanja</Badge>

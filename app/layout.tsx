@@ -69,11 +69,50 @@ export const metadata: Metadata = {
   category: "business",
 };
 
+const organizationJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: "SlikajRačun",
+  legalName: "Sport Group d.o.o.",
+  url: SITE_URL,
+  logo: `${SITE_URL}/logo-icon.svg`,
+  email: "info@posljiracun.si",
+  telephone: "+386 41 580 250",
+  address: {
+    "@type": "PostalAddress",
+    addressCountry: "SI",
+    addressLocality: "Ljubljana",
+  },
+  sameAs: [],
+};
+
+const websiteJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: "SlikajRačun",
+  url: SITE_URL,
+  inLanguage: "sl-SI",
+  publisher: { "@id": `${SITE_URL}#organization` },
+  potentialAction: {
+    "@type": "SearchAction",
+    target: `${SITE_URL}/?q={search_term_string}`,
+    "query-input": "required name=search_term_string",
+  },
+};
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <ClerkProvider>
       <html lang="sl" className="light" style={{ colorScheme: "light" }}>
         <body>
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
+          />
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
+          />
           <Nav />
           <main className="pb-20 md:pb-0">{children}</main>
           <Footer />
