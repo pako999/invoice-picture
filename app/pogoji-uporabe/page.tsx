@@ -1,56 +1,126 @@
-export default function PogojiUporabe() {
+import { Badge } from "@/components/ui/badge";
+
+export const metadata = { title: "Pogoji uporabe — SlikajRačun" };
+
+export default function Pogoji() {
   return (
-    <div className="max-w-3xl mx-auto px-6 py-16">
-      <h1 className="text-4xl font-extrabold text-gray-900 mb-2">Pogoji uporabe</h1>
-      <p className="text-gray-400 text-sm mb-10">Zadnja posodobitev: april 2026</p>
+    <div className="py-24 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 min-h-screen">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center mb-16">
+          <Badge className="mb-4 bg-slate-100 text-slate-700 hover:bg-slate-200 border-0">Pravno</Badge>
+          <h1 className="text-4xl sm:text-5xl tracking-tight mb-6 font-bold">Pogoji uporabe</h1>
+          <p className="text-lg text-slate-600">Zadnja posodobitev: April 2026</p>
+        </div>
 
-      <div className="flex flex-col gap-8 text-gray-700 leading-relaxed">
-        <Section title="1. Splošno">
-          <p>S prijavo in uporabo storitve SlikajRačun (racuni.futurecode.si) se strinjate s temi pogoji uporabe. Storitev zagotavlja FutureCode d.o.o.</p>
-        </Section>
+        <div className="prose prose-slate max-w-none space-y-8 bg-white rounded-2xl border border-slate-200 p-8 sm:p-12 shadow-sm">
+          <section>
+            <h2 className="text-2xl mb-4 font-semibold">1. Sprejem pogojev</h2>
+            <p className="text-slate-700">
+              Z dostopom do aplikacije Računi in njeno uporabo se strinjate s temi pogoji uporabe. Če se s pogoji ne strinjate, prosimo, da aplikacije ne uporabljate.
+            </p>
+          </section>
 
-        <Section title="2. Opis storitve">
-          <p>SlikajRačun je aplikacija za posredovanje fotografij računov na email naslov vašega računovodskega programa. Storitev ne izvaja OCR obdelave — ta poteka v vašem računovodskem programu.</p>
-        </Section>
+          <section>
+            <h2 className="text-2xl mb-4 font-semibold">2. Opis storitve</h2>
+            <p className="text-slate-700">
+              Aplikacija Računi omogoča fotografiranje papirnatih računov in njihovo pošiljanje na email naslov računovodskega programa, ki ga uporabnik določi. Aplikacija deluje kot posredniška storitev in ne izvaja OCR obdelave računov.
+            </p>
+          </section>
 
-        <Section title="3. Naročnina in plačilo">
-          <ul className="list-disc pl-5 flex flex-col gap-2">
-            <li>Storitev je na voljo v mesečni ali letni naročnini.</li>
-            <li>Naročnina se samodejno obnovi ob koncu obdobja.</li>
-            <li>Odpoved je možna kadarkoli — dostop ostane aktiven do konca plačanega obdobja.</li>
-            <li>Povračilo ni možno za že plačana obdobja.</li>
-          </ul>
-        </Section>
+          <section>
+            <h2 className="text-2xl mb-4 font-semibold">3. Uporabniški račun</h2>
+            <p className="text-slate-700 mb-3">Za uporabo storitve morate ustvariti uporabniški račun. Pri tem se zavezujete:</p>
+            <ul className="list-disc list-inside space-y-2 text-slate-700">
+              <li>Zagotoviti točne in resnične podatke</li>
+              <li>Ohraniti tajnost gesla in dostopnih podatkov</li>
+              <li>Takoj obvestiti o morebitnem nepooblaščenem dostopu</li>
+              <li>Uporabljati račun v skladu z veljavno zakonodajo</li>
+            </ul>
+          </section>
 
-        <Section title="4. Dovoljene uporabe">
-          <p>Storitev smete uporabljati izključno za zakonite poslovne namene — posredovanje lastnih računov v vaš računovodski program. Prepovedana je vsaka zloraba, vdor v sisteme ali posredovanje vsebin, ki kršijo zakonodajo.</p>
-        </Section>
+          <section>
+            <h2 className="text-2xl mb-4 font-semibold">4. Plačilni pogoji</h2>
+            <p className="text-slate-700">
+              Storitev se obračunava mesečno ali letno, odvisno od izbranega paketa. Cene so navedene na spletni strani in vključujejo DDV. Plačilo se izvede vnaprej za tekoče obračunsko obdobje. Neuspešno plačilo lahko privede do začasne prekinitve storitve.
+            </p>
+          </section>
 
-        <Section title="5. Omejitev odgovornosti">
-          <p>FutureCode d.o.o. ne odgovarja za morebitne napake pri OCR obdelavi v vašem računovodskem programu, za nedostopnost tretjih storitev (email, računovodski program) ali za izgubo podatkov, ki so nastale zunaj naše infrastrukture.</p>
-        </Section>
+          <section>
+            <h2 className="text-2xl mb-4 font-semibold">5. Odpoved naročnine</h2>
+            <p className="text-slate-700">
+              Naročnino lahko odpoveste kadarkoli. Odpoved začne veljati ob koncu tekočega plačanega obdobja. Plačano obdobje ni mogoče vrniti. Po odpovedi ohranite dostop do storitve do konca plačanega obdobja.
+            </p>
+          </section>
 
-        <Section title="6. Spremembe pogojev">
-          <p>Pridržujemo si pravico do spremembe teh pogojev. O bistvenih spremembah vas bomo obvestili po emailu vsaj 14 dni vnaprej.</p>
-        </Section>
+          <section>
+            <h2 className="text-2xl mb-4 font-semibold">6. Uporaba storitve</h2>
+            <p className="text-slate-700 mb-3">Storitev lahko uporabljate samo za zakonite namene. Prepovedano je:</p>
+            <ul className="list-disc list-inside space-y-2 text-slate-700">
+              <li>Pošiljanje nezakonitih ali škodljivih vsebin</li>
+              <li>Zloraba storitve za pošiljanje neželene pošte (spam)</li>
+              <li>Poskusi nepooblaščenega dostopa do sistemov</li>
+              <li>Obremenjevanje sistema z avtomatiziranimi zahtevki</li>
+              <li>Kršenje pravic tretjih oseb</li>
+            </ul>
+          </section>
 
-        <Section title="7. Veljavno pravo">
-          <p>Za te pogoje velja slovensko pravo. Morebitne spore rešujemo pred pristojnim sodiščem v Sloveniji.</p>
-        </Section>
+          <section>
+            <h2 className="text-2xl mb-4 font-semibold">7. Omejitve odgovornosti</h2>
+            <p className="text-slate-700 mb-3">Storitev je na voljo &quot;kot je&quot;. Ne odgovarjamo za:</p>
+            <ul className="list-disc list-inside space-y-2 text-slate-700">
+              <li>Kakovost OCR obdelave, ki jo izvaja vaš računovodski program</li>
+              <li>Izgube podatkov zaradi tehničnih težav pri tretjih osebah</li>
+              <li>Prekinitve storitve zaradi vzdrževanja ali višje sile</li>
+              <li>Napake v delovanju računovodskih programov</li>
+              <li>Posredne, naključne ali posledične škode</li>
+            </ul>
+            <p className="text-slate-700 mt-3">
+              Naša odgovornost je omejena na znesek, ki ste ga plačali za storitev v zadnjih 12 mesecih.
+            </p>
+          </section>
 
-        <Section title="8. Kontakt">
-          <p>Vprašanja v zvezi s pogoji pošljite na <a href="mailto:info@futurecode.si" className="text-blue-600 hover:underline">info@futurecode.si</a>.</p>
-        </Section>
+          <section>
+            <h2 className="text-2xl mb-4 font-semibold">8. Intelektualna lastnina</h2>
+            <p className="text-slate-700">
+              Vsa programska oprema, oblika, dizajn in vsebina aplikacije so zaščiteni z avtorskimi pravicami. Brez pisnega dovoljenja jih ni dovoljeno kopirati, distribuirati ali spreminjati. Slike računov, ki jih naložite, ostanejo vaša lastnina.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-2xl mb-4 font-semibold">9. Prenehanje storitve</h2>
+            <p className="text-slate-700">
+              Pridržujemo si pravico do prekinitve ali prenehanja zagotavljanja storitve brez predhodnega obvestila v primeru kršitve teh pogojev ali zaradi drugih utemeljenih razlogov. V primeru prenehanja storitve vam bomo vrnili sorazmerni del plačila za neizkoriščeno obdobje.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-2xl mb-4 font-semibold">10. Spremembe pogojev</h2>
+            <p className="text-slate-700">
+              Pridržujemo si pravico do spremembe teh pogojev. O pomembnih spremembah vas bomo obvestili po emailu 30 dni vnaprej. Nadaljevanje uporabe storitve po uveljavitvi sprememb pomeni, da sprejmete nove pogoje.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-2xl mb-4 font-semibold">11. Reševanje sporov</h2>
+            <p className="text-slate-700">
+              Za morebitne spore je pristojno slovensko pravo. Trudimo se za sporazumno rešitev nesoglasij. V primeru spora je pristojno sodišče v Ljubljani.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="text-2xl mb-4 font-semibold">12. Kontakt</h2>
+            <p className="text-slate-700">Za vprašanja v zvezi s pogoji uporabe nas kontaktirajte:</p>
+            <p className="text-slate-700 mt-3">
+              Email:{" "}
+              <a href="mailto:info@futurecode.si" className="text-blue-600 hover:underline">
+                info@futurecode.si
+              </a>
+              <br />
+              Naslov: Sport Group d.o.o., Ljubljana, Slovenija
+            </p>
+          </section>
+        </div>
       </div>
-    </div>
-  );
-}
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <h2 className="text-xl font-bold text-gray-900 mb-3">{title}</h2>
-      {children}
     </div>
   );
 }

@@ -22,7 +22,9 @@ export function Nav() {
   const path = usePathname();
   const { isSignedIn, isLoaded } = useUser();
   const isLanding = path === "/";
-  const isPublic = path === "/" || path === "/sign-in" || path === "/sign-up";
+  const appPaths = ["/scan", "/invoices", "/settings"];
+  const isApp = appPaths.some((p) => path === p || path.startsWith(p + "/"));
+  const isPublic = !isApp;
 
   return (
     <>
@@ -73,17 +75,24 @@ export function Nav() {
           {/* Contact link on non-landing public pages */}
           {!isSignedIn && !isLanding && (
             <nav className="hidden md:flex items-center gap-1">
-              <Link
-                href="/contact"
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                  path === "/contact"
-                    ? "bg-blue-600 text-white"
-                    : "text-gray-600 hover:bg-gray-100 dark:text-slate-300 dark:hover:bg-slate-800"
-                }`}
-              >
-                <span>📨</span>
-                <span>Kontakt</span>
-              </Link>
+              {[
+                { href: "/kako-deluje", label: "Kako deluje" },
+                { href: "/integracije", label: "Integracije" },
+                { href: "/funkcionalnosti", label: "Funkcionalnosti" },
+                { href: "/cenik", label: "Cenik" },
+              ].map((l) => (
+                <Link
+                  key={l.href}
+                  href={l.href}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                    path === l.href
+                      ? "bg-blue-600 text-white"
+                      : "text-gray-600 hover:bg-gray-100 dark:text-slate-300 dark:hover:bg-slate-800"
+                  }`}
+                >
+                  {l.label}
+                </Link>
+              ))}
             </nav>
           )}
 

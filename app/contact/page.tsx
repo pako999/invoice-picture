@@ -1,10 +1,12 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
-import { LogoWordmark } from "@/components/logo";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Mail, MessageSquare, HelpCircle } from "lucide-react";
 
-export default function ContactPage() {
-  const [form, setForm] = useState({ name: "", email: "", company: "", message: "" });
+export default function Kontakt() {
+  const [form, setForm] = useState({ name: "", email: "", company: "", subject: "", message: "" });
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [error, setError] = useState("");
 
@@ -32,125 +34,166 @@ export default function ContactPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 py-16 px-4">
-      <div className="max-w-5xl mx-auto">
-
-        {/* Header */}
-        <div className="text-center mb-14">
-          <p className="text-xs font-bold text-blue-600 dark:text-blue-400 tracking-widest uppercase mb-3">Kontakt</p>
-          <h1 className="text-4xl sm:text-5xl font-extrabold text-gray-900 dark:text-white tracking-tight mb-4">
-            Pišite nam
-          </h1>
+    <div className="py-24 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 min-h-screen">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center mb-16">
+          <Badge className="mb-4 bg-blue-100 text-blue-700 hover:bg-blue-200 border-0">Kontakt</Badge>
+          <h1 className="text-4xl sm:text-5xl tracking-tight mb-6 font-bold">Stopite v stik z nami</h1>
+          <p className="text-xl text-slate-600">
+            Tukaj smo, da vam pomagamo. Kontaktirajte nas na kateri koli od spodnjih načinov.
+          </p>
         </div>
 
-        <div className="grid lg:grid-cols-5 gap-8">
-
-          {/* Company info */}
-          <div className="lg:col-span-2 flex flex-col gap-6">
-            <div className="bg-white dark:bg-slate-800 rounded-3xl border border-gray-200 dark:border-slate-700 p-8">
-              <div className="flex items-center gap-3 mb-6">
-                <div>
-                  <LogoWordmark className="text-sm" />
-                  <div className="text-xs text-gray-400 dark:text-slate-500">Sport Group d.o.o.</div>
-                </div>
+        <div className="grid md:grid-cols-3 gap-6 mb-12">
+          <Card className="border-slate-200 text-center">
+            <CardHeader>
+              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mx-auto mb-3">
+                <Mail className="w-6 h-6 text-blue-600" />
               </div>
+              <CardTitle className="text-lg">Email podpora</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-slate-600 mb-3">Pišite nam na email naslov</p>
+              <a href="mailto:info@futurecode.si" className="text-blue-600 hover:underline font-medium">
+                info@futurecode.si
+              </a>
+              <p className="text-xs text-slate-500 mt-3">Odgovorimo v 24 urah</p>
+            </CardContent>
+          </Card>
 
-              <div className="flex flex-col gap-5 text-sm">
-                <ContactRow icon="🏢" label="Podjetje">
-                  Sport Group d.o.o.
-                </ContactRow>
-                <ContactRow icon="📧" label="Email">
-                  <a href="mailto:info@futurecode.si" className="text-blue-600 dark:text-blue-400 hover:underline">
-                    info@futurecode.si
-                  </a>
-                </ContactRow>
-                <ContactRow icon="🌐" label="Spletna stran">
-                  <a href="https://futurecode.si" target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline">
-                    futurecode.si
-                  </a>
-                </ContactRow>
-                <ContactRow icon="📞" label="Telefon">
-                  <a href="tel:+38641580250" className="text-blue-600 dark:text-blue-400 hover:underline">
-                    041 580 250
-                  </a>
-                </ContactRow>
-                <ContactRow icon="⏰" label="Povprečni odzivni čas">
-                  ~ 2 uri
-                </ContactRow>
+          <Card className="border-slate-200 text-center">
+            <CardHeader>
+              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mx-auto mb-3">
+                <MessageSquare className="w-6 h-6 text-green-600" />
               </div>
-            </div>
+              <CardTitle className="text-lg">Telefonska podpora</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-slate-600 mb-3">Pokličite nas</p>
+              <a href="tel:+38641580250" className="text-blue-600 hover:underline font-medium">
+                041 580 250
+              </a>
+              <p className="text-xs text-slate-500 mt-3">Pon - Pet, 9:00 - 17:00</p>
+            </CardContent>
+          </Card>
 
-            <div className="bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-3xl p-6 text-sm text-gray-600 dark:text-slate-300 leading-relaxed">
-              <strong className="block mb-2 text-gray-900 dark:text-white">Tehnična podpora</strong>
-              Za vprašanja glede nastavitev, integracije z računovodskim programom ali težav pri pošiljanju nam opišite situacijo — pomagamo pri vsem.
-            </div>
-          </div>
+          <Card className="border-slate-200 text-center">
+            <CardHeader>
+              <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mx-auto mb-3">
+                <HelpCircle className="w-6 h-6 text-purple-600" />
+              </div>
+              <CardTitle className="text-lg">Pomoč in FAQ</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-slate-600 mb-3">Poglejte pogosta vprašanja</p>
+              <Link href="/pogosta-vprasanja" className="text-blue-600 hover:underline font-medium">
+                Odpri FAQ
+              </Link>
+              <p className="text-xs text-slate-500 mt-3">Takojšnji odgovori</p>
+            </CardContent>
+          </Card>
+        </div>
 
-          {/* Form */}
-          <div className="lg:col-span-3">
+        <Card className="border-slate-200">
+          <CardHeader>
+            <CardTitle className="text-2xl">Pošljite nam sporočilo</CardTitle>
+          </CardHeader>
+          <CardContent>
             {status === "sent" ? (
-              <div className="bg-white dark:bg-slate-800 rounded-3xl border border-gray-200 dark:border-slate-700 p-10 text-center flex flex-col items-center gap-5">
-                <div className="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center text-3xl">✅</div>
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Sporočilo poslano!</h2>
-                <p className="text-gray-500 dark:text-slate-400">Odgovorimo v enem delovnem dnevu.</p>
-                <Link href="/" className="mt-2 text-blue-600 dark:text-blue-400 font-semibold hover:underline text-sm">
+              <div className="text-center py-12 flex flex-col items-center gap-5">
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center text-3xl">
+                  ✅
+                </div>
+                <h2 className="text-2xl font-bold text-slate-900">Sporočilo poslano!</h2>
+                <p className="text-slate-500">Odgovorimo v enem delovnem dnevu.</p>
+                <Link href="/" className="mt-2 text-blue-600 font-semibold hover:underline text-sm">
                   ← Nazaj na začetek
                 </Link>
               </div>
             ) : (
-              <form onSubmit={handleSubmit} className="bg-white dark:bg-slate-800 rounded-3xl border border-gray-200 dark:border-slate-700 p-8 flex flex-col gap-5">
-                <div className="grid sm:grid-cols-2 gap-5">
-                  <Field label="Ime in priimek *">
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="name" className="block text-sm font-medium text-slate-700 mb-2">
+                      Ime in priimek *
+                    </label>
                     <input
                       type="text"
+                      id="name"
                       required
-                      placeholder="Janez Novak"
                       value={form.name}
-                      onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                      className="w-full border border-gray-200 dark:border-slate-600 bg-gray-50 dark:bg-slate-900 rounded-xl px-4 py-3 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                      onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Janez Novak"
                     />
-                  </Field>
-                  <Field label="Email naslov *">
+                  </div>
+                  <div>
+                    <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-2">
+                      Email naslov *
+                    </label>
                     <input
                       type="email"
+                      id="email"
                       required
-                      placeholder="janez@podjetje.si"
                       value={form.email}
-                      onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
-                      className="w-full border border-gray-200 dark:border-slate-600 bg-gray-50 dark:bg-slate-900 rounded-xl px-4 py-3 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                      onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+                      className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="janez@primer.si"
                     />
-                  </Field>
+                  </div>
                 </div>
 
-                <Field label="Podjetje">
+                <div>
+                  <label htmlFor="company" className="block text-sm font-medium text-slate-700 mb-2">
+                    Podjetje
+                  </label>
                   <input
                     type="text"
-                    placeholder="Vaše podjetje d.o.o."
+                    id="company"
                     value={form.company}
-                    onChange={e => setForm(f => ({ ...f, company: e.target.value }))}
-                    className="w-full border border-gray-200 dark:border-slate-600 bg-gray-50 dark:bg-slate-900 rounded-xl px-4 py-3 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                    onChange={(e) => setForm((f) => ({ ...f, company: e.target.value }))}
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Vaše podjetje d.o.o."
                   />
-                </Field>
+                </div>
 
-                <Field label="Sporočilo *">
-                  <textarea
-                    required
-                    rows={5}
-                    placeholder="Opišite vprašanje ali zahtevo..."
-                    value={form.message}
-                    onChange={e => setForm(f => ({ ...f, message: e.target.value }))}
-                    className="w-full border border-gray-200 dark:border-slate-600 bg-gray-50 dark:bg-slate-900 rounded-xl px-4 py-3 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition resize-none"
+                <div>
+                  <label htmlFor="subject" className="block text-sm font-medium text-slate-700 mb-2">
+                    Zadeva
+                  </label>
+                  <input
+                    type="text"
+                    id="subject"
+                    value={form.subject}
+                    onChange={(e) => setForm((f) => ({ ...f, subject: e.target.value }))}
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Vprašanje o aplikaciji"
                   />
-                </Field>
+                </div>
+
+                <div>
+                  <label htmlFor="message" className="block text-sm font-medium text-slate-700 mb-2">
+                    Sporočilo *
+                  </label>
+                  <textarea
+                    id="message"
+                    required
+                    rows={6}
+                    value={form.message}
+                    onChange={(e) => setForm((f) => ({ ...f, message: e.target.value }))}
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Opišite vaše vprašanje ali težavo..."
+                  />
+                </div>
 
                 {status === "error" && (
-                  <p className="text-sm text-red-500 bg-red-50 dark:bg-red-900/20 rounded-xl px-4 py-3">{error}</p>
+                  <p className="text-sm text-red-600 bg-red-50 rounded-lg px-4 py-3">{error}</p>
                 )}
 
                 <button
                   type="submit"
                   disabled={status === "sending"}
-                  className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed text-white font-bold py-3.5 rounded-2xl text-sm transition-colors flex items-center justify-center gap-2"
+                  className="w-full md:w-auto px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {status === "sending" ? (
                     <>
@@ -161,35 +204,25 @@ export default function ContactPage() {
                     "📨 Pošlji sporočilo"
                   )}
                 </button>
-
-                <p className="text-xs text-gray-400 dark:text-slate-500 text-center">
-                  Z oddajo obrazca soglašate z obdelavo osebnih podatkov za namen odgovora na vaše vprašanje.
-                </p>
               </form>
             )}
+          </CardContent>
+        </Card>
+
+        <div className="mt-12 bg-gradient-to-br from-slate-50 to-blue-50 rounded-2xl p-8 border border-slate-200">
+          <h2 className="text-2xl mb-4 text-center font-semibold">Poslovna podpora</h2>
+          <p className="text-slate-700 text-center mb-6">
+            Za računovodske servise in večja podjetja nudimo individualno podporo in prilagojene rešitve.
+          </p>
+          <div className="text-center">
+            <a
+              href="mailto:info@futurecode.si"
+              className="inline-flex items-center justify-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Kontaktirajte poslovno podporo
+            </a>
           </div>
         </div>
-      </div>
-    </div>
-  );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="flex flex-col gap-1.5">
-      <label className="text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">{label}</label>
-      {children}
-    </div>
-  );
-}
-
-function ContactRow({ icon, label, children }: { icon: string; label: string; children: React.ReactNode }) {
-  return (
-    <div className="flex items-start gap-3">
-      <span className="text-base flex-shrink-0 mt-0.5">{icon}</span>
-      <div>
-        <div className="text-xs text-gray-400 dark:text-slate-500 mb-0.5">{label}</div>
-        <div className="text-gray-700 dark:text-slate-300 font-medium">{children}</div>
       </div>
     </div>
   );

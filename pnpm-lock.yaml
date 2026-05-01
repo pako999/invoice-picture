@@ -14,6 +14,9 @@ importers:
       '@neondatabase/serverless':
         specifier: ^1.1.0
         version: 1.1.0
+      '@next/env':
+        specifier: ^16.2.4
+        version: 16.2.4
       '@tanstack/react-query':
         specifier: ^5.90.0
         version: 5.100.6(react@19.1.0)
@@ -39,8 +42,8 @@ importers:
         specifier: ^6.2.3
         version: 6.2.3
       lucide-react:
-        specifier: ^1.14.0
-        version: 1.14.0(react@19.1.0)
+        specifier: ^0.469.0
+        version: 0.469.0(react@19.1.0)
       next:
         specifier: ^15.3.3
         version: 15.5.15(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
@@ -756,6 +759,9 @@ packages:
   '@next/env@15.5.15':
     resolution: {integrity: sha512-vcmyu5/MyFzN7CdqRHO3uHO44p/QPCZkuTUXroeUmhNP8bL5PHFEhik22JUazt+CDDoD6EpBYRCaS2pISL+/hg==}
 
+  '@next/env@16.2.4':
+    resolution: {integrity: sha512-dKkkOzOSwFYe5RX6y26fZgkSpVAlIOJKQHIiydQcrWH6y/97+RceSOAdjZ14Qa3zLduVUy0TXcn+EiM6t4rPgw==}
+
   '@next/swc-darwin-arm64@15.5.15':
     resolution: {integrity: sha512-6PvFO2Tzt10GFK2Ro9tAVEtacMqRmTarYMFKAnV2vYMdwWc73xzmDQyAV7SwEdMhzmiRoo7+m88DuiXlJlGeaw==}
     engines: {node: '>= 10'}
@@ -1188,8 +1194,8 @@ packages:
   lines-and-columns@1.2.4:
     resolution: {integrity: sha512-7ylylesZQ/PV29jhEDl3Ufjo6ZX7gCqJr5F7PKrqc93v7fzSymt1BpwEU8nAUXs8qzzvqhbjhK5QZg6Mt/HkBg==}
 
-  lucide-react@1.14.0:
-    resolution: {integrity: sha512-+1mdWcfSJVUsaTIjN9zoezmUhfXo5l0vP7ekBMPo3jcS/aIkxHnXqAPsByszMZx/Y8oQBRJxJx5xg+RH3urzxA==}
+  lucide-react@0.469.0:
+    resolution: {integrity: sha512-28vvUnnKQ/dBwiCQtwJw7QauYnE7yd2Cyp4tTTJpvglX4EMpbflcdBgrgToX2j71B3YvugK/NH3BGUk+E/p/Fw==}
     peerDependencies:
       react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
 
@@ -1877,6 +1883,8 @@ snapshots:
 
   '@next/env@15.5.15': {}
 
+  '@next/env@16.2.4': {}
+
   '@next/swc-darwin-arm64@15.5.15':
     optional: true
 
@@ -2220,7 +2228,7 @@ snapshots:
 
   lines-and-columns@1.2.4: {}
 
-  lucide-react@1.14.0(react@19.1.0):
+  lucide-react@0.469.0(react@19.1.0):
     dependencies:
       react: 19.1.0
 

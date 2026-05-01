@@ -1,72 +1,73 @@
-"use client";
-import { useState } from "react";
+import Link from "next/link";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { HelpCircle } from "lucide-react";
+
+export const metadata = { title: "Pogosta vprašanja — SlikajRačun" };
 
 const faqs = [
-  {
-    q: "Kaj potrebujem za uporabo aplikacije?",
-    a: "Potrebujete aktiven račun pri enem od podprtih računovodskih programov (Minimax, Birokrat, Pantheon, SAOP, E-računi, Metakocka ali drug program) in vklopljeno funkcijo sprejemanja računov po emailu z OCR obdelavo.",
-  },
-  {
-    q: "Ali aplikacija sama bere podatke iz računa (OCR)?",
-    a: "Ne. SlikajRačun pošlje sliko računa na email vašega računovodskega programa. OCR obdelavo — branje zneskov, datumov in dobaviteljev — opravi vaš program, ne mi.",
-  },
-  {
-    q: "Kateri formati datotek so podprti?",
-    a: "Podprti so JPG, PNG, WEBP in PDF.",
-  },
-  {
-    q: "Ali lahko uporabljam aplikacijo za več podjetij?",
-    a: "Da, z PRO paketom lahko dodate neomejeno podjetij, vsako s svojim OCR email naslovom. Pri skeniranju izberete podjetje, ki mu račun pripada.",
-  },
-  {
-    q: "Kje najdem email naslov za uvoz računov?",
-    a: "Email naslov za uvoz računov najdete v nastavitvah vašega računovodskega programa. Npr. pri Minimaxu je to v Nastavitve → Uvoz dokumentov → Email uvoz.",
-  },
-  {
-    q: "Ali so moji računi varni?",
-    a: "Slike računov se pošljejo neposredno na email vašega programa in niso shranjene na naših strežnikih. Shranjujemo le metapodatke (datum, status, ime datoteke) za arhiv.",
-  },
-  {
-    q: "Kako odpovem naročnino?",
-    a: "Naročnino lahko odpoveste kadarkoli v nastavitvah računa. Dostop ostane aktiven do konca plačanega obdobja.",
-  },
-  {
-    q: "Ali deluje aplikacija na iPhone in Android?",
-    a: "Aplikacija je optimizirana za mobilne brskalnike in deluje na vseh napravah. iOS aplikacija je v razvoju.",
-  },
+  { question: "Kako deluje aplikacija Računi?", answer: "Aplikacija omogoča fotografiranje papirnatih računov s telefonom in njihovo avtomatsko pošiljanje na email naslov vašega računovodskega programa. Program nato z OCR tehnologijo prebere podatke in jih knjiži v sistem." },
+  { question: "Ali moram imeti določen računovodski program?", answer: "Ne. Aplikacija deluje z vsakim računovodskim programom, ki podpira uvoz računov preko emaila. Podprta so najmanj Minimax, Birokrat, Pantheon, SAOP, E-računi in Metakocka." },
+  { question: "Kdo izvaja OCR obdelavo računov?", answer: "OCR obdelavo (branje podatkov s slike) izvaja vaš računovodski program, ne naša aplikacija. Mi samo poskrbimo, da slika računa prispe na pravilen email naslov v vašem programu." },
+  { question: "Ali potrebujem posebno opremo?", answer: "Ne. Potrebujete samo pametni telefon s kamero in dostop do interneta. Aplikacija deluje v brskalniku ali kot mobilna aplikacija." },
+  { question: "Koliko računov lahko pošljem?", answer: "Pri osnovnem paketu lahko pošljete neomejeno računov mesečno. Ni omejitev glede števila pošiljanj." },
+  { question: "Kaj je vključeno v PRO paket?", answer: "PRO paket je namenjen računovodskim servisom in podjetjem z več subjekti. Omogoča upravljanje neomejeno podjetij, ločene OCR email naslove za vsako podjetje, hitri preklop med podjetji in ločeno shranjevanje arhiva po podjetjih." },
+  { question: "Ali lahko aplikacijo odpojem kadarkoli?", answer: "Da. Naročnino lahko odpoveste kadarkoli brez vezave ali skritih stroškov. Paket je aktiven do konca plačanega obdobja." },
+  { question: "Kako varna je aplikacija?", answer: "Aplikacija uporablja Clerk avtentikacijo za varen dostop. Slike računov se pošiljajo preko varnih kanalov direktno na email vašega računovodskega programa. Mi ne shranjujemo občutljivih finančnih podatkov." },
+  { question: "Kaj če moj računovodski program ne podpira email uvoza?", answer: "Preverite nastavitve vašega programa ali kontaktirajte ponudnika. Večina sodobnih računovodskih programov že podpira to funkcijo, morda jo je potrebno samo aktivirati v nastavitvah." },
+  { question: "Katere formate slik podpira aplikacija?", answer: "Aplikacija podpira JPG, PNG, WEBP in PDF formate. To vključuje tako fotografije kot tudi digitalne dokumente." },
+  { question: "Kako dolgo so računi shranjeni v arhivu?", answer: "Vsi poslani računi so shranjeni v arhivu brez časovnih omejitev. Do njih lahko dostopate kadarkoli." },
+  { question: "Ali lahko uporabim aplikacijo za več podjetij?", answer: "Da. Z osnovnim paketom lahko upravljate eno podjetje. Za več podjetij potrebujete PRO paket, ki omogoča upravljanje neomejeno subjektov." },
+  { question: "Kaj če račun ni bil pravilno prepoznan?", answer: "Kakovost OCR prepoznave je odvisna od vašega računovodskega programa in kvalitete slike. Poskrbite za dobro osvetlitev in ostro sliko. Če težave vztrajajo, kontaktirajte ponudnika vašega računovodskega programa." },
+  { question: "Ali obstaja brezplačna preizkusna verzija?", answer: "Trenutno ne ponujamo brezplačnega preizkusa, vendar je osnovni paket cenovno zelo ugoden (9.90 €/mesec) in ga lahko odpoveste kadarkoli." },
+  { question: "Kako dobim podporo, če imam težave?", answer: "Kontaktirajte nas preko kontaktne strani ali pišite na našo podporo. Z veseljem vam pomagamo pri nastavitvi in reševanju težav." },
 ];
 
-export default function PogostVprasanjaPage() {
+export default function PogostaPrasanja() {
   return (
-    <div className="max-w-3xl mx-auto px-6 py-16">
-      <h1 className="text-4xl font-extrabold text-gray-900 mb-4">Pogosta vprašanja</h1>
-      <p className="text-gray-500 mb-12 text-lg">Odgovori na najpogostejša vprašanja o aplikaciji SlikajRačun.</p>
-
-      <div className="flex flex-col gap-3">
-        {faqs.map((faq, i) => (
-          <FaqItem key={i} q={faq.q} a={faq.a} />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function FaqItem({ q, a }: { q: string; a: string }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div className="border border-gray-200 rounded-2xl overflow-hidden">
-      <button
-        onClick={() => setOpen(!open)}
-        className="w-full text-left px-6 py-4 flex items-center justify-between gap-4 hover:bg-gray-50 transition-colors"
-      >
-        <span className="font-semibold text-gray-900">{q}</span>
-        <span className={`text-gray-400 flex-shrink-0 transition-transform ${open ? "rotate-180" : ""}`}>▼</span>
-      </button>
-      {open && (
-        <div className="px-6 pb-5 text-gray-600 leading-relaxed border-t border-gray-100 pt-4">
-          {a}
+    <div className="py-24 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 min-h-screen">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center mb-16">
+          <Badge className="mb-4 bg-purple-100 text-purple-700 hover:bg-purple-200 border-0">Pogosta vprašanja</Badge>
+          <h1 className="text-4xl sm:text-5xl tracking-tight mb-6 font-bold">Imate vprašanja? Tu so odgovori.</h1>
+          <p className="text-xl text-slate-600">Odgovori na najpogostejša vprašanja o aplikaciji Računi</p>
         </div>
-      )}
+
+        <div className="space-y-4">
+          {faqs.map((faq, index) => (
+            <Card key={index} className="border-slate-200 hover:shadow-md transition-shadow">
+              <CardHeader>
+                <div className="flex gap-3">
+                  <HelpCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-1" />
+                  <CardTitle className="text-lg">{faq.question}</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <p className="text-slate-700">{faq.answer}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        <div className="mt-12 text-center bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-8 border border-blue-100">
+          <h2 className="text-2xl mb-4 font-semibold">Niste našli odgovora na vaše vprašanje?</h2>
+          <p className="text-slate-600 mb-6">Kontaktirajte našo podporo in z veseljem vam bomo pomagali.</p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Link
+              href="/contact"
+              className="inline-flex items-center justify-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Kontaktirajte nas
+            </Link>
+            <Link
+              href="/pomoc-pri-nastavitvi"
+              className="inline-flex items-center justify-center px-6 py-3 bg-white text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors"
+            >
+              Pomoč pri nastavitvi
+            </Link>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
