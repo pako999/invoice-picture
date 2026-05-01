@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { useUser } from "@clerk/nextjs";
+import { useUser, useClerk } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 
 type Tier = "basic" | "pro";
@@ -63,6 +63,7 @@ function loadPaddle(): Promise<void> {
 
 export function PaddleCheckoutButton({ tier, billing, children, className, variant = "default" }: Props) {
   const { user, isSignedIn } = useUser();
+  const clerk = useClerk();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -79,7 +80,10 @@ export function PaddleCheckoutButton({ tier, billing, children, className, varia
       return;
     }
     if (!isSignedIn) {
-      window.location.href = "/sign-in?redirect=/upgrade";
+      clerk.openSignUp({
+        forceRedirectUrl: "/upgrade",
+        signInFallbackRedirectUrl: "/upgrade",
+      });
       return;
     }
     setBusy(true);
