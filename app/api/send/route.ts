@@ -21,12 +21,17 @@ export async function POST(req: NextRequest) {
 
   const status = await getStatus(userId);
   if (!status.canSend) {
+    const isFreeLimit = status.plan === "free";
     return NextResponse.json(
       {
         success: false,
-        error: "Preizkusna doba je potekla. Za nadaljevanje pošiljanja računov nadgradite paket.",
-        code: "subscription_required",
+        error: isFreeLimit
+          ? "Dosegli ste mesečno omejitev 3 računov. / You have reached your monthly limit of 3 invoices. Nadgradite na Osnovni paket."
+          : "Preizkusna doba je potekla. Za nadaljevanje pošiljanja računov nadgradite paket.",
+        code: isFreeLimit ? "free_limit_reached" : "subscription_required",
         plan: status.plan,
+        monthlyCount: status.monthlyCount,
+        monthlyLimit: status.monthlyLimit,
       },
       { status: 402 },
     );

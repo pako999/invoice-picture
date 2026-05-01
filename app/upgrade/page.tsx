@@ -31,6 +31,8 @@ interface SubStatus {
   daysRemaining: number;
   trialActive: boolean;
   canSend: boolean;
+  monthlyCount: number;
+  monthlyLimit: number | null;
 }
 
 function UpgradePageInner() {
@@ -51,15 +53,41 @@ function UpgradePageInner() {
   const basicPrice = isYearly ? (basicMonthly * 12 * (1 - yearlyDiscount)).toFixed(2) : basicMonthly.toFixed(2);
   const proPrice = isYearly ? (proMonthly * 12 * (1 - yearlyDiscount)).toFixed(2) : proMonthly.toFixed(2);
 
-  const trialExpired = status && !status.canSend;
+  const trialExpired = status && !status.canSend && status.plan !== "free";
   const trialActive = status?.trialActive;
+  const isFreeLimitReached = status?.plan === "free" && !status.canSend;
+  const isFreeActive = status?.plan === "free" && status.canSend;
 
   return (
     <div className="py-16 px-4 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 min-h-screen">
       <div className="max-w-5xl mx-auto">
         <div className="text-center mb-10">
-          <Badge className="mb-4 bg-blue-100 text-blue-700 hover:bg-blue-200 border-0">Nadgradi paket</Badge>
-          {trialExpired ? (
+          <Badge className="mb-4 bg-blue-100 text-blue-700 hover:bg-blue-200 border-0">Nadgradi paket / Upgrade plan</Badge>
+          {isFreeLimitReached ? (
+            <>
+              <h1 className="text-4xl sm:text-5xl tracking-tight mb-4 font-bold">
+                Dosegli ste mesečno omejitev
+              </h1>
+              <p className="text-sm text-slate-400 mb-2">You have reached your monthly limit</p>
+              <p className="text-lg text-slate-600 max-w-2xl mx-auto">
+                Brezplačen paket omogoča {status!.monthlyLimit} račune mesečno. Nadgradite na <strong>Osnovni paket</strong> za neomejeno pošiljanje.
+              </p>
+              <p className="text-sm text-slate-400 max-w-2xl mx-auto mt-1">
+                Free plan allows {status!.monthlyLimit} invoices/month. Upgrade to <strong>Basic plan</strong> for unlimited sending.
+              </p>
+            </>
+          ) : isFreeActive ? (
+            <>
+              <h1 className="text-4xl sm:text-5xl tracking-tight mb-4 font-bold">Nadgradite paket</h1>
+              <p className="text-sm text-slate-400 mb-2">Upgrade your plan</p>
+              <p className="text-lg text-slate-600 max-w-2xl mx-auto">
+                Trenutno ste na <strong>Brezplačnem paketu</strong> ({status!.monthlyCount}/{status!.monthlyLimit} računov ta mesec). Nadgradite za neomejeno pošiljanje.
+              </p>
+              <p className="text-sm text-slate-400 max-w-2xl mx-auto mt-1">
+                You are on the <strong>Free plan</strong> ({status!.monthlyCount}/{status!.monthlyLimit} invoices this month). Upgrade for unlimited sending.
+              </p>
+            </>
+          ) : trialExpired ? (
             <>
               <h1 className="text-4xl sm:text-5xl tracking-tight mb-4 font-bold">
                 Vaša preizkusna doba je potekla
@@ -74,7 +102,7 @@ function UpgradePageInner() {
                 Nadgradite že med preizkusno dobo
               </h1>
               <p className="text-lg text-slate-600 max-w-2xl mx-auto">
-                Preostali še {status.daysRemaining} dni preizkusne dobe. Z nadgradnjo se izognete prekinitvi storitve.
+                Preostali še {status!.daysRemaining} dni preizkusne dobe. Z nadgradnjo se izognete prekinitvi storitve.
               </p>
             </>
           ) : (

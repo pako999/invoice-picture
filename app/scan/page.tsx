@@ -52,7 +52,7 @@ export default function ScanPage() {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [selectedCompanyId, setSelectedCompanyId] = useState<number | null>(null);
   const [subject, setSubject] = useState("Račun");
-  const [status, setStatus] = useState<"idle" | "sending" | "ok" | "err">("idle");
+  const [status, setStatus] = useState<"idle" | "sending" | "ok" | "err" | "free_limit">("idle");
   const [errMsg, setErrMsg] = useState("");
   const [dragging, setDragging] = useState(false);
 
@@ -112,7 +112,11 @@ export default function ScanPage() {
         body: JSON.stringify(body),
       });
       const json = await res.json();
-      if (res.status === 402 || json.code === "subscription_required") {
+      if (res.status === 402) {
+        if (json.code === "free_limit_reached") {
+          setStatus("free_limit");
+          return;
+        }
         window.location.href = "/upgrade";
         return;
       }
@@ -203,6 +207,22 @@ export default function ScanPage() {
       {status === "err" && (
         <div className="mb-5 flex items-center gap-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-xl text-sm font-medium">
           ❌ {errMsg}
+        </div>
+      )}
+      {status === "free_limit" && (
+        <div className="mb-5 bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700 px-4 py-4 rounded-xl">
+          <p className="text-sm font-bold text-amber-900 dark:text-amber-200 mb-1">
+            🔒 Dosegli ste mesečno omejitev 3 računov / Monthly limit of 3 invoices reached
+          </p>
+          <p className="text-xs text-amber-700 dark:text-amber-300 mb-3">
+            Za nadaljevanje pošiljanja nadgradite na <strong>Osnovni paket</strong>. / Upgrade to <strong>Basic plan</strong> to continue sending.
+          </p>
+          <Link
+            href="/upgrade?plan=basic"
+            className="inline-block bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors"
+          >
+            Nadgradi na Osnovni paket →
+          </Link>
         </div>
       )}
 
