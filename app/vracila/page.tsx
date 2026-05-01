@@ -47,7 +47,7 @@ export default function Vracila() {
             <ul className="list-disc list-inside space-y-2 text-slate-700">
               <li>
                 <strong>Po emailu:</strong> Pišite nam na{" "}
-                <a href="mailto:support@invoicesorter.com" className="text-blue-600 hover:underline">support@invoicesorter.com</a>{" "}
+                <a href="mailto:info@posljiracun.si" className="text-blue-600 hover:underline">info@posljiracun.si</a>{" "}
                 z zadevo &quot;Zahteva za vračilo&quot; in navedite vaš email naslov ter razlog za vračilo.
               </li>
               <li>
@@ -111,7 +111,7 @@ export default function Vracila() {
             <p className="text-slate-700">Za vprašanja v zvezi z vračili nas kontaktirajte:</p>
             <p className="text-slate-700 mt-3">
               Email:{" "}
-              <a href="mailto:support@invoicesorter.com" className="text-blue-600 hover:underline">support@invoicesorter.com</a>
+              <a href="mailto:info@posljiracun.si" className="text-blue-600 hover:underline">info@posljiracun.si</a>
               <br />
               Sport Group d.o.o.<br />
               Osojnikova 4, 2000 Maribor, Slovenija<br />
