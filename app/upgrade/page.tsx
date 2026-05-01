@@ -1,8 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Check } from "lucide-react";
 import { PaddleCheckoutButton } from "@/components/paddle-checkout";
@@ -34,7 +34,11 @@ interface SubStatus {
 }
 
 export default function UpgradePage() {
-  const [isYearly, setIsYearly] = useState(false);
+  const searchParams = useSearchParams();
+  const planFromUrl = searchParams.get("plan"); // "basic" | "pro"
+  const billingFromUrl = searchParams.get("billing"); // "monthly" | "yearly"
+
+  const [isYearly, setIsYearly] = useState(billingFromUrl === "yearly");
   const [status, setStatus] = useState<SubStatus | null>(null);
 
   useEffect(() => {
@@ -103,9 +107,20 @@ export default function UpgradePage() {
           {isYearly && <Badge className="bg-green-100 text-green-700 border border-green-200">−20 % prihranek</Badge>}
         </div>
 
+        {planFromUrl && (
+          <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-xl text-center text-sm text-blue-800">
+            Registracija uspešna! Kliknite gumb spodaj za dokončanje naročnine.
+          </div>
+        )}
+
         <div className="grid md:grid-cols-2 gap-6">
           {/* Basic */}
-          <Card className="border-slate-200">
+          <Card className={`relative ${planFromUrl === "basic" ? "border-2 border-blue-600 shadow-xl" : "border-slate-200"}`}>
+            {planFromUrl === "basic" && (
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                <Badge className="bg-blue-600 text-white border-0">✓ Vaša izbira</Badge>
+              </div>
+            )}
             <CardHeader>
               <CardTitle className="text-2xl">Osnovno</CardTitle>
               <CardDescription>{isYearly ? "Letna obnova, kadarkoli odpoveš" : "Mesečna obnova, kadarkoli odpoveš"}</CardDescription>
