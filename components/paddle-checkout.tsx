@@ -80,9 +80,12 @@ export function PaddleCheckoutButton({ tier, billing, children, className, varia
       return;
     }
     if (!isSignedIn) {
+      // First-time visitor — just sign them up. Trial is auto-created
+      // via the Clerk webhook. They land on /scan and can start using
+      // the app immediately. Paddle checkout is reserved for upgrading.
       clerk.openSignUp({
-        forceRedirectUrl: "/upgrade",
-        signInFallbackRedirectUrl: "/upgrade",
+        forceRedirectUrl: "/scan",
+        signInFallbackRedirectUrl: "/scan",
       });
       return;
     }
