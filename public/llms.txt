@@ -14,7 +14,7 @@ Lastništvo: Sport Group d.o.o., Ljubljana, Slovenija. Kontakt: info@posljiracun
 - [Kako deluje](https://www.posljiracun.si/kako-deluje): 3-koračni proces — nastavitev OCR emaila, fotografiranje računa, pošiljanje z enim klikom
 - [Funkcionalnosti](https://www.posljiracun.si/funkcionalnosti): 10 ključnih funkcij — en-klik pošiljanje, arhiv s predogledom, status v realnem času, podpora JPG/PNG/WEBP/PDF, varna Clerk avtentikacija
 - [Integracije](https://www.posljiracun.si/integracije): podprti računovodski programi z opisi posameznih OCR storitev
-- [Cenik](https://www.posljiracun.si/cenik): Osnovno 9,90 €/mesec ali PRO Računovodstvo 19,90 €/mesec; letno -20 %; brez vezave
+- [Cenik](https://www.posljiracun.si/cenik): Osnovno 9,90 €/mesec ali PRO Računovodstvo 19,90 €/mesec; letno -20 %; brez vezave; **brezplačna 7-dnevna preizkusna doba brez kreditne kartice**
 
 ## Podpora
 

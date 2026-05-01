@@ -49,9 +49,14 @@ export default function Cenik() {
         <div className="text-center mb-16">
           <Badge className="mb-4 bg-blue-100 text-blue-700 hover:bg-blue-200 border-0">Cenik</Badge>
           <h1 className="text-4xl sm:text-5xl tracking-tight mb-6 font-bold">Preprosto in transparentno</h1>
-          <p className="text-xl text-slate-600 max-w-3xl mx-auto mb-8">
+          <p className="text-xl text-slate-600 max-w-3xl mx-auto mb-6">
             Prihranite dragoceni čas pri ročnem vnosu računov. En klik nadomesti minute tipkanja. Izberite paket, ki ustreza vašim potrebam.
           </p>
+
+          <div className="inline-flex items-center gap-2 bg-green-50 border border-green-200 text-green-800 px-4 py-2 rounded-full text-sm font-semibold mb-8">
+            <span>🎁</span>
+            <span>Brezplačna 7-dnevna preizkusna doba — brez kreditne kartice</span>
+          </div>
 
           <div className="flex items-center justify-center gap-4 mb-8">
             <span className={`text-lg ${!isYearly ? "font-semibold text-slate-900" : "text-slate-600"}`}>Mesečno</span>
