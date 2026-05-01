@@ -83,14 +83,17 @@ function SettingsContent() {
   const [newEmail, setNewEmail] = useState("");
   const [addError, setAddError] = useState("");
   const [adding, setAdding] = useState(false);
+  const [isPro, setIsPro] = useState(false);
 
   useEffect(() => {
     Promise.all([
       fetch("/api/settings").then(r => r.json()).catch(() => ({})),
       fetch("/api/companies").then(r => r.json()).catch(() => []),
-    ]).then(([settings, comps]) => {
+      fetch("/api/subscription").then(r => r.json()).catch(() => ({})),
+    ]).then(([settings, comps, sub]) => {
       setEmail(settings.recipientEmail ?? "");
       setCompanyList(Array.isArray(comps) ? comps : []);
+      setIsPro(sub.plan === "pro" && sub.paid === true);
       setLoading(false);
     });
   }, []);
@@ -187,7 +190,17 @@ function SettingsContent() {
               <CompanyRow key={c.id} company={c} onUpdate={updateCompany} onDelete={deleteCompany} />
             ))}
 
-            {showAdd ? (
+            {!isPro && companyList.length >= 1 ? (
+              <div className="flex items-center gap-3 py-3 px-4 rounded-xl border border-dashed border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20">
+                <span className="text-base">⭐</span>
+                <p className="text-sm text-amber-800 dark:text-amber-300 flex-1">
+                  Več podjetij je na voljo samo v Pro paketu.
+                </p>
+                <a href="/upgrade" className="text-sm font-bold text-amber-700 dark:text-amber-400 hover:underline whitespace-nowrap">
+                  Nadgradi na Pro →
+                </a>
+              </div>
+            ) : showAdd ? (
               <div className="bg-gray-50 dark:bg-slate-800 border border-dashed border-gray-300 dark:border-slate-600 rounded-xl p-4 space-y-2">
                 <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Ime podjetja (npr. ABC d.o.o.)"
                   className="w-full border border-gray-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500" />

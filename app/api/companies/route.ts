@@ -4,6 +4,7 @@ import { getDb } from "@/lib/db";
 import { companies } from "@/lib/schema";
 import { eq, desc } from "drizzle-orm";
 import { z } from "zod";
+import { getStatus } from "@/lib/subscription";
 
 const schema = z.object({
   name: z.string().min(1).max(255),
@@ -26,6 +27,15 @@ export async function POST(req: NextRequest) {
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
+    const status = await getStatus(userId);
+    const isPro = status.plan === "pro" && status.paid;
+    if (!isPro) {
+      const db = getDb();
+      const existing = await db.select({ id: companies.id }).from(companies).where(eq(companies.clerkUserId, userId));
+      if (existing.length >= 1) {
+        return NextResponse.json({ error: "Multiple companies available on Pro plan only" }, { status: 403 });
+      }
+    }
     const data = schema.parse(await req.json());
     const db = getDb();
     const [row] = await db.insert(companies).values({ clerkUserId: userId, ...data }).returning();
