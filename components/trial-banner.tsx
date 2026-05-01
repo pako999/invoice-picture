@@ -5,11 +5,14 @@ import { usePathname } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 
 interface SubStatus {
-  plan: "trial" | "basic" | "pro" | "expired" | "canceled";
+  plan: "trial" | "basic" | "pro" | "expired" | "canceled" | "free";
   daysRemaining: number;
   trialActive: boolean;
   paid: boolean;
   canSend: boolean;
+  isFree: boolean;
+  monthlyUsage: number;
+  monthlyLimit: number | null;
 }
 
 const APP_PATHS = ["/scan", "/invoices", "/settings"];
@@ -44,6 +47,28 @@ export function TrialBanner() {
             className="bg-white text-red-700 font-bold px-4 py-1.5 rounded-lg hover:bg-red-50 transition-colors flex-shrink-0"
           >
             Nadgradi paket →
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  // Free plan — show usage counter
+  if (status.isFree && status.monthlyLimit !== null) {
+    const atLimit = status.monthlyUsage >= status.monthlyLimit;
+    return (
+      <div className={`px-4 py-2.5 text-sm border-b ${atLimit ? "bg-orange-50 border-orange-200" : "bg-blue-50 border-blue-200"}`}>
+        <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4 text-center">
+          <span className={atLimit ? "text-orange-900" : "text-blue-900"}>
+            {atLimit
+              ? `⚠️ Mesečna omejitev dosežena — ${status.monthlyUsage}/${status.monthlyLimit} računov`
+              : `📊 Brezplačen paket — ${status.monthlyUsage}/${status.monthlyLimit} računov ta mesec`}
+          </span>
+          <Link
+            href="/upgrade?plan=basic"
+            className={`font-semibold hover:underline flex-shrink-0 ${atLimit ? "text-orange-700" : "text-blue-700"}`}
+          >
+            Nadgradi na Osnovni →
           </Link>
         </div>
       </div>

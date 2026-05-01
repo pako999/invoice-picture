@@ -3,6 +3,12 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import Link from "next/link";
 import type { Company } from "@/lib/schema";
 
+interface SubStatus {
+  isFree: boolean;
+  monthlyUsage: number;
+  monthlyLimit: number | null;
+}
+
 function readFileAsBase64(file: File): Promise<{ base64: string; mime: string }> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -46,6 +52,38 @@ function isPdf(mime: string) {
   return mime === "application/pdf";
 }
 
+function FreeLimitModal({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
+      <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-md w-full p-6">
+        <div className="text-center mb-5">
+          <div className="text-5xl mb-3">📊</div>
+          <h2 className="text-xl font-extrabold text-gray-900 dark:text-white mb-2">
+            Mesečna omejitev dosežena
+          </h2>
+          <p className="text-gray-600 dark:text-slate-400 text-sm leading-relaxed">
+            Dosegli ste mesečno omejitev 3 računov. Nadgradite na Osnovni paket za neomejeno obdelavo računov.
+          </p>
+        </div>
+        <div className="space-y-3">
+          <Link
+            href="/upgrade?plan=basic"
+            className="w-full flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl text-sm transition-colors"
+          >
+            Nadgradi na Osnovni paket →
+          </Link>
+          <button
+            onClick={onClose}
+            className="w-full py-3 rounded-xl text-sm text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
+          >
+            Zapri
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ScanPage() {
   const [file, setFile] = useState<{ url: string; base64: string; mime: string; name: string } | null>(null);
   const [recipientEmail, setRecipientEmail] = useState<string | null>(null);
@@ -55,6 +93,8 @@ export default function ScanPage() {
   const [status, setStatus] = useState<"idle" | "sending" | "ok" | "err">("idle");
   const [errMsg, setErrMsg] = useState("");
   const [dragging, setDragging] = useState(false);
+  const [subStatus, setSubStatus] = useState<SubStatus | null>(null);
+  const [showLimitModal, setShowLimitModal] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -63,11 +103,13 @@ export default function ScanPage() {
     Promise.all([
       fetch("/api/settings").then(r => r.json()).catch(() => ({})),
       fetch("/api/companies").then(r => r.json()).catch(() => []),
-    ]).then(([settings, comps]) => {
+      fetch("/api/subscription").then(r => r.ok ? r.json() : null).catch(() => null),
+    ]).then(([settings, comps, sub]) => {
       setRecipientEmail(settings.recipientEmail || null);
       const list: Company[] = Array.isArray(comps) ? comps : [];
       setCompanies(list);
       if (list.length > 0) setSelectedCompanyId(list[0].id);
+      if (sub) setSubStatus({ isFree: sub.isFree, monthlyUsage: sub.monthlyUsage, monthlyLimit: sub.monthlyLimit });
     });
   }, []);
 
@@ -116,22 +158,64 @@ export default function ScanPage() {
         window.location.href = "/upgrade";
         return;
       }
+      if (res.status === 403 && json.code === "free_limit_reached") {
+        setShowLimitModal(true);
+        setStatus("idle");
+        return;
+      }
       if (!res.ok || !json.success) throw new Error(json.error ?? "Napaka");
       setStatus("ok");
       setFile(null);
       setSubject("Račun");
+      // Refresh monthly usage counter
+      fetch("/api/subscription").then(r => r.ok ? r.json() : null).then(sub => {
+        if (sub) setSubStatus({ isFree: sub.isFree, monthlyUsage: sub.monthlyUsage, monthlyLimit: sub.monthlyLimit });
+      });
     } catch (err) {
       setErrMsg(err instanceof Error ? err.message : "Napaka pri pošiljanju");
       setStatus("err");
     }
   }
 
+  const isFreeAtLimit = subStatus?.isFree && subStatus.monthlyLimit !== null && subStatus.monthlyUsage >= subStatus.monthlyLimit;
+
   return (
     <div className="max-w-2xl mx-auto px-4 py-10">
+      {showLimitModal && <FreeLimitModal onClose={() => setShowLimitModal(false)} />}
+
       <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white mb-2">Pošlji račun</h1>
       <p className="text-gray-500 dark:text-slate-400 mb-6">
         Fotografirajte ali naložite račun (slika ali PDF) in ga pošljite z enim klikom.
       </p>
+
+      {/* Free plan usage counter */}
+      {subStatus?.isFree && subStatus.monthlyLimit !== null && (
+        <div className={`mb-5 rounded-xl border px-4 py-3 ${
+          isFreeAtLimit
+            ? "bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800"
+            : "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800"
+        }`}>
+          <div className="flex items-center justify-between mb-2">
+            <span className={`text-sm font-semibold ${isFreeAtLimit ? "text-orange-800 dark:text-orange-300" : "text-blue-800 dark:text-blue-300"}`}>
+              {isFreeAtLimit ? "⚠️ Mesečna omejitev dosežena" : `📊 ${subStatus.monthlyUsage}/${subStatus.monthlyLimit} računi ta mesec`}
+            </span>
+            <Link href="/upgrade?plan=basic" className={`text-xs font-bold hover:underline flex-shrink-0 ${isFreeAtLimit ? "text-orange-700 dark:text-orange-400" : "text-blue-600 dark:text-blue-400"}`}>
+              Nadgradi →
+            </Link>
+          </div>
+          <div className="h-1.5 bg-gray-200 dark:bg-slate-700 rounded-full overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all ${isFreeAtLimit ? "bg-orange-500" : "bg-blue-500"}`}
+              style={{ width: `${Math.min(100, (subStatus.monthlyUsage / subStatus.monthlyLimit) * 100)}%` }}
+            />
+          </div>
+          {isFreeAtLimit && (
+            <p className="text-xs text-orange-700 dark:text-orange-400 mt-2">
+              Nadgradite na Osnovni paket za neomejeno obdelavo računov.
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Company selector or email banner */}
       {companies.length > 0 ? (
@@ -307,7 +391,7 @@ export default function ScanPage() {
 
       <button
         onClick={handleSend}
-        disabled={!file || !hasRecipient || status === "sending"}
+        disabled={!file || !hasRecipient || status === "sending" || !!isFreeAtLimit}
         className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold py-4 rounded-2xl text-base transition-colors"
       >
         {status === "sending" ? (
@@ -318,10 +402,21 @@ export default function ScanPage() {
             </svg>
             Pošiljam...
           </>
+        ) : isFreeAtLimit ? (
+          <>📊 Mesečna omejitev dosežena</>
         ) : (
           <>📤 Pošlji račun</>
         )}
       </button>
+
+      {isFreeAtLimit && (
+        <p className="text-center text-sm text-gray-500 dark:text-slate-400 mt-3">
+          <Link href="/upgrade?plan=basic" className="text-blue-600 dark:text-blue-400 font-semibold hover:underline">
+            Nadgradi na Osnovni paket
+          </Link>{" "}
+          za neomejeno obdelavo računov.
+        </p>
+      )}
     </div>
   );
 }

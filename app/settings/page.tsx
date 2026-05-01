@@ -84,6 +84,7 @@ function SettingsContent() {
   const [addError, setAddError] = useState("");
   const [adding, setAdding] = useState(false);
   const [isPro, setIsPro] = useState(false);
+  const [planInfo, setPlanInfo] = useState<{ plan: string; isFree: boolean; monthlyUsage: number; monthlyLimit: number | null } | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -94,6 +95,7 @@ function SettingsContent() {
       setEmail(settings.recipientEmail ?? "");
       setCompanyList(Array.isArray(comps) ? comps : []);
       setIsPro(sub.plan === "pro" && sub.paid === true);
+      setPlanInfo({ plan: sub.plan, isFree: sub.isFree, monthlyUsage: sub.monthlyUsage, monthlyLimit: sub.monthlyLimit });
       setLoading(false);
     });
   }, []);
@@ -265,6 +267,56 @@ function SettingsContent() {
           V računovodskem programu (Minimax, Birokrat, Pantheon…) poiščite nastavitve za uvoz računov po emailu. Program dodeli poseben email naslov za vsako podjetje.
         </p>
       </div>
+
+      {/* ── CURRENT PLAN ── */}
+      {planInfo && (
+        <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-2xl p-6 mt-5">
+          <div className="flex items-center gap-3 mb-3">
+            <span className="text-2xl">💳</span>
+            <h2 className="font-bold text-gray-900 dark:text-white">Trenutni paket</h2>
+          </div>
+          {planInfo.isFree ? (
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <p className="font-semibold text-gray-900 dark:text-white">Brezplačen paket</p>
+                  <p className="text-sm text-gray-500 dark:text-slate-400">
+                    {planInfo.monthlyUsage}/{planInfo.monthlyLimit} računi ta mesec
+                  </p>
+                </div>
+                <a href="/upgrade" className="text-sm font-bold text-blue-600 dark:text-blue-400 hover:underline whitespace-nowrap">
+                  Nadgradi →
+                </a>
+              </div>
+              {planInfo.monthlyLimit !== null && (
+                <div className="h-2 bg-gray-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all ${planInfo.monthlyUsage >= planInfo.monthlyLimit ? "bg-orange-500" : "bg-blue-500"}`}
+                    style={{ width: `${Math.min(100, (planInfo.monthlyUsage / planInfo.monthlyLimit) * 100)}%` }}
+                  />
+                </div>
+              )}
+              <p className="text-xs text-gray-500 dark:text-slate-400 mt-3">
+                Brezplačen paket — 3 računi/mesec. <a href="/upgrade" className="text-blue-600 dark:text-blue-400 font-semibold hover:underline">Nadgradite za neomejeno obdelavo.</a>
+              </p>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-semibold text-gray-900 dark:text-white capitalize">
+                  {planInfo.plan === "basic" ? "Osnovni paket" : planInfo.plan === "pro" ? "PRO paket" : planInfo.plan === "trial" ? "Preizkusna doba" : planInfo.plan}
+                </p>
+                <p className="text-sm text-gray-500 dark:text-slate-400">Neomejeno pošiljanje računov</p>
+              </div>
+              {(planInfo.plan === "expired" || planInfo.plan === "canceled") && (
+                <a href="/upgrade" className="text-sm font-bold text-blue-600 dark:text-blue-400 hover:underline">
+                  Obnovi →
+                </a>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

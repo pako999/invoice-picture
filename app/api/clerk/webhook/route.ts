@@ -28,6 +28,7 @@ export async function POST(req: NextRequest) {
   }
 
   if (event.type === "user.created") {
+    // getOrCreateSubscription now defaults to "free" plan for new users
     await getOrCreateSubscription(event.data.id);
   }
 

@@ -3,7 +3,7 @@ import {
 } from "drizzle-orm/pg-core";
 
 export const statusEnum = pgEnum("invoice_status", ["pending", "sent", "failed"]);
-export const planEnum = pgEnum("subscription_plan", ["trial", "basic", "pro", "expired", "canceled"]);
+export const planEnum = pgEnum("subscription_plan", ["trial", "basic", "pro", "expired", "canceled", "free"]);
 
 export const subscriptions = pgTable("subscriptions", {
   id: serial("id").primaryKey(),
