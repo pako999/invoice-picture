@@ -4,9 +4,7 @@ const isProtected = createRouteMatcher(["/scan(.*)", "/invoices(.*)", "/settings
 
 export default clerkMiddleware(async (auth, req) => {
   if (isProtected(req)) {
-    await auth.protect({
-      unauthenticatedUrl: new URL("/", req.url).toString(),
-    });
+    await auth.protect();
   }
 });
 
