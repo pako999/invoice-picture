@@ -28,6 +28,7 @@
     "react-dom": "19.1.0",
     "resend": "^6.12.2",
     "superjson": "^1.13.3",
+    "svix": "^1.92.2",
     "zod": "^4.2.1"
   },
   "devDependencies": {

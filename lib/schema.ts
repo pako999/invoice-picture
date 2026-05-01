@@ -3,6 +3,22 @@ import {
 } from "drizzle-orm/pg-core";
 
 export const statusEnum = pgEnum("invoice_status", ["pending", "sent", "failed"]);
+export const planEnum = pgEnum("subscription_plan", ["trial", "basic", "pro", "expired", "canceled"]);
+
+export const subscriptions = pgTable("subscriptions", {
+  id: serial("id").primaryKey(),
+  clerkUserId: varchar("clerkUserId", { length: 255 }).notNull().unique(),
+  plan: planEnum("plan").default("trial").notNull(),
+  trialStartedAt: timestamp("trialStartedAt").defaultNow().notNull(),
+  trialEndsAt: timestamp("trialEndsAt").notNull(),
+  currentPeriodEnd: timestamp("currentPeriodEnd"),
+  paddleCustomerId: varchar("paddleCustomerId", { length: 64 }),
+  paddleSubscriptionId: varchar("paddleSubscriptionId", { length: 64 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+});
+
+export type Subscription = typeof subscriptions.$inferSelect;
 
 // No users table — Clerk manages users
 // We only store settings and invoices per Clerk userId (string)

@@ -3,6 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { getDb } from "@/lib/db";
 import { invoices, userSettings, companies } from "@/lib/schema";
 import { sendInvoiceEmail } from "@/lib/resend";
+import { getStatus } from "@/lib/subscription";
 import { eq, and } from "drizzle-orm";
 import { z } from "zod";
 
@@ -17,6 +18,19 @@ const schema = z.object({
 export async function POST(req: NextRequest) {
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const status = await getStatus(userId);
+  if (!status.canSend) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Preizkusna doba je potekla. Za nadaljevanje pošiljanja računov nadgradite paket.",
+        code: "subscription_required",
+        plan: status.plan,
+      },
+      { status: 402 },
+    );
+  }
 
   try {
     const data = schema.parse(await req.json());

@@ -1,9 +1,9 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { PaddleCheckoutButton } from "@/components/paddle-checkout";
 import {
   Check,
   FileText,
@@ -383,9 +383,14 @@ export default function Home() {
                 )}
               </CardHeader>
               <CardContent>
-                <Button variant="outline" className="w-full mb-6">
-                  Začni mesečno →
-                </Button>
+                <PaddleCheckoutButton
+                  tier="basic"
+                  billing={isYearly ? "yearly" : "monthly"}
+                  variant="outline"
+                  className="w-full mb-6"
+                >
+                  Začni 7-dnevno preizkušnjo →
+                </PaddleCheckoutButton>
                 <ul className="space-y-3">
                   {[
                     "Neomejeno fotografiranje računov",
@@ -428,9 +433,13 @@ export default function Home() {
                 )}
               </CardHeader>
               <CardContent>
-                <Button className="w-full mb-6 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
-                  Začni PRO →
-                </Button>
+                <PaddleCheckoutButton
+                  tier="pro"
+                  billing={isYearly ? "yearly" : "monthly"}
+                  className="w-full mb-6 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+                >
+                  Začni 7-dnevno preizkušnjo →
+                </PaddleCheckoutButton>
                 <ul className="space-y-3">
                   {[
                     "Vse iz osnovnega paketa",

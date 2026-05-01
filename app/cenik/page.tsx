@@ -2,9 +2,9 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Check } from "lucide-react";
+import { PaddleCheckoutButton } from "@/components/paddle-checkout";
 
 const basicFeatures = [
   "Neomejeno fotografiranje računov",
@@ -92,7 +92,14 @@ export default function Cenik() {
               {isYearly && <p className="text-sm text-green-600 mt-2">Prihranek: {basicMonthlySavings} € letno</p>}
             </CardHeader>
             <CardContent>
-              <Button variant="outline" className="w-full mb-6">Začni mesečno →</Button>
+              <PaddleCheckoutButton
+                tier="basic"
+                billing={isYearly ? "yearly" : "monthly"}
+                variant="outline"
+                className="w-full mb-6"
+              >
+                Začni 7-dnevno preizkušnjo →
+              </PaddleCheckoutButton>
               <ul className="space-y-3">
                 {basicFeatures.map((f) => (
                   <li key={f} className="flex items-start gap-2">
@@ -122,9 +129,13 @@ export default function Cenik() {
               {isYearly && <p className="text-sm text-green-600 mt-2">Prihranek: {proMonthlySavings} € letno</p>}
             </CardHeader>
             <CardContent>
-              <Button className="w-full mb-6 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
-                Začni PRO →
-              </Button>
+              <PaddleCheckoutButton
+                tier="pro"
+                billing={isYearly ? "yearly" : "monthly"}
+                className="w-full mb-6 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+              >
+                Začni 7-dnevno preizkušnjo →
+              </PaddleCheckoutButton>
               <ul className="space-y-3">
                 {proFeatures.map((f, i) => (
                   <li key={f} className="flex items-start gap-2">

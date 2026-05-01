@@ -112,6 +112,10 @@ export default function ScanPage() {
         body: JSON.stringify(body),
       });
       const json = await res.json();
+      if (res.status === 402 || json.code === "subscription_required") {
+        window.location.href = "/upgrade";
+        return;
+      }
       if (!res.ok || !json.success) throw new Error(json.error ?? "Napaka");
       setStatus("ok");
       setFile(null);

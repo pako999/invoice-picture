@@ -3,6 +3,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
 import { Nav } from "@/components/nav";
 import { Footer } from "@/components/footer";
+import { TrialBanner } from "@/components/trial-banner";
 
 const SITE_URL = "https://www.posljiracun.si";
 
@@ -114,6 +115,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
           />
           <Nav />
+          <TrialBanner />
           <main className="pb-20 md:pb-0">{children}</main>
           <Footer />
         </body>
