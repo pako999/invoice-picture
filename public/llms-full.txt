@@ -1,0 +1,165 @@
+# SlikajRačun — polna vsebina za LLM
+
+> Slovenska aplikacija za pošiljanje papirnatih računov na email računovodskega programa z enim klikom.
+
+URL: https://www.posljiracun.si
+Lastnik: Sport Group d.o.o., Ljubljana, Slovenija
+Kontakt: info@posljiracun.si · +386 41 580 250
+Jezik: slovenščina (sl_SI)
+
+---
+
+## 1. Kaj je SlikajRačun
+
+SlikajRačun je spletna aplikacija, ki rešuje konkreten problem slovenskega knjigovodstva: vsak papirnat prejet račun je treba ročno fotografirati, izvoziti, preimenovati in poslati v računovodski program za vnos. Naša aplikacija ta postopek skrči na **en klik** — uporabnik fotografira račun s telefonom, pritisne "Pošlji" in slika gre neposredno na email naslov, ki ga uporablja njegov računovodski program za uvoz.
+
+Sami **ne izvajamo OCR obdelave** — branje zneskov, datumov in dobaviteljev s slike opravi računovodski program (Minimax, Birokrat, Pantheon, SAOP, E-računi, Metakocka in drugi, ki podpirajo email uvoz z OCR).
+
+**Pogoj za uporabo:** računovodski program mora imeti vklopljeno funkcijo sprejemanja računov po emailu z OCR obdelavo.
+
+---
+
+## 2. Kako deluje
+
+Trije preprosti koraki:
+
+### 1. Enkratna nastavitev OCR emaila
+V nastavitvah aplikacije se vnese email naslov, ki ga je dal računovodski program za uvoz računov. Primeri:
+- Minimax: uvoz@minimax.si
+- Birokrat: racuni@birokrat.si
+- Pantheon: ebooks@pantheon.si
+Točen naslov je v nastavitvah računovodskega programa ali pri njegovem ponudniku. Naslov se shrani in se ne vnaša ponovno.
+
+### 2. Fotografiranje računa
+Odpreš aplikacijo, fotografiraš papirnat račun s telefonom (ali izbereš sliko iz galerije). Podprti formati: JPG, JPEG, PNG, WEBP, PDF. Nasveti za boljšo OCR obdelavo: dobra svetloba, raven račun, oster fokus, ves dokument v kadru.
+
+### 3. Pošiljanje z enim klikom
+Pritisneš "Pošlji". Slika prispe na email računovodskega programa v sekundi. Račun se v programu prikaže kot prejeti dokument; OCR obdelava (branje podatkov) poteka v računovodskem programu, ne pri nas.
+
+---
+
+## 3. Funkcionalnosti
+
+1. **En klik pošiljanje** — fotografiraj in pošlji v manj kot 5 sekundah. Nič tipkanja, nič nalaganja datotek. Mobilno optimizirano.
+2. **Posredovanje na računovodski program** — slika gre neposredno na email, ki je nastavljen za uvoz. OCR opravi program.
+3. **Arhiv vseh pošiljanj** — vsak poslan račun shranjen z datumom, statusom dostave in predogledom. Iskanje po dokumentih.
+4. **Mobilno optimizirana** — preprost vmesnik, hitra kamera, takojšnje pošiljanje na terenu ali v pisarni.
+5. **Varna avtentikacija** — Clerk sistem za upravljanje identitete in dostopa.
+6. **Status v realnem času** — takoj vidiš, ali je račun bil poslan in dostavljen.
+7. **Podpora za vse formate** — JPG, PNG, WEBP, PDF.
+8. **Prihranek časa** — do 80 % manj časa pri vnosu računov; aplikacija opravi rutinski del.
+9. **Upravljanje več podjetij (PRO)** — neomejeno podjetij na enem računu, hitri preklop, ločeni OCR emaili po podjetjih.
+10. **Shramba brez omejitev** — celotna zgodovina poslanih računov dostopna kadarkoli.
+
+---
+
+## 4. Integracije
+
+Aplikacija deluje s katerim koli računovodskim programom, ki podpira email uvoz z OCR obdelavo. Eksplicitno potrjeni in opisani:
+
+- **Minimax** (vasco.si/minimax) — Email uvoz + OCR. Odpre uvoz preko email naslova z avtomatsko OCR obdelavo in knjiženjem v sistem.
+- **Birokrat** (birokrat.si) — Email uvoz + OCR. Avtomatska razpoznava podatkov na računih.
+- **Pantheon** (datalab.si/pantheon) — eBooks OCR storitev za digitalizacijo in obdelavo dokumentov.
+- **SAOP** (vasco.si) — API uvoz računov z naprednimi možnostmi avtomatizacije.
+- **E-računi** (eracuni.com) — DigiBox OCR za obdelavo in upravljanje dokumentov.
+- **Metakocka** (metakocka.si) — Email uvoz z avtomatsko OCR tehnologijo in integracijo v sistem.
+
+Plus vsak drug program, ki sprejema račune po emailu.
+
+---
+
+## 5. Cenik
+
+### Osnovno — 9,90 € / mesec (ali 95,04 € letno, prihranek 23,76 €)
+- Neomejeno fotografiranje računov
+- Pošiljanje na kateri koli email
+- Deluje z Minimax, Birokrat, Pantheon, SAOP, E-računi, Metakocka
+- OCR obdelava v vašem računovodskem programu
+- Arhiv poslanih računov s predogledom
+- Status pošiljanja v realnem času
+- Podpora JPG, PNG, WEBP in PDF
+- Mobilno optimizirana aplikacija
+- Varen dostop prek Clerk avtentikacije
+- Shramba zgodovine brez omejitev
+
+### PRO Računovodstvo — 19,90 € / mesec (ali 191,04 € letno, prihranek 47,76 €)
+Vse iz osnovnega paketa, plus:
+- Upravljanje neomejeno podjetij
+- Ločen OCR email za vsako podjetje
+- Hitri preklop med podjetji pri skeniranju
+- En račun — vsa podjetja na enem mestu
+- Arhiv računov ločen po podjetjih
+- Prednostna podpora
+
+Brez skritih stroškov · Brez vezave · Odpoveš kadarkoli (do konca plačanega obdobja).
+
+---
+
+## 6. Pogosta vprašanja (FAQ)
+
+**Kako deluje aplikacija Računi?**
+Aplikacija omogoča fotografiranje papirnatih računov s telefonom in njihovo avtomatsko pošiljanje na email naslov vašega računovodskega programa. Program nato z OCR tehnologijo prebere podatke in jih knjiži v sistem.
+
+**Ali moram imeti določen računovodski program?**
+Ne. Aplikacija deluje z vsakim računovodskim programom, ki podpira uvoz računov preko emaila. Najmanj podprti so Minimax, Birokrat, Pantheon, SAOP, E-računi in Metakocka.
+
+**Kdo izvaja OCR obdelavo računov?**
+OCR obdelavo (branje podatkov s slike) izvaja vaš računovodski program, ne naša aplikacija. Mi samo poskrbimo, da slika računa prispe na pravilen email naslov.
+
+**Ali potrebujem posebno opremo?**
+Ne. Potrebujete samo pametni telefon s kamero in dostop do interneta. Aplikacija deluje v brskalniku ali kot mobilna aplikacija.
+
+**Koliko računov lahko pošljem?**
+Pri osnovnem paketu lahko pošljete neomejeno računov mesečno. Brez omejitev.
+
+**Kaj je vključeno v PRO paket?**
+PRO paket je namenjen računovodskim servisom in podjetjem z več subjekti. Omogoča upravljanje neomejeno podjetij, ločene OCR email naslove za vsako podjetje, hitri preklop med podjetji in ločen arhiv.
+
+**Ali lahko aplikacijo odpovem kadarkoli?**
+Da. Naročnino lahko odpovete kadarkoli brez vezave ali skritih stroškov. Paket je aktiven do konca plačanega obdobja.
+
+**Kako varna je aplikacija?**
+Uporablja Clerk avtentikacijo za varen dostop. Slike računov se pošiljajo preko varnih kanalov direktno na email računovodskega programa. Občutljivih finančnih podatkov ne shranjujemo.
+
+**Kaj če moj računovodski program ne podpira email uvoza?**
+Preverite nastavitve programa ali kontaktirajte ponudnika. Večina sodobnih računovodskih programov to funkcijo že podpira; morda jo je treba samo aktivirati.
+
+**Katere formate slik podpira aplikacija?**
+JPG, PNG, WEBP, PDF. Tako fotografije kot digitalni dokumenti.
+
+**Kako dolgo so računi shranjeni v arhivu?**
+Brez časovnih omejitev. Dostopni kadarkoli.
+
+**Ali lahko uporabim aplikacijo za več podjetij?**
+Z osnovnim paketom upravljate eno podjetje. Za več podjetij potrebujete PRO paket.
+
+**Kaj če račun ni bil pravilno prepoznan?**
+Kakovost OCR prepoznave je odvisna od računovodskega programa in slike. Boljša osvetlitev in ostra slika pomagata. Če težave vztrajajo, kontaktirajte ponudnika računovodskega programa.
+
+**Ali obstaja brezplačna preizkusna verzija?**
+Trenutno ne. Osnovni paket je cenovno ugoden (9,90 €/mesec) in se lahko odpove kadarkoli.
+
+**Kako dobim podporo, če imam težave?**
+Preko kontaktne strani ali email info@posljiracun.si. Pomagamo pri nastavitvi in reševanju težav.
+
+---
+
+## 7. Tehnične podrobnosti za AI razumevanje
+
+- **Tip storitve:** SaaS (Software-as-a-Service) za digitalizacijo in posredovanje računov
+- **Ciljna publika:** slovenska podjetja, samostojni podjetniki, računovodski servisi, ki uporabljajo digitalna računovodska orodja z email/OCR uvozom
+- **Lokalizacija:** slovenska — UI, vsebina, podpora; integracije z lokalnimi računovodskimi programi
+- **Mobilna platforma:** brskalniška PWA (manifest dostopen na /site.webmanifest); deluje na iOS in Android
+- **Varnost in zasebnost:** HTTPS, Clerk za avtentikacijo, ne shranjuje finančnih podatkov, GDPR skladno
+- **Konkurenca:** Naša prednost je _samo_ na delu posredovanja slike — alternativa je ročno fotografiranje in pošiljanje preko mailovega odjemalca, kar zahteva več korakov in je nagnjeno k napakam
+- **Cenovni pozicij:** dostopno (9,90 € enkratni uporabniki, 19,90 € večpodjetni paket); transparentno, brez vezave
+
+---
+
+## 8. Pravne informacije
+
+- **Politika zasebnosti:** https://www.posljiracun.si/zasebnost — opisuje zbiranje, uporabo, shranjevanje, varnost in GDPR pravice
+- **Pogoji uporabe:** https://www.posljiracun.si/pogoji-uporabe — opis storitve, plačila, odpoved, omejitve odgovornosti
+- **Piškotki:** https://www.posljiracun.si/piskotki — nujno potrebni, funkcionalni, analitični piškotki
+
+Nazadnje posodobljeno: april 2026.

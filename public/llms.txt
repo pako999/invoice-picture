@@ -1,0 +1,35 @@
+# SlikajRačun
+
+> Slovenska aplikacija, ki s telefona pošlje papirnat račun na email računovodskega programa z enim klikom. OCR obdelavo izvede program (Minimax, Birokrat, Pantheon, SAOP, E-računi, Metakocka), aplikacija samo posreduje sliko.
+
+SlikajRačun (posljiracun.si) rešuje konkretno težavo slovenskega knjigovodstva: vsak papirnat račun je treba ročno fotografirati, izvoziti, preimenovati in poslati v računovodski program. Naša aplikacija to skrči na 1 klik — fotografiraš in pošlješ. Email naslov za uvoz se nastavi enkrat.
+
+Pogoj za uporabo: računovodski program, ki podpira sprejemanje računov po emailu z OCR (Minimax, Birokrat, Pantheon, SAOP, E-računi, Metakocka in vsak drug, ki ima ta vmesnik).
+
+Lastništvo: Sport Group d.o.o., Ljubljana, Slovenija. Kontakt: info@posljiracun.si, 041 580 250.
+
+## Glavne strani
+
+- [Domov](https://www.posljiracun.si/): hero, integracije, kako deluje, funkcionalnosti, cenik
+- [Kako deluje](https://www.posljiracun.si/kako-deluje): 3-koračni proces — nastavitev OCR emaila, fotografiranje računa, pošiljanje z enim klikom
+- [Funkcionalnosti](https://www.posljiracun.si/funkcionalnosti): 10 ključnih funkcij — en-klik pošiljanje, arhiv s predogledom, status v realnem času, podpora JPG/PNG/WEBP/PDF, varna Clerk avtentikacija
+- [Integracije](https://www.posljiracun.si/integracije): podprti računovodski programi z opisi posameznih OCR storitev
+- [Cenik](https://www.posljiracun.si/cenik): Osnovno 9,90 €/mesec ali PRO Računovodstvo 19,90 €/mesec; letno -20 %; brez vezave
+
+## Podpora
+
+- [Pogosta vprašanja](https://www.posljiracun.si/pogosta-vprasanja): 15 odgovorov na najpogostejša vprašanja
+- [Navodila za uporabo](https://www.posljiracun.si/navodila-za-uporabo): podrobna navodila za vsak korak
+- [Pomoč pri nastavitvi](https://www.posljiracun.si/pomoc-pri-nastavitvi): pomoč pri začetni konfiguraciji in povezavi z računovodskim programom
+- [Kontakt](https://www.posljiracun.si/contact): info@posljiracun.si · 041 580 250
+
+## Pravno
+
+- [Politika zasebnosti](https://www.posljiracun.si/zasebnost): GDPR, shranjevanje, varnost
+- [Pogoji uporabe](https://www.posljiracun.si/pogoji-uporabe): pravna pravila storitve
+- [Politika piškotkov](https://www.posljiracun.si/piskotki): vrste in upravljanje piškotkov
+
+## Optional
+
+- [Sitemap](https://www.posljiracun.si/sitemap.xml)
+- [Polna vsebina za LLM](https://www.posljiracun.si/llms-full.txt)
