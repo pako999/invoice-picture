@@ -6,13 +6,13 @@ import { getDb } from "@/lib/db";
 import { subscriptions } from "@/lib/schema";
 import { getOrCreateSubscription } from "@/lib/subscription";
 
-const BUNDLE_ID = process.env.APPLE_BUNDLE_ID ?? "si.futurecode.slikajracun";
+const BUNDLE_ID = process.env.APPLE_BUNDLE_ID ?? "si.posljiracun.app";
 
 const PRODUCT_PLAN_MAP: Record<string, "basic" | "pro"> = {
-  "si.futurecode.slikajracun.basic_monthly": "basic",
-  "si.futurecode.slikajracun.basic_yearly":  "basic",
-  "si.futurecode.slikajracun.pro_monthly":   "pro",
-  "si.futurecode.slikajracun.pro_yearly":    "pro",
+  "si.posljiracun.app.basic_monthly": "basic",
+  "si.posljiracun.app.basic_yearly":  "basic",
+  "si.posljiracun.app.pro_monthly":   "pro",
+  "si.posljiracun.app.pro_yearly":    "pro",
 };
 
 async function makeAppleJWT(): Promise<string> {
