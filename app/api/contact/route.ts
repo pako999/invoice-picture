@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
       ? `Kontakt — ${data.subject.trim()} · ${data.name}`
       : `Kontaktni obrazec — ${data.name}${data.company ? ` (${data.company})` : ""}`;
 
-    await resend.emails.send({
+    const { error: sendError } = await resend.emails.send({
       from,
       to: "info@posljiracun.si",
       replyTo: data.email,
@@ -44,6 +44,8 @@ export async function POST(req: NextRequest) {
         </div>
       `,
     });
+
+    if (sendError) throw new Error(sendError.message ?? "Napaka pri pošiljanju.");
 
     return NextResponse.json({ success: true });
   } catch (err) {
