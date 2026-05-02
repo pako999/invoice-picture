@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { PaddleCheckoutButton } from "@/components/paddle-checkout";
 import {
   Check,
+  X,
   FileText,
   Camera,
   Mail,
@@ -16,7 +17,6 @@ import {
   Archive,
   AlertCircle,
   ExternalLink,
-  Rocket,
 } from "lucide-react";
 
 const integrations = [
@@ -334,25 +334,6 @@ export default function Home() {
               Prihranite dragoceni čas pri ročnem vnosu računov. En klik nadomesti minute tipkanja.
             </p>
 
-            <div className="relative max-w-3xl mx-auto mb-10">
-              <div className="absolute -inset-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-violet-500 rounded-2xl blur-lg opacity-20" />
-              <div className="relative bg-white border border-slate-200 rounded-2xl px-8 py-7 shadow-sm">
-                <div className="flex flex-col sm:flex-row items-center gap-5 text-center sm:text-left">
-                  <div className="flex-shrink-0 w-14 h-14 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-md">
-                    <Rocket className="w-7 h-7 text-white" />
-                  </div>
-                  <div className="flex-1">
-                    <div className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight mb-1">
-                      7 dni <span className="text-blue-600">brezplačno</span>
-                    </div>
-                    <p className="text-base text-slate-500">
-                      Preizkusite vse funkcije <strong className="text-slate-700">brez vnosa kreditne kartice</strong>. Odpovejte kadarkoli.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
             {/* Pricing Toggle */}
             <div className="flex items-center justify-center gap-4 mb-8">
               <span className={`text-lg ${!isYearly ? "font-semibold text-slate-900" : "text-slate-600"}`}>
@@ -382,15 +363,58 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+            {/* Free */}
             <Card className="border-slate-200">
               <CardHeader>
-                <CardTitle>Osnovno</CardTitle>
+                <CardTitle className="text-2xl">Brezplačen</CardTitle>
+                <CardDescription>Za občasno rabo</CardDescription>
+                <div className="mt-4">
+                  <span className="text-5xl font-bold">0 €</span>
+                  <span className="text-slate-600"> / mesec</span>
+                </div>
+                <p className="text-sm text-slate-500 mt-1">Za vedno brezplačno</p>
+              </CardHeader>
+              <CardContent>
+                <Link
+                  href="/sign-up"
+                  className="w-full mb-6 flex items-center justify-center px-4 py-2.5 rounded-lg border border-slate-300 hover:bg-slate-50 text-sm font-semibold transition-colors"
+                >
+                  Začni brezplačno →
+                </Link>
+                <ul className="space-y-3">
+                  {[
+                    { text: "Do 3 računi na mesec", ok: true },
+                    { text: "1 podjetje", ok: true },
+                    { text: "Pošiljanje na kateri koli email", ok: true },
+                    { text: "Deluje z Minimax, Birokrat, Pantheon…", ok: true },
+                    { text: "Arhiv poslanih računov s predogledom", ok: true },
+                    { text: "Neomejeno pošiljanje računov", ok: false },
+                    { text: "Več podjetij", ok: false },
+                  ].map((f) => (
+                    <li key={f.text} className="flex items-start gap-2">
+                      {f.ok
+                        ? <Check className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                        : <X className="w-5 h-5 text-slate-300 flex-shrink-0 mt-0.5" />}
+                      <span className={`text-sm ${f.ok ? "" : "text-slate-400"}`}>{f.text}</span>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+
+            {/* Basic */}
+            <Card className="border-2 border-blue-600 shadow-xl relative">
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                <Badge className="bg-blue-600 text-white border-0">Najbolj priljubljen</Badge>
+              </div>
+              <CardHeader>
+                <CardTitle className="text-2xl">Osnovni</CardTitle>
                 <CardDescription>
                   {isYearly ? "Letna obnova, kadarkoli odpoveš" : "Mesečna obnova, kadarkoli odpoveš"}
                 </CardDescription>
                 <div className="mt-4">
-                  <span className="text-5xl">{basicPrice} €</span>
+                  <span className="text-5xl font-bold">{basicPrice} €</span>
                   <span className="text-slate-600"> / {isYearly ? "leto" : "mesec"}</span>
                 </div>
                 {isYearly && (
@@ -401,14 +425,13 @@ export default function Home() {
                 <PaddleCheckoutButton
                   tier="basic"
                   billing={isYearly ? "yearly" : "monthly"}
-                  variant="outline"
-                  className="w-full mb-6"
+                  className="w-full mb-6 bg-blue-600 hover:bg-blue-700 text-white"
                 >
                   Začni 7-dnevno preizkušnjo →
                 </PaddleCheckoutButton>
                 <ul className="space-y-3">
                   {[
-                    "Neomejeno fotografiranje računov",
+                    "Neomejeno pošiljanje računov",
                     "Pošiljanje na kateri koli email",
                     "Deluje z Minimax, Birokrat, Pantheon, SAOP, E-računi, Metakocka",
                     "OCR obdelava v vašem računovodskem programu",
@@ -416,8 +439,7 @@ export default function Home() {
                     "Status pošiljanja v realnem času",
                     "Podpora JPG, PNG, WEBP in PDF",
                     "Mobilno optimizirana aplikacija",
-                    "Varen dostop prek Clerk avtentikacije",
-                    "Shramba zgodovine brez omejitev",
+                    "1 podjetje",
                   ].map((feat) => (
                     <li key={feat} className="flex items-start gap-2">
                       <Check className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
@@ -428,19 +450,20 @@ export default function Home() {
               </CardContent>
             </Card>
 
-            <Card className="border-2 border-blue-600 shadow-xl relative">
+            {/* Pro */}
+            <Card className="border-slate-200 relative">
               <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                 <Badge className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white border-0">
                   🏢 PRO · Računovodstvo
                 </Badge>
               </div>
               <CardHeader>
-                <CardTitle>PRO</CardTitle>
+                <CardTitle className="text-2xl">PRO</CardTitle>
                 <CardDescription>
                   {isYearly ? "Letna obnova, kadarkoli odpoveš" : "Mesečna obnova, kadarkoli odpoveš"}
                 </CardDescription>
                 <div className="mt-4">
-                  <span className="text-5xl">{proPrice} €</span>
+                  <span className="text-5xl font-bold">{proPrice} €</span>
                   <span className="text-slate-600"> / {isYearly ? "leto" : "mesec"}</span>
                 </div>
                 {isYearly && (
@@ -463,8 +486,6 @@ export default function Home() {
                     "Hitri preklop med podjetji pri skeniranju",
                     "En račun — vsa podjetja na enem mestu",
                     "Arhiv računov ločen po podjetjih",
-                    "Mobilno optimizirana aplikacija",
-                    "Varen dostop prek Clerk avtentikacije",
                     "Prednostna podpora",
                   ].map((feat, i) => (
                     <li key={feat} className="flex items-start gap-2">
