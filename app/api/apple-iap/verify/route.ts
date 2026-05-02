@@ -10,7 +10,9 @@ const BUNDLE_ID = process.env.APPLE_BUNDLE_ID ?? "si.futurecode.slikajracun";
 
 const PRODUCT_PLAN_MAP: Record<string, "basic" | "pro"> = {
   "si.futurecode.slikajracun.basic_monthly": "basic",
-  "si.futurecode.slikajracun.pro_monthly": "pro",
+  "si.futurecode.slikajracun.basic_yearly":  "basic",
+  "si.futurecode.slikajracun.pro_monthly":   "pro",
+  "si.futurecode.slikajracun.pro_yearly":    "pro",
 };
 
 async function makeAppleJWT(): Promise<string> {
