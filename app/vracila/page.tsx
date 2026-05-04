@@ -6,7 +6,7 @@ import { pageMetadata } from "@/lib/seo";
 export const metadata = pageMetadata({
   title: "Politika vračil",
   description: "30-dnevna garancija vračila denarja. Kako zahtevati vračilo, kdaj je vračilo mogoče in kako preklicati naročnino na SlikajRačun.",
-  path: "/vracila",
+  slug: "vracila",
 });
 
 export default function Vracila() {

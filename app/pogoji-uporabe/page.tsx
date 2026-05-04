@@ -5,7 +5,7 @@ import { pageMetadata } from "@/lib/seo";
 export const metadata = pageMetadata({
   title: "Pogoji uporabe",
   description: "Pogoji uporabe aplikacije SlikajRačun: opis storitve, plačilni pogoji, odpoved naročnine, omejitve odgovornosti, intelektualna lastnina.",
-  path: "/pogoji-uporabe",
+  slug: "pogoji-uporabe",
 });
 
 export default function Pogoji() {

@@ -4,49 +4,48 @@ import "./globals.css";
 import { Nav } from "@/components/nav";
 import { Footer } from "@/components/footer";
 import { TrialBanner } from "@/components/trial-banner";
+import { getDict } from "@/lib/i18n";
+import { SITE_URL } from "@/lib/i18n/config";
 
-const SITE_URL = "https://www.posljiracun.si";
+const slDict = getDict("sl");
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "SlikajRačun — Pošlji račun z enim klikom",
+    default: slDict.home.metaTitle,
     template: "%s — SlikajRačun",
   },
-  description:
-    "Fotografiraj papirnat račun in ga pošlji na email računovodskega programa v sekundi. Deluje z Minimax, Birokrat, Pantheon, SAOP, E-računi in Metakocka.",
+  description: slDict.home.metaDescription,
   keywords: [
-    "računi",
-    "OCR računi",
-    "skeniranje računov",
-    "Minimax email",
-    "Birokrat OCR",
-    "Pantheon",
-    "računovodstvo",
-    "fotografiranje računov",
-    "elektronski računi",
-    "Slovenija",
+    "računi", "OCR računi", "skeniranje računov",
+    "Minimax email", "Birokrat OCR", "Pantheon",
+    "računovodstvo", "fotografiranje računov",
+    "elektronski računi", "Slovenija",
   ],
   authors: [{ name: "Sport Group d.o.o." }],
   creator: "Sport Group d.o.o.",
   publisher: "Sport Group d.o.o.",
   alternates: {
     canonical: "/",
+    languages: {
+      "sl-SI": "/",
+      "en":    "/en",
+      "x-default": "/",
+    },
   },
   openGraph: {
     type: "website",
     locale: "sl_SI",
+    alternateLocale: ["en_US"],
     url: SITE_URL,
     siteName: "SlikajRačun",
-    title: "SlikajRačun — Pošlji račun z enim klikom",
-    description:
-      "Fotografiraj papirnat račun in ga pošlji na email računovodskega programa v sekundi. Deluje z Minimax, Birokrat, Pantheon, SAOP, E-računi in Metakocka.",
+    title: slDict.home.metaTitle,
+    description: slDict.home.metaDescription,
   },
   twitter: {
     card: "summary_large_image",
-    title: "SlikajRačun — Pošlji račun z enim klikom",
-    description:
-      "Fotografiraj papirnat račun in ga pošlji na email računovodskega programa v sekundi.",
+    title: slDict.home.metaTitle,
+    description: slDict.home.metaDescription,
   },
   robots: {
     index: true,
@@ -95,7 +94,7 @@ const websiteJsonLd = {
   "@type": "WebSite",
   name: "SlikajRačun",
   url: SITE_URL,
-  inLanguage: "sl-SI",
+  inLanguage: ["sl-SI", "en"],
   publisher: { "@id": `${SITE_URL}#organization` },
   potentialAction: {
     "@type": "SearchAction",
@@ -105,18 +104,17 @@ const websiteJsonLd = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  // Root layout: <html lang="sl"> by default. Nav/Footer auto-detect
+  // locale from the URL (/en/* → English) and re-render accordingly.
+  // The /en subtree's client-side layout flips <html lang> to "en".
   return (
     <ClerkProvider>
       <html lang="sl" className="light" style={{ colorScheme: "light" }}>
         <body>
-          <script
-            type="application/ld+json"
-            dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
-          />
-          <script
-            type="application/ld+json"
-            dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
-          />
+          <script type="application/ld+json"
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }} />
+          <script type="application/ld+json"
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }} />
           <Nav />
           <TrialBanner />
           <main className="pb-20 md:pb-0">{children}</main>

@@ -8,7 +8,7 @@ import { pageMetadata } from "@/lib/seo";
 export const metadata = pageMetadata({
   title: "Navodila za uporabo",
   description: "Vodnik po aplikaciji SlikajRačun: nastavitev OCR emaila, nasveti za fotografiranje, postopek pošiljanja, arhiv in zgodovina, podprti formati.",
-  path: "/navodila-za-uporabo",
+  slug: "navodila-za-uporabo",
 });
 
 export default function Navodila() {
