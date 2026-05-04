@@ -8,7 +8,8 @@
     "start": "next start",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "check": "tsc --noEmit"
+    "check": "tsc --noEmit",
+    "grant-pro": "tsx --env-file .env.local scripts/grant-pro.ts"
   },
   "dependencies": {
     "@clerk/nextjs": "^7.2.7",
