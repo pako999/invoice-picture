@@ -142,20 +142,59 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Phone screenshot — fills column height on lg+, mobile keeps
-                a sensible max width. Source file: /public/hero-app.webp */}
+            {/* Phone mockup — pure CSS, no external image file */}
             <div className="relative flex justify-center lg:justify-end items-center">
               <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-indigo-500/10 to-purple-500/10 blur-3xl rounded-full" />
-              <div className="relative h-full flex items-center">
-                <Image
-                  src="/hero-app.webp"
-                  alt="Slikaj Račun mobilna aplikacija — zaslon za pošiljanje računa"
-                  width={420}
-                  height={860}
-                  priority
-                  sizes="(min-width: 1024px) 50vw, 90vw"
-                  className="w-auto max-w-full h-auto lg:h-full lg:max-h-[700px] object-contain drop-shadow-2xl"
-                />
+              <div className="relative w-[280px] sm:w-[320px] lg:w-[300px]">
+                {/* Phone frame */}
+                <div className="bg-slate-900 rounded-[2.5rem] p-3 shadow-2xl">
+                  {/* Notch */}
+                  <div className="absolute top-3 left-1/2 -translate-x-1/2 w-28 h-6 bg-slate-900 rounded-b-2xl z-10" />
+                  {/* Screen */}
+                  <div className="bg-white rounded-[2rem] overflow-hidden">
+                    {/* Status bar */}
+                    <div className="bg-slate-50 px-6 py-3 flex items-center justify-between">
+                      <span className="text-[10px] font-semibold text-slate-500">18:10</span>
+                      <span className="text-[10px] text-slate-400">5G</span>
+                    </div>
+                    {/* App header */}
+                    <div className="px-5 py-3 border-b border-slate-100 flex items-center gap-2">
+                      <div className="w-6 h-6 bg-blue-600 rounded-lg flex items-center justify-center">
+                        <Camera className="w-3.5 h-3.5 text-white" />
+                      </div>
+                      <span className="text-sm font-bold text-slate-800">Slikaj <span className="text-blue-600">Račun</span></span>
+                    </div>
+                    {/* Scan area */}
+                    <div className="px-5 py-6">
+                      <div className="border-2 border-dashed border-slate-200 rounded-2xl py-12 flex flex-col items-center gap-3">
+                        <div className="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center">
+                          <FileText className="w-6 h-6 text-slate-400" />
+                        </div>
+                        <p className="text-xs font-semibold text-slate-700">Dodaj račun</p>
+                        <p className="text-[10px] text-slate-400">JPG · PNG · WEBP</p>
+                      </div>
+                      {/* Action buttons */}
+                      <div className="flex gap-3 mt-5">
+                        <div className="flex-1 bg-slate-100 rounded-xl py-3 flex flex-col items-center gap-1.5">
+                          <Camera className="w-5 h-5 text-slate-600" />
+                          <span className="text-[10px] font-medium text-slate-600">Fotografiraj</span>
+                        </div>
+                        <div className="flex-1 bg-slate-100 rounded-xl py-3 flex flex-col items-center gap-1.5">
+                          <FileText className="w-5 h-5 text-slate-600" />
+                          <span className="text-[10px] font-medium text-slate-600">Galerija</span>
+                        </div>
+                      </div>
+                    </div>
+                    {/* Bottom bar */}
+                    <div className="px-5 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 flex items-center justify-center gap-2">
+                      <span className="text-white text-xs font-semibold">Pošlji račun</span>
+                    </div>
+                    {/* Home indicator */}
+                    <div className="flex justify-center py-2">
+                      <div className="w-24 h-1 bg-slate-200 rounded-full" />
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
