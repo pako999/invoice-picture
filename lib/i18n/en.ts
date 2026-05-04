@@ -37,6 +37,7 @@ const en: Dict = {
     productFeatures: "Features",
     productIntegrations: "Integrations",
     productPricing: "Pricing",
+    productBlog: "Blog",
     helpTitle: "Help",
     helpFAQ: "FAQ",
     helpUserGuide: "User guide",
