@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { auth, clerkClient } from "@clerk/nextjs/server";
 import { z } from "zod";
 import { getDb } from "@/lib/db";
 import { userSettings } from "@/lib/schema";
@@ -10,6 +10,33 @@ export const revalidate = 0;
 
 const NO_STORE = { "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0" };
 
+/** First time a signed-in user opens Settings, pre-fill the default
+ *  recipient email with their Clerk primary email — same as the
+ *  user.created webhook does for new sign-ups, but covers existing
+ *  users who signed up before this feature shipped. Idempotent: only
+ *  writes on the first call when the column is empty. */
+async function lazySeedDefaultEmail(userId: string): Promise<string | null> {
+  try {
+    const client = await clerkClient();
+    const user = await client.users.getUser(userId);
+    const primaryId = user.primaryEmailAddressId;
+    const primary = user.emailAddresses.find((e) => e.id === primaryId)
+      ?? user.emailAddresses[0];
+    const email = primary?.emailAddress ?? null;
+    if (!email) return null;
+
+    const db = getDb();
+    await db.insert(userSettings).values({
+      clerkUserId: userId,
+      recipientEmail: email,
+    });
+    return email;
+  } catch (e) {
+    console.warn("[settings GET] lazy seed failed:", e);
+    return null;
+  }
+}
+
 export async function GET() {
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401, headers: NO_STORE });
@@ -17,7 +44,15 @@ export async function GET() {
   try {
     const db = getDb();
     const [row] = await db.select().from(userSettings).where(eq(userSettings.clerkUserId, userId)).limit(1);
-    return NextResponse.json({ recipientEmail: row?.recipientEmail ?? "" }, { headers: NO_STORE });
+
+    // No row at all → first time opening settings on an existing
+    // pre-feature account. Pre-fill from the Clerk primary email.
+    if (!row) {
+      const email = await lazySeedDefaultEmail(userId);
+      return NextResponse.json({ recipientEmail: email ?? "" }, { headers: NO_STORE });
+    }
+
+    return NextResponse.json({ recipientEmail: row.recipientEmail ?? "" }, { headers: NO_STORE });
   } catch (err) {
     console.error("[settings GET]", err);
     return NextResponse.json({ recipientEmail: "", error: "db_error" }, { status: 500, headers: NO_STORE });
