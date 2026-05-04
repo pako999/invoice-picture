@@ -1,6 +1,24 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Invoice } from "@/lib/schema";
+
+type FilterMode = "all" | "week" | "month" | "custom";
+
+const FILTER_LABELS: Record<FilterMode, string> = {
+  all: "Vse",
+  week: "Ta teden",
+  month: "Ta mesec",
+  custom: "Po izbiri",
+};
+
+function fmtDateShort(d: Date) {
+  return d.toLocaleDateString("sl-SI", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
+function toInputDate(d: Date) {
+  // YYYY-MM-DD for <input type="date">
+  return d.toISOString().slice(0, 10);
+}
 
 function StatusBadge({ status }: { status: Invoice["status"] }) {
   const map = {
@@ -94,6 +112,10 @@ export default function InvoicesPage() {
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState<number | null>(null);
   const [preview, setPreview] = useState<Invoice | null>(null);
+  const [filter, setFilter] = useState<FilterMode>("all");
+  const [customFrom, setCustomFrom] = useState<string>(""); // YYYY-MM-DD
+  const [customTo, setCustomTo] = useState<string>("");
+  const [showRangePicker, setShowRangePicker] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -119,8 +141,66 @@ export default function InvoicesPage() {
     setDeleting(null);
   }
 
-  const sent = list.filter((i) => i.status === "sent").length;
-  const failed = list.filter((i) => i.status === "failed").length;
+  // Apply the active filter to produce the visible list
+  const filtered = useMemo(() => {
+    if (filter === "all") return list;
+    const now = new Date();
+    let from: Date;
+    let to: Date | null = null;
+    if (filter === "week") {
+      from = new Date(now);
+      from.setDate(now.getDate() - 7);
+    } else if (filter === "month") {
+      from = new Date(now);
+      from.setMonth(now.getMonth() - 1);
+    } else {
+      // custom
+      if (!customFrom) return list;
+      from = new Date(customFrom + "T00:00:00");
+      if (customTo) to = new Date(customTo + "T23:59:59");
+    }
+    return list.filter((i) => {
+      const d = new Date(i.createdAt);
+      if (d < from) return false;
+      if (to && d > to) return false;
+      return true;
+    });
+  }, [list, filter, customFrom, customTo]);
+
+  const sent = filtered.filter((i) => i.status === "sent").length;
+  const failed = filtered.filter((i) => i.status === "failed").length;
+
+  function pickFilter(mode: FilterMode) {
+    if (mode === "custom") {
+      // Default to last 30 days if nothing set yet
+      if (!customFrom) {
+        const d = new Date();
+        d.setMonth(d.getMonth() - 1);
+        setCustomFrom(toInputDate(d));
+      }
+      if (!customTo) setCustomTo(toInputDate(new Date()));
+      setShowRangePicker(true);
+    } else {
+      setShowRangePicker(false);
+      setFilter(mode);
+    }
+  }
+
+  function applyCustomRange() {
+    setFilter("custom");
+    setShowRangePicker(false);
+  }
+
+  function clearCustomRange() {
+    setCustomFrom("");
+    setCustomTo("");
+    setFilter("all");
+    setShowRangePicker(false);
+  }
+
+  const customLabel = filter === "custom" && customFrom
+    ? `${fmtDateShort(new Date(customFrom + "T00:00:00"))}${customTo ? " – " + fmtDateShort(new Date(customTo + "T00:00:00")) : ""}`
+    : FILTER_LABELS.custom;
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-10">
@@ -139,10 +219,76 @@ export default function InvoicesPage() {
         </button>
       </div>
 
+      {/* Filter pills */}
+      <div className="flex flex-wrap gap-2 mb-4">
+        {(["all", "week", "month", "custom"] as FilterMode[]).map((m) => {
+          const active = filter === m;
+          const label = m === "custom" ? customLabel : FILTER_LABELS[m];
+          return (
+            <button
+              key={m}
+              onClick={() => pickFilter(m)}
+              className={`px-4 py-2 rounded-full text-sm font-semibold border transition-colors ${
+                active
+                  ? "bg-blue-600 border-blue-600 text-white"
+                  : "bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-400 hover:border-blue-400"
+              }`}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Custom range picker */}
+      {showRangePicker && (
+        <div className="mb-6 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-2xl p-4">
+          <p className="text-sm font-bold text-gray-900 dark:text-white mb-3">Izberi datumsko obdobje</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <label className="flex flex-col gap-1">
+              <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">Od</span>
+              <input
+                type="date"
+                value={customFrom}
+                onChange={(e) => setCustomFrom(e.target.value)}
+                max={toInputDate(new Date())}
+                className="border border-gray-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-xs font-semibold text-gray-500 dark:text-slate-400">Do</span>
+              <input
+                type="date"
+                value={customTo}
+                onChange={(e) => setCustomTo(e.target.value)}
+                max={toInputDate(new Date())}
+                min={customFrom || undefined}
+                className="border border-gray-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </label>
+          </div>
+          <div className="flex gap-2 mt-4">
+            <button
+              onClick={applyCustomRange}
+              disabled={!customFrom}
+              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold py-2 rounded-lg disabled:opacity-50"
+            >
+              Potrdi
+            </button>
+            <button
+              onClick={clearCustomRange}
+              className="px-4 py-2 text-sm text-gray-500 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg border border-gray-200 dark:border-slate-700"
+            >
+              Počisti
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4 mb-8">
         {[
-          { label: "Skupaj", value: list.length, cls: "bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-700" },
+          { label: "Skupaj", value: filtered.length, cls: "bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-700" },
           { label: "Poslano", value: sent, cls: "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-700 dark:text-green-400" },
           { label: "Napake", value: failed, cls: "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-700 dark:text-red-400" },
         ].map((s) => (
@@ -158,15 +304,21 @@ export default function InvoicesPage() {
           <div className="text-4xl mb-3">⏳</div>
           <p>Nalagam...</p>
         </div>
-      ) : list.length === 0 ? (
+      ) : filtered.length === 0 ? (
         <div className="text-center py-24 text-gray-400 dark:text-slate-500">
           <div className="text-5xl mb-4">📭</div>
-          <p className="text-lg font-semibold">Še ni poslanih računov</p>
-          <p className="text-sm mt-2">Pojdi na zavihek Skeniraj in pošlji prvi račun.</p>
+          <p className="text-lg font-semibold">
+            {list.length === 0 ? "Še ni poslanih računov" : "Ni računov v izbranem obdobju"}
+          </p>
+          <p className="text-sm mt-2">
+            {list.length === 0
+              ? "Pojdi na zavihek Skeniraj in pošlji prvi račun."
+              : "Spremeni filter, da prikažeš več računov."}
+          </p>
         </div>
       ) : (
         <div className="grid gap-3">
-          {list.map((inv) => (
+          {filtered.map((inv) => (
             <div
               key={inv.id}
               onClick={() => setPreview(inv)}
