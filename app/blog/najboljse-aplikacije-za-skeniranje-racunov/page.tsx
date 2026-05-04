@@ -34,7 +34,7 @@ export default function ComparisonBlog() {
     <div className="py-16 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 min-h-screen">
       <script type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }} />
-      <article className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+      <article className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <Link href="/blog" className="text-sm text-blue-600 hover:underline">← Vsi članki</Link>
 
         <header className="mt-6 mb-10">

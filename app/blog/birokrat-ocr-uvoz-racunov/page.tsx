@@ -80,7 +80,7 @@ export default function BirokratBlog() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }} />
       <script type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
-      <article className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+      <article className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <Link href="/blog" className="text-sm text-blue-600 hover:underline">← Vsi članki</Link>
 
         <header className="mt-6 mb-10">
