@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { localeUrl } from "@/lib/i18n/config";
+import { posts } from "@/lib/blog";
 
 const SITE_URL = "https://www.posljiracun.si";
 
@@ -23,6 +24,7 @@ const bilingualRoutes: { slug: string; priority: number; changeFrequency: Metada
   { slug: "zasebnost",                priority: 0.3, changeFrequency: "yearly" },
   { slug: "piskotki",                 priority: 0.3, changeFrequency: "yearly" },
   { slug: "vracila",                  priority: 0.3, changeFrequency: "yearly" },
+  { slug: "blog",                     priority: 0.8, changeFrequency: "weekly" },
 ];
 
 export default function sitemap(): MetadataRoute.Sitemap {
@@ -63,6 +65,16 @@ export default function sitemap(): MetadataRoute.Sitemap {
           "x-default": slUrl,
         },
       },
+    });
+  }
+
+  // Blog posts (Slovenian only — not yet translated to EN)
+  for (const p of posts) {
+    entries.push({
+      url: `${SITE_URL}/blog/${p.slug}`,
+      lastModified: new Date(p.publishedAt),
+      changeFrequency: "monthly",
+      priority: 0.7,
     });
   }
 

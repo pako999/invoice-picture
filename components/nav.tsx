@@ -86,6 +86,7 @@ export function Nav() {
       { href: localeUrl(locale, "integracije"),     label: t.integrations },
       { href: localeUrl(locale, "funkcionalnosti"), label: t.features },
       { href: localeUrl(locale, "cenik"),           label: t.pricing },
+      { href: localeUrl(locale, "blog"),            label: t.blog },
     ],
     [locale, t],
   );

@@ -18,6 +18,7 @@ const sl = {
     integrations: "Integracije",
     features: "Funkcionalnosti",
     pricing: "Cenik",
+    blog: "Blog",
     contact: "Kontakt",
     signIn: "Prijava",
     startScanning: "Začni skenirati",
