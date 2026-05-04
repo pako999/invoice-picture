@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import type { Invoice } from "@/lib/schema";
+import type { Invoice, Company } from "@/lib/schema";
 
 type FilterMode = "all" | "week" | "month" | "custom";
 
@@ -104,12 +104,16 @@ function PreviewModal({ inv, onClose }: { inv: Invoice; onClose: () => void }) {
   );
 }
 
+type CompanyFilter = "all" | "default" | number;
+
 export default function InvoicesPage() {
   const [list, setList] = useState<Invoice[]>([]);
+  const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState<number | null>(null);
   const [preview, setPreview] = useState<Invoice | null>(null);
   const [filter, setFilter] = useState<FilterMode>("all");
+  const [companyFilter, setCompanyFilter] = useState<CompanyFilter>("all");
   const [customFrom, setCustomFrom] = useState<string>("");
   const [customTo, setCustomTo] = useState<string>("");
   const [showRangePicker, setShowRangePicker] = useState(false);
@@ -117,11 +121,17 @@ export default function InvoicesPage() {
   async function load() {
     setLoading(true);
     try {
-      const res = await fetch("/api/invoices");
-      const data = await res.json();
-      setList(Array.isArray(data) ? data : []);
+      const [invRes, compRes] = await Promise.all([
+        fetch("/api/invoices"),
+        fetch("/api/companies"),
+      ]);
+      const invData = await invRes.json();
+      const compData = await compRes.json();
+      setList(Array.isArray(invData) ? invData : []);
+      setCompanies(Array.isArray(compData) ? compData : []);
     } catch {
       setList([]);
+      setCompanies([]);
     } finally {
       setLoading(false);
     }
@@ -139,7 +149,14 @@ export default function InvoicesPage() {
   }
 
   const filtered = useMemo(() => {
-    if (filter === "all") return list;
+    let rows = list;
+    if (companyFilter === "default") {
+      rows = rows.filter((i) => i.companyId == null);
+    } else if (typeof companyFilter === "number") {
+      rows = rows.filter((i) => i.companyId === companyFilter);
+    }
+
+    if (filter === "all") return rows;
     const now = new Date();
     let from: Date;
     let to: Date | null = null;
@@ -150,17 +167,17 @@ export default function InvoicesPage() {
       from = new Date(now);
       from.setMonth(now.getMonth() - 1);
     } else {
-      if (!customFrom) return list;
+      if (!customFrom) return rows;
       from = new Date(customFrom + "T00:00:00");
       if (customTo) to = new Date(customTo + "T23:59:59");
     }
-    return list.filter((i) => {
+    return rows.filter((i) => {
       const d = new Date(i.createdAt);
       if (d < from) return false;
       if (to && d > to) return false;
       return true;
     });
-  }, [list, filter, customFrom, customTo]);
+  }, [list, companyFilter, filter, customFrom, customTo]);
 
   const sent = filtered.filter((i) => i.status === "sent").length;
   const failed = filtered.filter((i) => i.status === "failed").length;
@@ -212,6 +229,49 @@ export default function InvoicesPage() {
           🔄 Refresh
         </button>
       </div>
+
+      {companies.length > 0 && (
+        <div className="flex flex-wrap gap-2 mb-3">
+          <button
+            onClick={() => setCompanyFilter("all")}
+            className={`px-4 py-2 rounded-full text-sm font-semibold border transition-colors ${
+              companyFilter === "all"
+                ? "bg-slate-900 border-slate-900 text-white"
+                : "bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-400 hover:border-blue-400"
+            }`}
+          >
+            🏢 All companies
+          </button>
+          {companies.map((c) => {
+            const active = companyFilter === c.id;
+            return (
+              <button
+                key={c.id}
+                onClick={() => setCompanyFilter(c.id)}
+                className={`px-4 py-2 rounded-full text-sm font-semibold border transition-colors ${
+                  active
+                    ? "bg-slate-900 border-slate-900 text-white"
+                    : "bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-400 hover:border-blue-400"
+                }`}
+              >
+                {c.name}
+              </button>
+            );
+          })}
+          {list.some((i) => i.companyId == null) && (
+            <button
+              onClick={() => setCompanyFilter("default")}
+              className={`px-4 py-2 rounded-full text-sm font-semibold border transition-colors ${
+                companyFilter === "default"
+                  ? "bg-slate-900 border-slate-900 text-white"
+                  : "bg-white dark:bg-slate-900 border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-400 hover:border-blue-400"
+              }`}
+            >
+              📧 Default email
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="flex flex-wrap gap-2 mb-4">
         {(["all", "week", "month", "custom"] as FilterMode[]).map((m) => {
