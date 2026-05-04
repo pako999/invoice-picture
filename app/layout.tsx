@@ -13,7 +13,7 @@ export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
     default: slDict.home.metaTitle,
-    template: "%s — SlikajRačun",
+    template: "%s — Slikaj Račun",
   },
   description: slDict.home.metaDescription,
   keywords: [
@@ -38,7 +38,7 @@ export const metadata: Metadata = {
     locale: "sl_SI",
     alternateLocale: ["en_US"],
     url: SITE_URL,
-    siteName: "SlikajRačun",
+    siteName: "Slikaj Račun",
     title: slDict.home.metaTitle,
     description: slDict.home.metaDescription,
   },
@@ -72,7 +72,7 @@ export const metadata: Metadata = {
 const organizationJsonLd = {
   "@context": "https://schema.org",
   "@type": "Organization",
-  name: "SlikajRačun",
+  name: "Slikaj Račun",
   legalName: "Sport Group d.o.o.",
   url: SITE_URL,
   logo: `${SITE_URL}/logo-icon.svg`,
@@ -92,7 +92,7 @@ const organizationJsonLd = {
 const websiteJsonLd = {
   "@context": "https://schema.org",
   "@type": "WebSite",
-  name: "SlikajRačun",
+  name: "Slikaj Račun",
   url: SITE_URL,
   inLanguage: ["sl-SI", "en"],
   publisher: { "@id": `${SITE_URL}#organization` },

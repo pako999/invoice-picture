@@ -7,7 +7,7 @@ import { pageMetadata } from "@/lib/seo";
 export const metadata = pageMetadata({
   title: "User Guide",
   description:
-    "Guide to SlikajRačun: setting up the OCR email, photography tips, sending workflow, archive and history, supported formats.",
+    "Guide to Slikaj Račun: setting up the OCR email, photography tips, sending workflow, archive and history, supported formats.",
   slug: "navodila-za-uporabo",
   locale: "en",
 });
@@ -18,7 +18,7 @@ export default function UserGuide() {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
           <Badge className="mb-4 bg-blue-100 text-blue-700 hover:bg-blue-200 border-0">User Guide</Badge>
-          <h1 className="text-4xl sm:text-5xl tracking-tight mb-6 font-bold">SlikajRačun user guide</h1>
+          <h1 className="text-4xl sm:text-5xl tracking-tight mb-6 font-bold">Slikaj Račun user guide</h1>
           <p className="text-xl text-slate-600">Detailed instructions for getting the most out of the app</p>
         </div>
 

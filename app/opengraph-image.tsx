@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 
 export const runtime = "edge";
-export const alt = "SlikajRačun — Pošlji račun z enim klikom";
+export const alt = "Slikaj Račun — Pošlji račun z enim klikom";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -44,7 +44,7 @@ export default async function OGImage() {
               letterSpacing: "-0.02em",
             }}
           >
-            SlikajRačun
+            Slikaj Račun
           </div>
         </div>
 

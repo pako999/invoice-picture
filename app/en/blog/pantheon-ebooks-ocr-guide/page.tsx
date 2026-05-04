@@ -23,10 +23,10 @@ const articleJsonLd = {
   dateModified: post.publishedAt,
   inLanguage: "en",
   keywords: post.keywordEn,
-  author: { "@type": "Organization", name: "SlikajRačun" },
+  author: { "@type": "Organization", name: "Slikaj Račun" },
   publisher: {
     "@type": "Organization",
-    name: "SlikajRačun",
+    name: "Slikaj Račun",
     logo: { "@type": "ImageObject", url: "https://www.posljiracun.si/logo-icon.svg" },
   },
   mainEntityOfPage: `https://www.posljiracun.si/en/blog/${post.slugEn}`,
@@ -50,7 +50,7 @@ const faqJsonLd = {
     {
       "@type": "Question",
       name: "Can Pantheon work with a mobile photographing app?",
-      acceptedAnswer: { "@type": "Answer", text: "Yes. Pantheon has an email address for receiving documents. With a mobile app (e.g. SlikajRačun) you can photograph an invoice and forward it to that address automatically." },
+      acceptedAnswer: { "@type": "Answer", text: "Yes. Pantheon has an email address for receiving documents. With a mobile app (e.g. Slikaj Račun) you can photograph an invoice and forward it to that address automatically." },
     },
     {
       "@type": "Question",
@@ -116,9 +116,9 @@ export default function Page() {
           </p>
 
           <h2>Sending photographed invoices into Pantheon</h2>
-          <p>With the SlikajRačun mobile app, setup takes a minute:</p>
+          <p>With the Slikaj Račun mobile app, setup takes a minute:</p>
           <ol>
-            <li>In <Link href="/en/settings">SlikajRačun Settings</Link> add your Pantheon email address for incoming documents.</li>
+            <li>In <Link href="/en/settings">Slikaj Račun Settings</Link> add your Pantheon email address for incoming documents.</li>
             <li>Open <Link href="/en/scan">Scan</Link> and photograph the invoice.</li>
             <li>The app optimises the image (1600px max, JPEG quality 80) and sends it.</li>
             <li>Pantheon eBooks shows a new document under &ldquo;Received attachments&rdquo; in 1–5 minutes.</li>
@@ -128,7 +128,7 @@ export default function Page() {
           <h2>Tips for maximum accuracy</h2>
           <ul>
             <li><strong>PDFs always beat photos.</strong> If the invoice is digital (e-invoice, PDF from email), send the original — OCR hits 99 % accuracy.</li>
-            <li><strong>High resolution.</strong> Sub-1000px photos are too soft for reliable OCR. SlikajRačun auto-compresses to 1600px (the sweet spot).</li>
+            <li><strong>High resolution.</strong> Sub-1000px photos are too soft for reliable OCR. Slikaj Račun auto-compresses to 1600px (the sweet spot).</li>
             <li><strong>Direct lighting.</strong> Not under a window with the desk shadow — use a flat, well-lit surface.</li>
             <li><strong>No deformation.</strong> Pocket-folded invoices wrinkle — flatten them before photographing.</li>
             <li><strong>One invoice per photo.</strong> Multiple invoices in one frame confuse OCR — send each separately.</li>
@@ -150,14 +150,14 @@ export default function Page() {
           <p>Pantheon eBooks OCR is billed via a monthly plan and per processed-document fee. The exact price depends on company size and your Datalab contract.</p>
 
           <h3>Can Pantheon work with a mobile photographing app?</h3>
-          <p>Yes. Pantheon has an email address for receiving documents. With a mobile app (e.g. SlikajRačun) you can photograph an invoice and forward it to that address automatically.</p>
+          <p>Yes. Pantheon has an email address for receiving documents. With a mobile app (e.g. Slikaj Račun) you can photograph an invoice and forward it to that address automatically.</p>
 
           <h3>Which fields does Pantheon eBooks OCR recognise?</h3>
           <p>Supplier name, VAT number, invoice number and date, net amount, VAT amount, total and currency. With high-quality documents accuracy exceeds 90 %.</p>
 
           <h2>Take the first step</h2>
           <p>
-            If you already have an active Pantheon eBooks OCR service, SlikajRačun is the fastest path to mobile invoice photography. Free for the first 3 invoices per month.
+            If you already have an active Pantheon eBooks OCR service, Slikaj Račun is the fastest path to mobile invoice photography. Free for the first 3 invoices per month.
           </p>
           <p>
             <Link

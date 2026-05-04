@@ -23,10 +23,10 @@ const articleJsonLd = {
   dateModified: post.publishedAt,
   inLanguage: "en",
   keywords: post.keywordEn,
-  author: { "@type": "Organization", name: "SlikajRačun" },
+  author: { "@type": "Organization", name: "Slikaj Račun" },
   publisher: {
     "@type": "Organization",
-    name: "SlikajRačun",
+    name: "Slikaj Račun",
     logo: { "@type": "ImageObject", url: "https://www.posljiracun.si/logo-icon.svg" },
   },
   mainEntityOfPage: `https://www.posljiracun.si/en/blog/${post.slugEn}`,
@@ -62,7 +62,7 @@ export default function Page() {
             <li><strong>Price.</strong> Free plans have caps — check how many invoices you actually send per month and compare with the subscription.</li>
           </ol>
 
-          <h2>1. SlikajRačun (recommended for Slovenia)</h2>
+          <h2>1. Slikaj Račun (recommended for Slovenia)</h2>
           <p><strong>Price:</strong> free up to 3 invoices/month, €6.90/month for unlimited, €17.90/month for PRO (multiple companies).</p>
           <p><strong>Supported programs:</strong> Minimax, Birokrat, Pantheon, SAOP, E-računi, Metakocka — and any accounting program with email-based invoice import.</p>
           <p><strong>Pros:</strong></p>
@@ -118,7 +118,7 @@ export default function Page() {
           <ul>
             <li>No Slovenian UI or support.</li>
             <li>Doesn&rsquo;t integrate with Minimax, Birokrat or Pantheon — built for foreign markets.</li>
-            <li>Price is roughly 3× SlikajRačun.</li>
+            <li>Price is roughly 3× Slikaj Račun.</li>
           </ul>
 
           <h2>5. ReceiptBank / Hubdoc</h2>
@@ -150,7 +150,7 @@ export default function Page() {
               </thead>
               <tbody>
                 <tr>
-                  <td className="p-3 border border-slate-200 font-semibold">SlikajRačun</td>
+                  <td className="p-3 border border-slate-200 font-semibold">Slikaj Račun</td>
                   <td className="p-3 border border-slate-200">€0–17.90</td>
                   <td className="p-3 border border-slate-200">✅</td>
                   <td className="p-3 border border-slate-200">✅ (PRO)</td>
@@ -197,15 +197,15 @@ export default function Page() {
 
           <h2>Which app should you pick?</h2>
           <ul>
-            <li><strong>If you use Minimax, Birokrat, Pantheon or another Slovenian accounting program:</strong> SlikajRačun. The only one purpose-built for it.</li>
-            <li><strong>If you send under 10 invoices per month and have no budget:</strong> SlikajRačun&rsquo;s free plan (3/month) or Microsoft Lens + email.</li>
+            <li><strong>If you use Minimax, Birokrat, Pantheon or another Slovenian accounting program:</strong> Slikaj Račun. The only one purpose-built for it.</li>
+            <li><strong>If you send under 10 invoices per month and have no budget:</strong> Slikaj Račun&rsquo;s free plan (3/month) or Microsoft Lens + email.</li>
             <li><strong>If you use Xero or QuickBooks:</strong> Hubdoc (bundled with Xero) or Dext.</li>
-            <li><strong>Accounting firm with multiple clients:</strong> SlikajRačun PRO — separate OCR email per client, fast company switching.</li>
+            <li><strong>Accounting firm with multiple clients:</strong> Slikaj Račun PRO — separate OCR email per client, fast company switching.</li>
           </ul>
 
           <h2>Try a test send</h2>
           <p>
-            The easiest way to see whether an app works with your accounting program — send the first invoice now. SlikajRačun is free for the first 3 invoices. No credit card, no commitment.
+            The easiest way to see whether an app works with your accounting program — send the first invoice now. Slikaj Račun is free for the first 3 invoices. No credit card, no commitment.
           </p>
           <p>
             <Link

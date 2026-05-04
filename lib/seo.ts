@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { localeUrl, type Locale } from "@/lib/i18n/config";
 
 export const SITE_URL = "https://www.posljiracun.si";
-export const SITE_NAME = "SlikajRačun";
+export const SITE_NAME = "Slikaj Račun";
 
 interface PageSeoInput {
   title: string;

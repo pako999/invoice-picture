@@ -21,10 +21,10 @@ const articleJsonLd = {
   dateModified: post.publishedAt,
   inLanguage: "sl-SI",
   keywords: post.keyword,
-  author: { "@type": "Organization", name: "SlikajRačun" },
+  author: { "@type": "Organization", name: "Slikaj Račun" },
   publisher: {
     "@type": "Organization",
-    name: "SlikajRačun",
+    name: "Slikaj Račun",
     logo: { "@type": "ImageObject", url: "https://www.posljiracun.si/logo-icon.svg" },
   },
   mainEntityOfPage: `https://www.posljiracun.si/blog/${post.slug}`,
@@ -115,10 +115,10 @@ export default function BirokratBlog() {
 
           <h2>2. korak: Pošlji prvi račun</h2>
           <p>
-            Z mobilno aplikacijo SlikajRačun je proces takšen:
+            Z mobilno aplikacijo Slikaj Račun je proces takšen:
           </p>
           <ol>
-            <li>V <Link href="/settings">SlikajRačun nastavitvah</Link> vneseš svoj Birokrat email naslov.</li>
+            <li>V <Link href="/settings">Slikaj Račun nastavitvah</Link> vneseš svoj Birokrat email naslov.</li>
             <li>Pojdi na <Link href="/scan">Skeniraj</Link> in fotografiraš račun.</li>
             <li>Aplikacija optimizira fotografijo (zmanjšanje velikosti, izboljšanje kontrasta) in jo pošlje v Birokrat.</li>
             <li>V Birokratu se v 1–3 minutah pojavi nova vrstica v &ldquo;Prejeti računi&rdquo;.</li>
@@ -163,7 +163,7 @@ export default function BirokratBlog() {
 
           <h3>Birokrat ne sprejme priponke</h3>
           <p>
-            Velikost priponke je omejena na 10 MB. SlikajRačun aplikacija fotografije avtomatsko stisne na primerno velikost (običajno 500 KB–1 MB), tako da te omejitve v praksi ne dosežeš.
+            Velikost priponke je omejena na 10 MB. Slikaj Račun aplikacija fotografije avtomatsko stisne na primerno velikost (običajno 500 KB–1 MB), tako da te omejitve v praksi ne dosežeš.
           </p>
 
           <h2>Pogosta vprašanja</h2>
@@ -190,7 +190,7 @@ export default function BirokratBlog() {
 
           <h2>Naslednji korak</h2>
           <p>
-            S SlikajRačun aplikacijo preizkusi celoten proces brezplačno (3 računi mesečno). Po nastavitvi Birokrat email naslova pošlji prvo fotografijo v manj kot minuti.
+            S Slikaj Račun aplikacijo preizkusi celoten proces brezplačno (3 računi mesečno). Po nastavitvi Birokrat email naslova pošlji prvo fotografijo v manj kot minuti.
           </p>
           <p>
             <Link

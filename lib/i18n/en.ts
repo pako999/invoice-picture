@@ -51,14 +51,14 @@ const en: Dict = {
     company: "Sport Group d.o.o.",
     address: "Osojnikova 4, 2000 Maribor, Slovenia",
     vat: "VAT ID: SI72133449",
-    rights: (year: number) => `© ${year} SlikajRačun. All rights reserved.`,
+    rights: (year: number) => `© ${year} Slikaj Račun. All rights reserved.`,
   },
   trialBanner: {
     daysRemaining: (n: number) => `Free trial: ${n} ${n === 1 ? "day" : "days"} remaining`,
     upgrade: "Upgrade subscription",
   },
   home: {
-    metaTitle: "SlikajRačun — Send invoices in one click",
+    metaTitle: "Slikaj Račun — Send invoices in one click",
     metaDescription:
       "Photograph a paper invoice and send it to your accounting software's email in seconds. Works with Minimax, Birokrat, Pantheon, SAOP, E-računi and Metakocka.",
     heroBadge: "For Slovenian businesses",
@@ -84,7 +84,7 @@ const en: Dict = {
       "Send invoices straight into your bookkeeping system — no middle step.",
     sectionIntCardTitle: "Universal email gateway",
     sectionIntCardBody:
-      "Every accounting program assigns you an import email address. SlikajRačun delivers the photo or PDF to that address — the program does the rest.",
+      "Every accounting program assigns you an import email address. Slikaj Račun delivers the photo or PDF to that address — the program does the rest.",
     sectionFeaturesTitle: "Everything a Slovenian business needs",
     sectionFeaturesSubtitle: "Built for fast invoice delivery to bookkeeping",
     feature1Title: "Quick capture",

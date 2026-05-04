@@ -21,10 +21,10 @@ const articleJsonLd = {
   dateModified: post.publishedAt,
   inLanguage: "sl-SI",
   keywords: post.keyword,
-  author: { "@type": "Organization", name: "SlikajRačun" },
+  author: { "@type": "Organization", name: "Slikaj Račun" },
   publisher: {
     "@type": "Organization",
-    name: "SlikajRačun",
+    name: "Slikaj Račun",
     logo: { "@type": "ImageObject", url: "https://www.posljiracun.si/logo-icon.svg" },
   },
   mainEntityOfPage: `https://www.posljiracun.si/blog/${post.slug}`,
@@ -57,7 +57,7 @@ export default function ComparisonBlog() {
             <li><strong>Cena.</strong> Brezplačni paketi so omejeni — preveri, koliko računov mesečno dejansko pošlješ in primerjaj z naročnino.</li>
           </ol>
 
-          <h2>1. SlikajRačun (priporočeno za Slovenijo)</h2>
+          <h2>1. Slikaj Račun (priporočeno za Slovenijo)</h2>
           <p>
             <strong>Cena:</strong> brezplačno do 3 računov / mesec, 6,90 € / mesec za neomejeno, 17,90 € / mesec za PRO (več podjetij).
           </p>
@@ -140,7 +140,7 @@ export default function ComparisonBlog() {
           <ul>
             <li>Ni slovenskega vmesnika ali podpore.</li>
             <li>Ne integrira z Minimax, Birokrat ali Pantheon — namenjen tujim trgom.</li>
-            <li>Cena je 3× višja kot SlikajRačun.</li>
+            <li>Cena je 3× višja kot Slikaj Račun.</li>
           </ul>
 
           <h2>5. ReceiptBank / Hubdoc</h2>
@@ -182,7 +182,7 @@ export default function ComparisonBlog() {
               </thead>
               <tbody>
                 <tr>
-                  <td className="p-3 border border-slate-200 font-semibold">SlikajRačun</td>
+                  <td className="p-3 border border-slate-200 font-semibold">Slikaj Račun</td>
                   <td className="p-3 border border-slate-200">0–17,90 €</td>
                   <td className="p-3 border border-slate-200">✅</td>
                   <td className="p-3 border border-slate-200">✅ (PRO)</td>
@@ -229,15 +229,15 @@ export default function ComparisonBlog() {
 
           <h2>Katero aplikacijo izbrati?</h2>
           <ul>
-            <li><strong>Če uporabljaš Minimax, Birokrat, Pantheon ali drug slovenski računovodski program:</strong> SlikajRačun. Edina, ki je narejena za to.</li>
-            <li><strong>Če pošlješ pod 10 računov mesečno in nimaš proračuna:</strong> SlikajRačun brezplačni paket (3 / mesec) ali kombinacija Microsoft Lens + email.</li>
+            <li><strong>Če uporabljaš Minimax, Birokrat, Pantheon ali drug slovenski računovodski program:</strong> Slikaj Račun. Edina, ki je narejena za to.</li>
+            <li><strong>Če pošlješ pod 10 računov mesečno in nimaš proračuna:</strong> Slikaj Račun brezplačni paket (3 / mesec) ali kombinacija Microsoft Lens + email.</li>
             <li><strong>Če uporabljaš Xero ali QuickBooks:</strong> Hubdoc (vključen v Xero) ali Dext.</li>
-            <li><strong>Računovodski servis z več strankami:</strong> SlikajRačun PRO — ločen OCR email za vsako stranko, hitri preklop.</li>
+            <li><strong>Računovodski servis z več strankami:</strong> Slikaj Račun PRO — ločen OCR email za vsako stranko, hitri preklop.</li>
           </ul>
 
           <h2>Naredi preizkusno pošiljanje</h2>
           <p>
-            Najlažji način, da preveriš, ali aplikacija deluje s tvojim računovodskim programom — pošlji prvi račun zdaj. Pri SlikajRačun aplikacija je brezplačna za prve 3 račune. Brez kreditne kartice, brez vezave.
+            Najlažji način, da preveriš, ali aplikacija deluje s tvojim računovodskim programom — pošlji prvi račun zdaj. Pri Slikaj Račun aplikacija je brezplačna za prve 3 račune. Brez kreditne kartice, brez vezave.
           </p>
           <p>
             <Link

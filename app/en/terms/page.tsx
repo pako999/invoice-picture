@@ -4,7 +4,7 @@ import { pageMetadata } from "@/lib/seo";
 export const metadata = pageMetadata({
   title: "Terms of Use",
   description:
-    "Terms of use for SlikajRačun: service description, payment terms, subscription cancellation, liability limits, intellectual property.",
+    "Terms of use for Slikaj Račun: service description, payment terms, subscription cancellation, liability limits, intellectual property.",
   slug: "pogoji-uporabe",
   locale: "en",
 });
@@ -23,14 +23,14 @@ export default function Terms() {
           <section>
             <h2 className="text-2xl mb-4 font-semibold">1. Acceptance of terms</h2>
             <p className="text-slate-700">
-              By accessing and using SlikajRačun, you agree to these terms of use. If you do not agree, please do not use the service.
+              By accessing and using Slikaj Račun, you agree to these terms of use. If you do not agree, please do not use the service.
             </p>
           </section>
 
           <section>
             <h2 className="text-2xl mb-4 font-semibold">2. Service description</h2>
             <p className="text-slate-700">
-              SlikajRačun lets you photograph paper invoices and forward them to the email address of an accounting program of your choice. The app acts as a delivery service and does not perform OCR processing of the invoices itself.
+              Slikaj Račun lets you photograph paper invoices and forward them to the email address of an accounting program of your choice. The app acts as a delivery service and does not perform OCR processing of the invoices itself.
             </p>
           </section>
 

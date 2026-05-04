@@ -45,7 +45,7 @@ export function Footer() {
           <div className="col-span-2 sm:col-span-1">
             <div className="flex items-center gap-2 mb-3">
               <Logo size={32} />
-              <span className="font-extrabold text-white text-lg tracking-tight">SlikajRačun</span>
+              <span className="font-extrabold text-white text-lg tracking-tight">Slikaj Račun</span>
             </div>
             <p className="text-sm text-slate-400 leading-relaxed">{t.tagline}</p>
             <p className="text-xs text-slate-500 mt-4 leading-relaxed">

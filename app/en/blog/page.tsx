@@ -15,11 +15,11 @@ export const metadata = pageMetadata({
 const blogJsonLd = {
   "@context": "https://schema.org",
   "@type": "Blog",
-  name: "SlikajRačun blog",
+  name: "Slikaj Račun blog",
   description:
     "Guides for sending paper invoices to accounting software — Minimax, Birokrat, Pantheon, SAOP, E-računi, Metakocka.",
   inLanguage: "en",
-  publisher: { "@type": "Organization", name: "SlikajRačun" },
+  publisher: { "@type": "Organization", name: "Slikaj Račun" },
   blogPost: posts.map((p) => ({
     "@type": "BlogPosting",
     headline: p.titleEn,
