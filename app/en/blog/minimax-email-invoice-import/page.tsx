@@ -23,10 +23,10 @@ const articleJsonLd = {
   dateModified: post.publishedAt,
   inLanguage: "en",
   keywords: post.keywordEn,
-  author: { "@type": "Organization", name: "SlikajRačun" },
+  author: { "@type": "Organization", name: "Slikaj Račun" },
   publisher: {
     "@type": "Organization",
-    name: "SlikajRačun",
+    name: "Slikaj Račun",
     logo: { "@type": "ImageObject", url: "https://www.posljiracun.si/logo-icon.svg" },
   },
   mainEntityOfPage: `https://www.posljiracun.si/en/blog/${post.slugEn}`,
@@ -118,7 +118,7 @@ export default function Page() {
           </p>
 
           <h2>How to send your first invoice</h2>
-          <p>The fastest path is the SlikajRačun mobile app:</p>
+          <p>The fastest path is the Slikaj Račun mobile app:</p>
           <ol>
             <li>In <Link href="/en/settings">app Settings</Link>, paste your Minimax email address.</li>
             <li>Open <Link href="/en/scan">Scan</Link> and photograph the paper invoice.</li>
@@ -171,7 +171,7 @@ export default function Page() {
 
           <h2>Take the first step</h2>
           <p>
-            SlikajRačun is free for the first 3 invoices per month — enough to test the entire workflow. No credit card, no accounting-software registration on our side.
+            Slikaj Račun is free for the first 3 invoices per month — enough to test the entire workflow. No credit card, no accounting-software registration on our side.
           </p>
           <p>
             <Link

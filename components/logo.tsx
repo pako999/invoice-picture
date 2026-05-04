@@ -36,7 +36,7 @@ export function LogoWordmark({ className = "" }: { className?: string }) {
     <span className={`inline-flex items-center gap-2 ${className}`}>
       <Logo size={28} />
       <span className="font-extrabold text-gray-900 dark:text-white tracking-tight">
-        Slikaj<span className="text-blue-600 dark:text-blue-400">Račun</span>
+        Slikaj <span className="text-blue-600 dark:text-blue-400">Račun</span>
       </span>
     </span>
   );

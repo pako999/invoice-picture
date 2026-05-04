@@ -12,7 +12,7 @@ export const metadata = pageMetadata({
 });
 
 // We have direct experience and email-formatting tested with the
-// Slovenian programs below. SlikajRačun forwards images by email,
+// Slovenian programs below. Slikaj Račun forwards images by email,
 // so it works with any of the bigger global tools too — those are
 // listed separately as "globally supported".
 const integrations = [
@@ -61,7 +61,7 @@ const integrations = [
 ];
 
 // Major global accounting platforms that support email-based receipt /
-// invoice import with OCR. SlikajRačun delivers the photo to whatever
+// invoice import with OCR. Slikaj Račun delivers the photo to whatever
 // import address they assign you — no special integration required.
 const globalIntegrations = [
   { name: "QuickBooks",   short: "Receipt capture + email-in",    href: "https://quickbooks.intuit.com/receipt-snap/" },
@@ -84,7 +84,7 @@ export default function Integrations() {
           <Badge className="mb-4 bg-indigo-100 text-indigo-700 hover:bg-indigo-200 border-0">Integrations</Badge>
           <h1 className="text-4xl sm:text-5xl tracking-tight mb-6 font-bold">Works with the world&rsquo;s biggest accounting platforms</h1>
           <p className="text-xl text-slate-600 max-w-3xl mx-auto mb-6">
-            SlikajRačun forwards the invoice photo to your accounting program&rsquo;s email. OCR processing — reading amounts, dates and suppliers — is performed by the program. That means it works with anything from QuickBooks and Xero to Sage, FreshBooks, NetSuite and Dext, plus every Slovenian program below.
+            Slikaj Račun forwards the invoice photo to your accounting program&rsquo;s email. OCR processing — reading amounts, dates and suppliers — is performed by the program. That means it works with anything from QuickBooks and Xero to Sage, FreshBooks, NetSuite and Dext, plus every Slovenian program below.
           </p>
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-left max-w-3xl mx-auto">
             <div className="flex gap-3">

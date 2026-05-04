@@ -8,7 +8,7 @@ const enDict = getDict("en");
 export const metadata: Metadata = {
   title: {
     default: enDict.home.metaTitle,
-    template: "%s — SlikajRačun",
+    template: "%s — Slikaj Račun",
   },
   description: enDict.home.metaDescription,
   alternates: {
@@ -24,7 +24,7 @@ export const metadata: Metadata = {
     locale: "en_US",
     alternateLocale: ["sl_SI"],
     url: `${SITE_URL}/en`,
-    siteName: "SlikajRačun",
+    siteName: "Slikaj Račun",
     title: enDict.home.metaTitle,
     description: enDict.home.metaDescription,
   },

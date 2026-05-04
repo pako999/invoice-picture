@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Home } from "lucide-react";
 
-export const metadata = { title: "Stran ni najdena — SlikajRačun" };
+export const metadata = { title: "Stran ni najdena — Slikaj Račun" };
 
 export default function NotFound() {
   return (

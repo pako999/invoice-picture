@@ -5,7 +5,7 @@ import { pageMetadata } from "@/lib/seo";
 
 export const metadata = pageMetadata({
   title: "Politika piškotkov",
-  description: "Kakšne piškotke uporabljamo na SlikajRačun: nujno potrebni, funkcionalni, analitični, trženjski. Kako jih upravljati v brskalniku.",
+  description: "Kakšne piškotke uporabljamo na Slikaj Račun: nujno potrebni, funkcionalni, analitični, trženjski. Kako jih upravljati v brskalniku.",
   slug: "piskotki",
 });
 

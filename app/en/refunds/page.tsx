@@ -5,7 +5,7 @@ import { pageMetadata } from "@/lib/seo";
 export const metadata = pageMetadata({
   title: "Refund Policy",
   description:
-    "30-day money-back guarantee. How to request a refund, when refunds are available, and how to cancel your SlikajRačun subscription.",
+    "30-day money-back guarantee. How to request a refund, when refunds are available, and how to cancel your Slikaj Račun subscription.",
   slug: "vracila",
   locale: "en",
 });
@@ -24,7 +24,7 @@ export default function Refunds() {
           <section>
             <h2 className="text-2xl mb-4 font-semibold">1. Introduction</h2>
             <p className="text-slate-700">
-              At SlikajRačun we strive for your complete satisfaction. If you are not happy with our service, we offer a 30-day money-back guarantee, no questions asked. This policy describes the conditions and procedure for requesting a refund.
+              At Slikaj Račun we strive for your complete satisfaction. If you are not happy with our service, we offer a 30-day money-back guarantee, no questions asked. This policy describes the conditions and procedure for requesting a refund.
             </p>
           </section>
 

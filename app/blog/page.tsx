@@ -14,13 +14,13 @@ export const metadata = pageMetadata({
 const blogJsonLd = {
   "@context": "https://schema.org",
   "@type": "Blog",
-  name: "SlikajRačun blog",
+  name: "Slikaj Račun blog",
   description:
     "Vodniki za pošiljanje papirnatih računov v računovodske programe — Minimax, Birokrat, Pantheon, SAOP, E-računi, Metakocka.",
   inLanguage: "sl-SI",
   publisher: {
     "@type": "Organization",
-    name: "SlikajRačun",
+    name: "Slikaj Račun",
   },
   blogPost: posts.map((p) => ({
     "@type": "BlogPosting",

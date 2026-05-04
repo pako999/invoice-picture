@@ -23,10 +23,10 @@ const articleJsonLd = {
   dateModified: post.publishedAt,
   inLanguage: "en",
   keywords: post.keywordEn,
-  author: { "@type": "Organization", name: "SlikajRačun" },
+  author: { "@type": "Organization", name: "Slikaj Račun" },
   publisher: {
     "@type": "Organization",
-    name: "SlikajRačun",
+    name: "Slikaj Račun",
     logo: { "@type": "ImageObject", url: "https://www.posljiracun.si/logo-icon.svg" },
   },
   mainEntityOfPage: `https://www.posljiracun.si/en/blog/${post.slugEn}`,
@@ -103,9 +103,9 @@ export default function Page() {
           </p>
 
           <h2>Step 2: Send your first invoice</h2>
-          <p>With the SlikajRačun mobile app, the flow is:</p>
+          <p>With the Slikaj Račun mobile app, the flow is:</p>
           <ol>
-            <li>Paste your Birokrat email address into <Link href="/en/settings">SlikajRačun Settings</Link>.</li>
+            <li>Paste your Birokrat email address into <Link href="/en/settings">Slikaj Račun Settings</Link>.</li>
             <li>Open <Link href="/en/scan">Scan</Link> and photograph the invoice.</li>
             <li>The app optimises the photo (resize, contrast) and forwards it to Birokrat.</li>
             <li>Within 1–3 minutes a new entry appears in Birokrat under &ldquo;Received invoices&rdquo;.</li>
@@ -146,7 +146,7 @@ export default function Page() {
 
           <h3>Birokrat won&rsquo;t accept the attachment</h3>
           <p>
-            Attachment size is capped at 10 MB. SlikajRačun automatically compresses photos to a sensible size (typically 500 KB–1 MB), so you&rsquo;ll never hit this in practice.
+            Attachment size is capped at 10 MB. Slikaj Račun automatically compresses photos to a sensible size (typically 500 KB–1 MB), so you&rsquo;ll never hit this in practice.
           </p>
 
           <h2>Frequently asked questions</h2>
@@ -173,7 +173,7 @@ export default function Page() {
 
           <h2>Next step</h2>
           <p>
-            With SlikajRačun you can test the full process for free (3 invoices/month). After configuring the Birokrat email address, send your first photo in under a minute.
+            With Slikaj Račun you can test the full process for free (3 invoices/month). After configuring the Birokrat email address, send your first photo in under a minute.
           </p>
           <p>
             <Link

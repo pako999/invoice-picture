@@ -24,7 +24,7 @@ export default function Privacy() {
           <section>
             <h2 className="text-2xl mb-4 font-semibold">1. Introduction</h2>
             <p className="text-slate-700">
-              SlikajRačun respects your privacy and is committed to protecting your personal data. This privacy policy explains how we collect, use, store and protect your data.
+              Slikaj Račun respects your privacy and is committed to protecting your personal data. This privacy policy explains how we collect, use, store and protect your data.
             </p>
           </section>
 

@@ -13,7 +13,7 @@ export const metadata = pageMetadata({
 });
 
 const faqs = [
-  { question: "How does SlikajRačun work?", answer: "The app lets you photograph paper invoices with your phone and automatically sends them to your accounting program's email address. Your program then OCRs the data and posts it into your books." },
+  { question: "How does Slikaj Račun work?", answer: "The app lets you photograph paper invoices with your phone and automatically sends them to your accounting program's email address. Your program then OCRs the data and posts it into your books." },
   { question: "Do I need a specific accounting program?", answer: "No. The app works with any accounting program that supports email-based invoice import. We've verified Minimax, Birokrat, Pantheon, SAOP, E-računi and Metakocka — at minimum." },
   { question: "Who performs the OCR?", answer: "The OCR (reading data from the image) is performed by your accounting program, not by our app. We just make sure the image arrives at the correct email address inside your program." },
   { question: "Do I need any special hardware?", answer: "No. You only need a smartphone with a camera and an internet connection. The app runs in the browser or as a mobile app." },
@@ -50,7 +50,7 @@ export default function FAQ() {
         <div className="text-center mb-16">
           <Badge className="mb-4 bg-purple-100 text-purple-700 hover:bg-purple-200 border-0">FAQ</Badge>
           <h1 className="text-4xl sm:text-5xl tracking-tight mb-6 font-bold">Got questions? Here are the answers.</h1>
-          <p className="text-xl text-slate-600">Answers to the most common questions about SlikajRačun</p>
+          <p className="text-xl text-slate-600">Answers to the most common questions about Slikaj Račun</p>
         </div>
 
         <div className="space-y-4">

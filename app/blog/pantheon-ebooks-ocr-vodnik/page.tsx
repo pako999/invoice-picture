@@ -21,10 +21,10 @@ const articleJsonLd = {
   dateModified: post.publishedAt,
   inLanguage: "sl-SI",
   keywords: post.keyword,
-  author: { "@type": "Organization", name: "SlikajRačun" },
+  author: { "@type": "Organization", name: "Slikaj Račun" },
   publisher: {
     "@type": "Organization",
-    name: "SlikajRačun",
+    name: "Slikaj Račun",
     logo: { "@type": "ImageObject", url: "https://www.posljiracun.si/logo-icon.svg" },
   },
   mainEntityOfPage: `https://www.posljiracun.si/blog/${post.slug}`,
@@ -59,7 +59,7 @@ const faqJsonLd = {
       acceptedAnswer: {
         "@type": "Answer",
         text:
-          "Da. Pantheon ima email naslov za sprejem dokumentov. Z mobilno aplikacijo (npr. SlikajRačun) lahko fotografiraš račun in ga avtomatsko pošlješ na ta naslov.",
+          "Da. Pantheon ima email naslov za sprejem dokumentov. Z mobilno aplikacijo (npr. Slikaj Račun) lahko fotografiraš račun in ga avtomatsko pošlješ na ta naslov.",
       },
     },
     {
@@ -130,10 +130,10 @@ export default function PantheonBlog() {
 
           <h2>Pošiljanje fotografij računov v Pantheon</h2>
           <p>
-            Z mobilno aplikacijo SlikajRačun nastavitev traja minuto:
+            Z mobilno aplikacijo Slikaj Račun nastavitev traja minuto:
           </p>
           <ol>
-            <li>V <Link href="/settings">SlikajRačun nastavitvah</Link> dodaš svoj Pantheon email naslov za prejem dokumentov.</li>
+            <li>V <Link href="/settings">Slikaj Račun nastavitvah</Link> dodaš svoj Pantheon email naslov za prejem dokumentov.</li>
             <li>Pojdi na <Link href="/scan">Skeniraj</Link> in fotografiraj račun.</li>
             <li>Aplikacija optimizira sliko (1600px max, JPEG quality 80) in jo pošlje.</li>
             <li>Pantheon eBooks v Pantheonu prikaže nov dokument v sekciji &ldquo;Prejete priponke&rdquo; v 1–5 minutah.</li>
@@ -143,7 +143,7 @@ export default function PantheonBlog() {
           <h2>Nasveti za maksimalno natančnost</h2>
           <ul>
             <li><strong>PDF je vedno boljši od slike.</strong> Če je račun digitalen (e-račun, PDF iz emaila), pošlji original — OCR doseže 99 % natančnost.</li>
-            <li><strong>Visoka ločljivost.</strong> Fotografije pod 1000px so pretežke za zanesljiv OCR. SlikajRačun aplikacija avtomatsko stisne na 1600px (idealno).</li>
+            <li><strong>Visoka ločljivost.</strong> Fotografije pod 1000px so pretežke za zanesljiv OCR. Slikaj Račun aplikacija avtomatsko stisne na 1600px (idealno).</li>
             <li><strong>Direktna svetloba.</strong> Ne pod oknom z senco mizo, raje na ravni svetli površini.</li>
             <li><strong>Brez deformacije.</strong> Računi v žepu se zguzajo — pred fotografiranjem zravnaj.</li>
             <li><strong>En račun na sliko.</strong> Več računov v enem kadru zmedeš OCR — pošlji vsako posebej.</li>
@@ -173,7 +173,7 @@ export default function PantheonBlog() {
 
           <h3>Ali se lahko Pantheon poveže z mobilno aplikacijo za fotografiranje?</h3>
           <p>
-            Da. Pantheon ima email naslov za sprejem dokumentov. Z mobilno aplikacijo (npr. SlikajRačun) lahko fotografiraš račun in ga avtomatsko pošlješ na ta naslov.
+            Da. Pantheon ima email naslov za sprejem dokumentov. Z mobilno aplikacijo (npr. Slikaj Račun) lahko fotografiraš račun in ga avtomatsko pošlješ na ta naslov.
           </p>
 
           <h3>Kakšne podatke prepozna Pantheon eBooks OCR?</h3>
@@ -183,7 +183,7 @@ export default function PantheonBlog() {
 
           <h2>Naredi prvi korak</h2>
           <p>
-            Če imaš že aktivno Pantheon eBooks OCR storitev, je SlikajRačun najhitrejša pot do mobilnega fotografiranja računov. Brezplačno za prve 3 račune mesečno.
+            Če imaš že aktivno Pantheon eBooks OCR storitev, je Slikaj Račun najhitrejša pot do mobilnega fotografiranja računov. Brezplačno za prve 3 račune mesečno.
           </p>
           <p>
             <Link

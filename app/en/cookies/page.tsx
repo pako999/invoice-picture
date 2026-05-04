@@ -5,7 +5,7 @@ import { pageMetadata } from "@/lib/seo";
 export const metadata = pageMetadata({
   title: "Cookie Policy",
   description:
-    "Which cookies we use on SlikajRačun: strictly necessary, functional, analytics, marketing. How to manage them in your browser.",
+    "Which cookies we use on Slikaj Račun: strictly necessary, functional, analytics, marketing. How to manage them in your browser.",
   slug: "piskotki",
   locale: "en",
 });

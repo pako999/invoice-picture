@@ -51,7 +51,7 @@ const sl = {
     company: "Sport Group d.o.o.",
     address: "Osojnikova 4, 2000 Maribor",
     vat: "ID za DDV: SI72133449",
-    rights: (year: number) => `© ${year} SlikajRačun. Vse pravice pridržane.`,
+    rights: (year: number) => `© ${year} Slikaj Račun. Vse pravice pridržane.`,
   },
   trialBanner: {
     daysRemaining: (n: number) => `Brezplačni preizkus: še ${n} ${pluralDays(n, "sl")}`,
@@ -84,7 +84,7 @@ const sl = {
       "Pošiljaj račune neposredno v svoj knjigovodski sistem — brez vmesnega koraka.",
     sectionIntCardTitle: "Univerzalni email vmesnik",
     sectionIntCardBody:
-      "Vsak računovodski program ti dodeli email naslov za uvoz. SlikajRačun pošlje sliko ali PDF na ta naslov, program pa naredi vse ostalo.",
+      "Vsak računovodski program ti dodeli email naslov za uvoz. Slikaj Račun pošlje sliko ali PDF na ta naslov, program pa naredi vse ostalo.",
     sectionFeaturesTitle: "Vse, kar potrebuje slovensko podjetje",
     sectionFeaturesSubtitle: "Ustvarjeno za hitro pošiljanje računov v računovodstvo",
     feature1Title: "Hitro fotografiranje",

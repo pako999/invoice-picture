@@ -21,10 +21,10 @@ const articleJsonLd = {
   dateModified: post.publishedAt,
   inLanguage: "sl-SI",
   keywords: post.keyword,
-  author: { "@type": "Organization", name: "SlikajRačun" },
+  author: { "@type": "Organization", name: "Slikaj Račun" },
   publisher: {
     "@type": "Organization",
-    name: "SlikajRačun",
+    name: "Slikaj Račun",
     logo: { "@type": "ImageObject", url: "https://www.posljiracun.si/logo-icon.svg" },
   },
   mainEntityOfPage: `https://www.posljiracun.si/blog/${post.slug}`,
@@ -112,7 +112,7 @@ export default function MinimaxBlog() {
 
           <h2>Kako pošljem prvi račun</h2>
           <p>
-            Najlažje s SlikajRačun aplikacijo:
+            Najlažje s Slikaj Račun aplikacijo:
           </p>
           <ol>
             <li>V <Link href="/settings">Nastavitvah aplikacije</Link> vneseš svoj Minimax email naslov.</li>
@@ -168,7 +168,7 @@ export default function MinimaxBlog() {
 
           <h2>Naredi prvi korak</h2>
           <p>
-            SlikajRačun je brezplačen za prve 3 račune mesečno — dovolj, da preizkusiš kompleten proces. Brez kreditne kartice, brez registracije računovodskega programa pri nas.
+            Slikaj Račun je brezplačen za prve 3 račune mesečno — dovolj, da preizkusiš kompleten proces. Brez kreditne kartice, brez registracije računovodskega programa pri nas.
           </p>
           <p>
             <Link

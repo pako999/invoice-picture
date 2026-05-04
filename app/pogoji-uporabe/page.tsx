@@ -4,7 +4,7 @@ import { pageMetadata } from "@/lib/seo";
 
 export const metadata = pageMetadata({
   title: "Pogoji uporabe",
-  description: "Pogoji uporabe aplikacije SlikajRačun: opis storitve, plačilni pogoji, odpoved naročnine, omejitve odgovornosti, intelektualna lastnina.",
+  description: "Pogoji uporabe aplikacije Slikaj Račun: opis storitve, plačilni pogoji, odpoved naročnine, omejitve odgovornosti, intelektualna lastnina.",
   slug: "pogoji-uporabe",
 });
 

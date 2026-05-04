@@ -43,7 +43,7 @@ export default function Home() {
   const softwareJsonLd = {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
-    name: "SlikajRačun",
+    name: "Slikaj Račun",
     applicationCategory: "BusinessApplication",
     operatingSystem: "Web, iOS, Android",
     description:
