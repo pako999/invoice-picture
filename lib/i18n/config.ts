@@ -35,6 +35,7 @@ export const slugMap: Record<string, string> = {
   "pogoji-uporabe": "terms",
   vracila: "refunds",
   piskotki: "cookies",
+  gdpr: "gdpr",
   contact: "contact",
   upgrade: "upgrade",
   blog: "blog",

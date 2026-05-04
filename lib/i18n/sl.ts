@@ -48,6 +48,7 @@ const sl = {
     legalPrivacy: "Politika zasebnosti",
     legalCookies: "Piškotki",
     legalRefunds: "Politika vračil",
+    legalGdpr: "GDPR",
     company: "Sport Group d.o.o.",
     address: "Osojnikova 4, 2000 Maribor",
     vat: "ID za DDV: SI72133449",
