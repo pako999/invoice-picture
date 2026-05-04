@@ -49,7 +49,7 @@ export default function ComparisonBlog() {
           </div>
         </header>
 
-        <div className="prose prose-slate prose-lg max-w-none">
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 sm:p-12 prose prose-slate prose-lg max-w-none prose-headings:scroll-mt-20 prose-headings:font-bold prose-h2:text-3xl prose-h2:mt-12 prose-h2:mb-4 prose-h3:text-xl prose-h3:mt-8 prose-h3:mb-3 prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline prose-strong:text-slate-900 prose-code:bg-slate-100 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:before:content-none prose-code:after:content-none prose-code:font-mono prose-code:text-sm prose-li:my-1 prose-ul:my-4 prose-ol:my-4 prose-table:rounded-xl prose-table:overflow-hidden prose-th:bg-slate-100 prose-th:p-3 prose-td:p-3 prose-td:border-slate-200 prose-th:border-slate-200">
           <p className="lead">
             Iščeš mobilno aplikacijo za skeniranje papirnatih računov, ki bi jih avtomatsko poslala v računovodski program? V Sloveniji je nekaj možnosti — vsaka s svojimi prednostmi in slabostmi. Tukaj je iskrena primerjava 6 aplikacij za leto 2026, vključno s ceno, podprtimi programi in kdaj uporabiti katero.
           </p>
