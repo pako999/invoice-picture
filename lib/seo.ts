@@ -11,11 +11,20 @@ interface PageSeoInput {
   slug: string;
   /** Which locale this metadata is for. Default: "sl". */
   locale?: Locale;
+  /** Optional: explicit URL pair for pages whose SL ↔ EN slugs differ
+   *  in unpredictable ways (e.g. blog posts). When provided, the
+   *  alternates use these directly instead of the slugMap derivation. */
+  altPaths?: { sl: string; en: string };
 }
 
-export function pageMetadata({ title, description, slug, locale = "sl" }: PageSeoInput): Metadata {
-  const canonicalPath = localeUrl(locale, slug);
+export function pageMetadata({ title, description, slug, locale = "sl", altPaths }: PageSeoInput): Metadata {
+  const canonicalPath = altPaths
+    ? (locale === "sl" ? altPaths.sl : altPaths.en)
+    : localeUrl(locale, slug);
   const url = `${SITE_URL}${canonicalPath}`;
+
+  const slPath = altPaths?.sl ?? localeUrl("sl", slug);
+  const enPath = altPaths?.en ?? localeUrl("en", slug);
 
   return {
     title,
@@ -23,9 +32,9 @@ export function pageMetadata({ title, description, slug, locale = "sl" }: PageSe
     alternates: {
       canonical: canonicalPath,
       languages: {
-        "sl-SI": localeUrl("sl", slug),
-        "en":    localeUrl("en", slug),
-        "x-default": localeUrl("sl", slug),
+        "sl-SI": slPath,
+        "en":    enPath,
+        "x-default": slPath,
       },
     },
     openGraph: {
