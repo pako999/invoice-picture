@@ -6,11 +6,15 @@ import { pageMetadata } from "@/lib/seo";
 export const metadata = pageMetadata({
   title: "Integrations with accounting programs",
   description:
-    "Works with any accounting software that supports email/OCR import — Minimax, Birokrat, Pantheon, SAOP, E-računi, Metakocka and more. No manual entry.",
+    "Works with the biggest accounting platforms that support OCR / email import — QuickBooks, Xero, Sage, FreshBooks, Zoho Books, NetSuite, Dext, Hubdoc, plus Slovenian programs like Minimax, Birokrat and Pantheon. No manual entry.",
   slug: "integracije",
   locale: "en",
 });
 
+// We have direct experience and email-formatting tested with the
+// Slovenian programs below. SlikajRačun forwards images by email,
+// so it works with any of the bigger global tools too — those are
+// listed separately as "globally supported".
 const integrations = [
   {
     name: "Minimax",
@@ -56,15 +60,31 @@ const integrations = [
   },
 ];
 
+// Major global accounting platforms that support email-based receipt /
+// invoice import with OCR. SlikajRačun delivers the photo to whatever
+// import address they assign you — no special integration required.
+const globalIntegrations = [
+  { name: "QuickBooks",   short: "Receipt capture + email-in",    href: "https://quickbooks.intuit.com/receipt-snap/" },
+  { name: "Xero",         short: "Built-in Hubdoc OCR",            href: "https://www.xero.com/" },
+  { name: "Sage",         short: "AutoEntry OCR + email import",   href: "https://www.sage.com/" },
+  { name: "FreshBooks",   short: "Bill capture by email",          href: "https://www.freshbooks.com/" },
+  { name: "Zoho Books",   short: "Email-in + document scanning",   href: "https://www.zoho.com/books/" },
+  { name: "NetSuite",     short: "AP automation with OCR",         href: "https://www.netsuite.com/" },
+  { name: "Dext",         short: "Leading receipt OCR platform",   href: "https://dext.com/" },
+  { name: "Hubdoc",       short: "Document capture + OCR (Xero)",  href: "https://www.hubdoc.com/" },
+  { name: "Bill.com",     short: "AP automation + email-in",       href: "https://www.bill.com/" },
+  { name: "DATEV",        short: "Belegtransfer email upload",     href: "https://www.datev.de/" },
+];
+
 export default function Integrations() {
   return (
     <div className="py-24 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 min-h-screen">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
           <Badge className="mb-4 bg-indigo-100 text-indigo-700 hover:bg-indigo-200 border-0">Integrations</Badge>
-          <h1 className="text-4xl sm:text-5xl tracking-tight mb-6 font-bold">Works with your accounting program</h1>
+          <h1 className="text-4xl sm:text-5xl tracking-tight mb-6 font-bold">Works with the world&rsquo;s biggest accounting platforms</h1>
           <p className="text-xl text-slate-600 max-w-3xl mx-auto mb-6">
-            SlikajRačun forwards the invoice photo to your accounting program&rsquo;s email. OCR processing — reading amounts, dates and suppliers — is performed by your accounting program.
+            SlikajRačun forwards the invoice photo to your accounting program&rsquo;s email. OCR processing — reading amounts, dates and suppliers — is performed by the program. That means it works with anything from QuickBooks and Xero to Sage, FreshBooks, NetSuite and Dext, plus every Slovenian program below.
           </p>
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-left max-w-3xl mx-auto">
             <div className="flex gap-3">
@@ -76,7 +96,32 @@ export default function Integrations() {
           </div>
         </div>
 
-        <h2 className="text-2xl mb-8 font-semibold">Supported accounting programs</h2>
+        <h2 className="text-2xl mb-3 font-semibold">Major global platforms</h2>
+        <p className="text-slate-600 mb-6">
+          Any platform that lets you forward documents to an inbox and OCR them — works out of the box.
+        </p>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-12">
+          {globalIntegrations.map((p) => (
+            <a
+              key={p.name}
+              href={p.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block bg-white border border-slate-200 rounded-xl p-4 hover:border-blue-400 hover:shadow-md transition-all"
+            >
+              <div className="flex items-center justify-between mb-1">
+                <span className="font-bold text-slate-900">{p.name}</span>
+                <Check className="w-4 h-4 text-green-600" />
+              </div>
+              <p className="text-xs text-slate-500">{p.short}</p>
+            </a>
+          ))}
+        </div>
+
+        <h2 className="text-2xl mb-3 font-semibold">Slovenian accounting programs</h2>
+        <p className="text-slate-600 mb-6">
+          Verified end-to-end with the Slovenian programs most local businesses use.
+        </p>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {integrations.map((p) => (
