@@ -1,10 +1,10 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PaddleCheckoutButton } from "@/components/paddle-checkout";
+import { HeroPhoneMockup } from "@/components/hero-phone-mockup";
 import {
   Check,
   X,
@@ -141,18 +141,19 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Phone screenshot — sits right of the text on lg+, below on mobile.
-                Source file at /public/hero-app.webp (replace with your screenshot). */}
+            {/* Phone mockup — sits right of the text on lg+, below on mobile */}
             <div className="relative flex justify-center lg:justify-end">
               <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-indigo-500/10 to-purple-500/10 blur-3xl rounded-full" />
               <div className="relative">
-                <Image
-                  src="/hero-app.webp"
-                  alt="Slikaj Račun mobilna aplikacija — zaslon za pošiljanje računa"
-                  width={420}
-                  height={860}
-                  priority
-                  className="w-full max-w-[420px] h-auto drop-shadow-2xl"
+                <HeroPhoneMockup
+                  title="Slikaj Račun"
+                  dropLabel="Povleci datoteko sem"
+                  fileHint="JPG · PNG · WEBP · PDF"
+                  cameraLabel="Fotografiraj"
+                  uploadLabel="Naloži"
+                  subjectLabel="Zadeva"
+                  subjectValue="Račun"
+                  sendLabel="Pošlji račun"
                 />
               </div>
             </div>
