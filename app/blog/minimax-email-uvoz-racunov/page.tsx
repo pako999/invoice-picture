@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { Badge } from "@/components/ui/badge";
 import { pageMetadata } from "@/lib/seo";
 import { getPost } from "@/lib/blog";
+import { BlogCover } from "@/components/blog-cover";
 
 const post = getPost("minimax-email-uvoz-racunov")!;
 
@@ -75,25 +75,15 @@ const faqJsonLd = {
 
 export default function MinimaxBlog() {
   return (
-    <div className="py-16 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 min-h-screen">
+    <div className="bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 min-h-screen">
       <script type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }} />
       <script type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
-      <article className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <Link href="/blog" className="text-sm text-blue-600 hover:underline">← Vsi članki</Link>
+      <BlogCover post={post} badge="Minimax" badgeClassName="bg-blue-500/90 text-white border-0 hover:bg-blue-500/90" />
 
-        <header className="mt-6 mb-10">
-          <Badge className="mb-4 bg-blue-100 text-blue-700 hover:bg-blue-200 border-0">Minimax</Badge>
-          <h1 className="text-4xl sm:text-5xl font-bold tracking-tight mb-4">{post.title}</h1>
-          <div className="flex items-center gap-3 text-sm text-slate-500">
-            <time dateTime={post.publishedAt}>
-              {new Date(post.publishedAt).toLocaleDateString("sl-SI", { day: "2-digit", month: "long", year: "numeric" })}
-            </time>
-            <span>·</span>
-            <span>{post.readingMinutes} min branja</span>
-          </div>
-        </header>
+      <article className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <Link href="/blog" className="text-sm text-blue-600 hover:underline mb-8 inline-block">← Vsi članki</Link>
 
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 sm:p-12 prose prose-slate prose-lg max-w-none prose-headings:scroll-mt-20 prose-headings:font-bold prose-h2:text-3xl prose-h2:mt-12 prose-h2:mb-4 prose-h3:text-xl prose-h3:mt-8 prose-h3:mb-3 prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline prose-strong:text-slate-900 prose-code:bg-slate-100 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:before:content-none prose-code:after:content-none prose-code:font-mono prose-code:text-sm prose-li:my-1 prose-ul:my-4 prose-ol:my-4 prose-table:rounded-xl prose-table:overflow-hidden prose-th:bg-slate-100 prose-th:p-3 prose-td:p-3 prose-td:border-slate-200 prose-th:border-slate-200">
           <p className="lead">
