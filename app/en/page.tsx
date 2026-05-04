@@ -102,7 +102,7 @@ export default function HomeEn() {
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 bg-grid-slate-100 [mask-image:linear-gradient(0deg,transparent,black)] opacity-50" />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-24 relative">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
+          <div className="grid lg:grid-cols-2 gap-12 items-stretch">
             <div className="text-center lg:text-left">
               <Badge className="mb-4 bg-blue-100 text-blue-700 hover:bg-blue-200 border-0">
                 Works with any accounting app that supports OCR email import
@@ -141,16 +141,17 @@ export default function HomeEn() {
               </div>
             </div>
 
-            <div className="relative flex justify-center lg:justify-end">
+            <div className="relative flex justify-center lg:justify-end items-center">
               <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-indigo-500/10 to-purple-500/10 blur-3xl rounded-full" />
-              <div className="relative">
+              <div className="relative h-full flex items-center">
                 <Image
                   src="/hero-app.webp"
                   alt="Slikaj Račun mobile app — invoice send screen"
                   width={420}
                   height={860}
                   priority
-                  className="w-full max-w-[420px] h-auto drop-shadow-2xl"
+                  sizes="(min-width: 1024px) 50vw, 90vw"
+                  className="w-auto max-w-full h-auto lg:h-full lg:max-h-[700px] object-contain drop-shadow-2xl"
                 />
               </div>
             </div>
