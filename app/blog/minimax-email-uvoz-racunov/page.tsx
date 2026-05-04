@@ -182,7 +182,7 @@ export default function MinimaxBlog() {
           <p>
             <Link
               href="/scan"
-              className="inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-base h-12 px-6 rounded-xl font-semibold transition-colors no-underline"
+              className="not-prose inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 !text-white text-base h-12 px-6 rounded-xl font-semibold transition-colors no-underline"
             >
               📷 Pošlji prvi račun v Minimax
             </Link>
