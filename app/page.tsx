@@ -1,10 +1,10 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PaddleCheckoutButton } from "@/components/paddle-checkout";
-import { HeroPhoneMockup } from "@/components/hero-phone-mockup";
 import {
   Check,
   X,
@@ -101,8 +101,9 @@ export default function Home() {
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 bg-grid-slate-100 [mask-image:linear-gradient(0deg,transparent,black)] opacity-50" />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-24 relative">
-          {/* 2-col grid on lg+ — text left, phone screenshot right */}
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
+          {/* 2-col grid on lg+ — text left, phone screenshot right.
+              items-stretch so the image column fills the text-column height */}
+          <div className="grid lg:grid-cols-2 gap-12 items-stretch">
             <div className="text-center lg:text-left">
               <Badge className="mb-4 bg-blue-100 text-blue-700 hover:bg-blue-200 border-0">
                 🇸🇮 Narejen za slovensko računovodstvo
@@ -141,19 +142,19 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Phone mockup — sits right of the text on lg+, below on mobile */}
-            <div className="relative flex justify-center lg:justify-end">
+            {/* Phone screenshot — fills column height on lg+, mobile keeps
+                a sensible max width. Source file: /public/hero-app.webp */}
+            <div className="relative flex justify-center lg:justify-end items-center">
               <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-indigo-500/10 to-purple-500/10 blur-3xl rounded-full" />
-              <div className="relative">
-                <HeroPhoneMockup
-                  title="Slikaj Račun"
-                  dropLabel="Povleci datoteko sem"
-                  fileHint="JPG · PNG · WEBP · PDF"
-                  cameraLabel="Fotografiraj"
-                  uploadLabel="Naloži"
-                  subjectLabel="Zadeva"
-                  subjectValue="Račun"
-                  sendLabel="Pošlji račun"
+              <div className="relative h-full flex items-center">
+                <Image
+                  src="/hero-app.webp"
+                  alt="Slikaj Račun mobilna aplikacija — zaslon za pošiljanje računa"
+                  width={420}
+                  height={860}
+                  priority
+                  sizes="(min-width: 1024px) 50vw, 90vw"
+                  className="w-auto max-w-full h-auto lg:h-full lg:max-h-[700px] object-contain drop-shadow-2xl"
                 />
               </div>
             </div>
