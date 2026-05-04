@@ -56,9 +56,9 @@ const sl = {
     upgrade: "Nadgradi naročnino",
   },
   home: {
-    metaTitle: "SlikajRačun — Pošlji račun z enim klikom",
+    metaTitle: "Slikaj Račun — Pošlji račun z enim klikom",
     metaDescription:
-      "Fotografiraj papirnat račun in ga pošlji na email računovodskega programa v sekundi. Deluje z Minimax, Birokrat, Pantheon, SAOP, E-računi in Metakocka.",
+      "Fotografiraj papirnat račun in ga pošlji na email računovodskega programa v sekundi. Deluje z Minimax, Birokrat, Pantheon, SAOP, E-računi in Metakocka in ostali OCR programi.",
     heroBadge: "Za slovenske podjetnike",
     heroTitle1: "Pošlji račun v računovodski program",
     heroTitle2: "z enim klikom",

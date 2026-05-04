@@ -6,7 +6,7 @@ import { pageMetadata } from "@/lib/seo";
 export const metadata = pageMetadata({
   title: "Integrations with accounting programs",
   description:
-    "Works with all Slovenian accounting software: Minimax, Birokrat, Pantheon, SAOP, E-računi, Metakocka. Email import + OCR processing without manual entry.",
+    "Works with any accounting software that supports email/OCR import — Minimax, Birokrat, Pantheon, SAOP, E-računi, Metakocka and more. No manual entry.",
   slug: "integracije",
   locale: "en",
 });
