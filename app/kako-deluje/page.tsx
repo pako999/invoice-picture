@@ -7,7 +7,7 @@ import { pageMetadata } from "@/lib/seo";
 export const metadata = pageMetadata({
   title: "Kako deluje",
   description: "3 preprosti koraki do avtomatizirane obdelave računov: nastavi OCR email, fotografiraj račun, pošlji z enim klikom. Preverjeno z Minimax, Birokrat, Pantheon.",
-  path: "/kako-deluje",
+  slug: "kako-deluje",
 });
 
 export default function KakoDeluje() {

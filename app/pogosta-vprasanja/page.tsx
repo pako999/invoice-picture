@@ -8,7 +8,7 @@ import { pageMetadata } from "@/lib/seo";
 export const metadata = pageMetadata({
   title: "Pogosta vprašanja",
   description: "15 odgovorov na najpogostejša vprašanja: kako deluje aplikacija, podprti programi, varnost podatkov, cena, OCR obdelava, podprti formati, odpoved.",
-  path: "/pogosta-vprasanja",
+  slug: "pogosta-vprasanja",
 });
 
 const faqs = [

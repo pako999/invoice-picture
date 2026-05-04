@@ -7,7 +7,7 @@ import { pageMetadata } from "@/lib/seo";
 export const metadata = pageMetadata({
   title: "Funkcionalnosti",
   description: "En klik za pošiljanje računa, neomejeno fotografij, arhiv s predogledom, status v realnem času, varna Clerk avtentikacija. Vse, kar potrebujete za hitro knjiženje.",
-  path: "/funkcionalnosti",
+  slug: "funkcionalnosti",
 });
 
 const features = [
