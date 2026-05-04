@@ -19,25 +19,34 @@ function detectLocale(pathname: string): Locale {
   return pathname === "/en" || pathname.startsWith("/en/") ? "en" : "sl";
 }
 
+// App routes have the same slug in both locales (only the prefix differs)
+const APP_ROUTES = new Set(["scan", "invoices", "settings", "upgrade"]);
+
 /** Build the equivalent URL in the other locale for the current path.
  *  /             ↔ /en
  *  /cenik        ↔ /en/pricing
  *  /en/privacy   ↔ /zasebnost
+ *  /scan         ↔ /en/scan        (app routes — same slug, prefix only)
  */
 function switchLocaleUrl(pathname: string, currentLocale: Locale, target: Locale): string {
   if (currentLocale === target) return pathname;
 
   if (currentLocale === "sl" && target === "en") {
     if (pathname === "/") return "/en";
-    const sl = pathname.replace(/^\//, "");
+    const sl = pathname.replace(/^\//, "").split("/")[0];
+    // App routes keep their slug (just add /en prefix)
+    if (APP_ROUTES.has(sl)) return `/en${pathname}`;
     const en = slugMap[sl] ?? sl;
     return `/en/${en}`;
   }
   // en → sl
   if (pathname === "/en" || pathname === "/en/") return "/";
-  const en = pathname.replace(/^\/en\/?/, "");
-  const reverse = Object.entries(slugMap).find(([, e]) => e === en)?.[0];
-  return reverse ? `/${reverse}` : `/${en}`;
+  const rest = pathname.replace(/^\/en\/?/, "");
+  const firstSeg = rest.split("/")[0];
+  // App routes: drop the /en prefix
+  if (APP_ROUTES.has(firstSeg)) return `/${rest}`;
+  const reverse = Object.entries(slugMap).find(([, e]) => e === firstSeg)?.[0];
+  return reverse ? `/${reverse}` : `/${rest}`;
 }
 
 export function Nav() {
@@ -49,22 +58,27 @@ export function Nav() {
   const t = dict.nav;
 
   const isLanding = path === "/" || path === "/en";
-  const appPaths = ["/scan", "/invoices", "/settings"];
+  const appPaths = [
+    "/scan", "/invoices", "/settings",
+    "/en/scan", "/en/invoices", "/en/settings",
+  ];
   const isApp = appPaths.some((p) => path === p || path.startsWith(p + "/"));
   const isPublic = !isApp;
 
   const [menuOpen, setMenuOpen] = useState(false);
 
-  // Build link sets in the right locale
-  const appLinks = useMemo(
-    () => [
-      { href: "/scan",     label: t.scan,     icon: "📷" },
-      { href: "/invoices", label: t.invoices, icon: "📋" },
-      { href: "/settings", label: t.settings, icon: "⚙️" },
-      { href: "/contact",  label: t.contact,  icon: "📨" },
-    ],
-    [t],
-  );
+  // Build link sets in the right locale. Signed-in app routes have
+  // dedicated /en/* mirrors with English UI — point at them when
+  // we're in the EN subtree.
+  const appLinks = useMemo(() => {
+    const prefix = locale === "en" ? "/en" : "";
+    return [
+      { href: `${prefix}/scan`,     label: t.scan,     icon: "📷" },
+      { href: `${prefix}/invoices`, label: t.invoices, icon: "📋" },
+      { href: `${prefix}/settings`, label: t.settings, icon: "⚙️" },
+      { href: `${prefix}/contact`,  label: t.contact,  icon: "📨" },
+    ];
+  }, [locale, t]);
 
   const publicLinks = useMemo(
     () => [
@@ -72,6 +86,7 @@ export function Nav() {
       { href: localeUrl(locale, "integracije"),     label: t.integrations },
       { href: localeUrl(locale, "funkcionalnosti"), label: t.features },
       { href: localeUrl(locale, "cenik"),           label: t.pricing },
+      { href: localeUrl(locale, "blog"),            label: t.blog },
     ],
     [locale, t],
   );

@@ -37,6 +37,7 @@ export const slugMap: Record<string, string> = {
   piskotki: "cookies",
   contact: "contact",
   upgrade: "upgrade",
+  blog: "blog",
 };
 
 const reverseSlugMap = Object.fromEntries(

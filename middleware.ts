@@ -1,12 +1,13 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 
-const isProtected = createRouteMatcher(["/scan(.*)", "/invoices(.*)", "/settings(.*)"]);
+// Auth-protected routes (signed-in app surface). Mirror in /en too.
+const isProtected = createRouteMatcher([
+  "/scan(.*)", "/invoices(.*)", "/settings(.*)",
+  "/en/scan(.*)", "/en/invoices(.*)", "/en/settings(.*)",
+]);
 
 const COOKIE = "preferred-lang";
-// Slovenian users (region code SI) and Slovenian-speaking visitors
-// stay at root URLs. Everyone else is offered /en — but only on the
-// exact root, not on every navigation.
 
 function shouldRedirectToEn(req: Request): boolean {
   const url = new URL(req.url);

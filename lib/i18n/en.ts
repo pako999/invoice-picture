@@ -18,6 +18,7 @@ const en: Dict = {
     integrations: "Integrations",
     features: "Features",
     pricing: "Pricing",
+    blog: "Blog",
     contact: "Contact",
     signIn: "Sign in",
     startScanning: "Start scanning",
