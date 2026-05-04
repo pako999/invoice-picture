@@ -19,6 +19,10 @@ export type BlogPost = {
   readingMinutes: number;
   /** One-line teaser used on the blog index. */
   excerpt: string;
+  /** Hero / cover image (Unsplash, CC0). Used on listing + post header. */
+  coverImage: string;
+  /** Short alt text describing the cover image. */
+  coverAlt: string;
 };
 
 export const posts: BlogPost[] = [
@@ -32,6 +36,9 @@ export const posts: BlogPost[] = [
     readingMinutes: 7,
     excerpt:
       "Vse, kar moraš vedeti o email uvozu računov v Minimax — od iskanja pravega naslova do pošiljanja prve slike z mobilno aplikacijo.",
+    // Phone photographing receipt — directly maps to "fotografiraj račun in pošlji"
+    coverImage: "https://images.unsplash.com/photo-1450101499163-c8848c66ca85?auto=format&fit=crop&w=1600&q=80",
+    coverAlt: "Pametni telefon, ki fotografira papirnat račun",
   },
   {
     slug: "birokrat-ocr-uvoz-racunov",
@@ -43,6 +50,9 @@ export const posts: BlogPost[] = [
     readingMinutes: 6,
     excerpt:
       "Birokrat OCR omogoča avtomatsko branje podatkov s fotografije računa. Tukaj je celotna pot od aktivacije do prvega knjiženja.",
+    // Laptop with spreadsheets / accounting software UI
+    coverImage: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1600&q=80",
+    coverAlt: "Računovodska programska oprema na zaslonu prenosnika",
   },
   {
     slug: "pantheon-ebooks-ocr-vodnik",
@@ -54,6 +64,9 @@ export const posts: BlogPost[] = [
     readingMinutes: 8,
     excerpt:
       "Datalab Pantheon ima eBooks OCR storitev za avtomatsko obdelavo dokumentov. Razložim, kako jo povezati z mobilnim slikanjem računov.",
+    // Desk with documents being processed — fits ERP/document automation
+    coverImage: "https://images.unsplash.com/photo-1554224155-6726b3ff858f?auto=format&fit=crop&w=1600&q=80",
+    coverAlt: "Dokumenti in računi razporejeni na pisalni mizi",
   },
   {
     slug: "najboljse-aplikacije-za-skeniranje-racunov",
@@ -65,6 +78,9 @@ export const posts: BlogPost[] = [
     readingMinutes: 9,
     excerpt:
       "Kateri aplikaciji za fotografiranje računov zaupati v Sloveniji? Naredil sem direktno primerjavo, ceniki, podprti programi in slabosti.",
+    // Multiple phones / app comparison
+    coverImage: "https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&w=1600&q=80",
+    coverAlt: "Različne mobilne aplikacije na zaslonu pametnega telefona",
   },
 ];
 
