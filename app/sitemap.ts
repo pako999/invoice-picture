@@ -68,13 +68,30 @@ export default function sitemap(): MetadataRoute.Sitemap {
     });
   }
 
-  // Blog posts (Slovenian only — not yet translated to EN)
+  // Blog posts — both locales with hreflang alternates
   for (const p of posts) {
+    const slUrl = `${SITE_URL}/blog/${p.slug}`;
+    const enUrl = `${SITE_URL}/en/blog/${p.slugEn}`;
+    const alternates = {
+      languages: {
+        "sl-SI": slUrl,
+        "en":    enUrl,
+        "x-default": slUrl,
+      },
+    };
     entries.push({
-      url: `${SITE_URL}/blog/${p.slug}`,
+      url: slUrl,
       lastModified: new Date(p.publishedAt),
       changeFrequency: "monthly",
       priority: 0.7,
+      alternates,
+    });
+    entries.push({
+      url: enUrl,
+      lastModified: new Date(p.publishedAt),
+      changeFrequency: "monthly",
+      priority: 0.6,
+      alternates,
     });
   }
 
