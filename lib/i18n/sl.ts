@@ -37,6 +37,7 @@ const sl = {
     productFeatures: "Funkcionalnosti",
     productIntegrations: "Integracije",
     productPricing: "Cenik",
+    productBlog: "Blog",
     helpTitle: "Pomoč",
     helpFAQ: "Pogosta vprašanja",
     helpUserGuide: "Navodila za uporabo",

@@ -23,6 +23,7 @@ export function Footer() {
     { label: t.productIntegrations, href: `${home === "/" ? "" : home}#integracije` },
     { label: t.productFeatures,     href: `${home === "/" ? "" : home}#funkcionalnosti` },
     { label: t.productPricing,      href: `${home === "/" ? "" : home}#cenik` },
+    { label: t.productBlog,         href: localeUrl(locale, "blog") },
   ];
   const helpLinks = [
     { label: t.helpUserGuide, href: localeUrl(locale, "navodila-za-uporabo") },
