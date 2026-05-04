@@ -24,6 +24,7 @@ const bilingualRoutes: { slug: string; priority: number; changeFrequency: Metada
   { slug: "zasebnost",                priority: 0.3, changeFrequency: "yearly" },
   { slug: "piskotki",                 priority: 0.3, changeFrequency: "yearly" },
   { slug: "vracila",                  priority: 0.3, changeFrequency: "yearly" },
+  { slug: "gdpr",                     priority: 0.3, changeFrequency: "yearly" },
   { slug: "blog",                     priority: 0.8, changeFrequency: "weekly" },
 ];
 

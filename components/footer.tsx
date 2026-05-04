@@ -34,6 +34,7 @@ export function Footer() {
   const legalLinks = [
     { label: t.legalPrivacy,  href: localeUrl(locale, "zasebnost") },
     { label: t.legalTerms,    href: localeUrl(locale, "pogoji-uporabe") },
+    { label: t.legalGdpr,     href: localeUrl(locale, "gdpr") },
     { label: t.legalCookies,  href: localeUrl(locale, "piskotki") },
     { label: t.legalRefunds,  href: localeUrl(locale, "vracila") },
   ];
