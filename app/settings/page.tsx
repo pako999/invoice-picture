@@ -236,7 +236,10 @@ function SettingsContent() {
         {loading ? (
           <div className="h-12 bg-gray-100 dark:bg-slate-800 rounded-xl animate-pulse" />
         ) : (
-          <div className="space-y-3">
+          /* Wrapping in a form so iOS keyboard "Go" / Enter submits and
+           * the button's click no longer competes with the input's blur
+           * (which is what caused the previous "needs two taps" bug). */
+          <form onSubmit={(e) => { e.preventDefault(); saveEmail(); }} className="space-y-3">
             {error && (
               <div className="flex items-start gap-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-xl text-sm">
                 <span>⚠️</span><span>{error}</span>
@@ -245,12 +248,14 @@ function SettingsContent() {
             <input type="email" value={email}
               onChange={e => { setEmail(e.target.value); setSaved(false); setError(""); }}
               placeholder="uvoz@minimax.si"
+              autoComplete="email"
+              enterKeyHint="done"
               className="w-full border border-gray-200 dark:border-slate-600 rounded-xl px-4 py-3 text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
-            <button onClick={saveEmail} disabled={saving || !email.trim()}
+            <button type="submit" disabled={saving || !email.trim()}
               className={`w-full font-bold py-3 rounded-xl text-sm transition-colors disabled:opacity-50 ${saved ? "bg-green-500 text-white" : "bg-blue-600 hover:bg-blue-700 text-white"}`}>
               {saved ? "✓ Shranjeno" : saving ? "Shranjujem..." : "Shrani email"}
             </button>
-          </div>
+          </form>
         )}
       </div>
 

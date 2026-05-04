@@ -34,6 +34,12 @@ export const invoices = pgTable("invoices", {
   id: serial("id").primaryKey(),
   clerkUserId: varchar("clerkUserId", { length: 255 }).notNull(),
   recipientEmail: varchar("recipientEmail", { length: 320 }).notNull(),
+  /** Optional link to companies.id. Nullable so that invoices sent
+   *  via the user's default email (no company picked) and historical
+   *  rows from before this column existed can both be represented.
+   *  ON DELETE we keep the row but set this to NULL so deleting a
+   *  company never destroys archived invoices. */
+  companyId: integer("companyId"),
   subject: varchar("subject", { length: 255 }).notNull().default("Račun"),
   imageData: text("imageData"),
   imageMime: varchar("imageMime", { length: 32 }).default("image/jpeg"),

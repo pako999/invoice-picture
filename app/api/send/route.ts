@@ -69,6 +69,9 @@ export async function POST(req: NextRequest) {
     const [result] = await db.insert(invoices).values({
       clerkUserId: userId,
       recipientEmail,
+      // Persist the company link so we can build per-company archives.
+      // Falls through as null when the user sends via their default email.
+      companyId: data.companyId ?? null,
       subject: data.subject,
       imageData: thumbData,
       imageMime: data.mime,

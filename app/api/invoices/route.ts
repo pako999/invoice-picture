@@ -3,10 +3,15 @@ import { auth } from "@clerk/nextjs/server";
 import { getDb } from "@/lib/db";
 import { invoices } from "@/lib/schema";
 import { desc, eq } from "drizzle-orm";
+import { backfillInvoiceCompanyIds } from "@/lib/backfill-invoice-company";
 
 export async function GET() {
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  // One-time-per-server backfill so old invoices show up in the new
+  // company-folder UI. Idempotent + cheap after the first call.
+  await backfillInvoiceCompanyIds();
 
   try {
     const db = getDb();
