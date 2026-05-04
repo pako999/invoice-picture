@@ -103,7 +103,7 @@ export default function HomeEn() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-24 relative">
           <div className="text-center max-w-4xl mx-auto">
             <Badge className="mb-4 bg-blue-100 text-blue-700 hover:bg-blue-200 border-0">
-              🇸🇮 Built for Slovenian accounting
+              Works with any accounting app that supports OCR email import
             </Badge>
             <h1 className="text-5xl sm:text-6xl lg:text-7xl tracking-tight mb-6 bg-gradient-to-r from-slate-900 via-blue-800 to-indigo-900 bg-clip-text text-transparent font-bold">
               Photograph an invoice and send it in one click
