@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PaddleCheckoutButton } from "@/components/paddle-checkout";
@@ -101,40 +102,56 @@ export default function HomeEn() {
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 bg-grid-slate-100 [mask-image:linear-gradient(0deg,transparent,black)] opacity-50" />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-24 relative">
-          <div className="text-center max-w-4xl mx-auto">
-            <Badge className="mb-4 bg-blue-100 text-blue-700 hover:bg-blue-200 border-0">
-              Works with any accounting app that supports OCR email import
-            </Badge>
-            <h1 className="text-5xl sm:text-6xl lg:text-7xl tracking-tight mb-6 bg-gradient-to-r from-slate-900 via-blue-800 to-indigo-900 bg-clip-text text-transparent font-bold">
-              Photograph an invoice and send it in one click
-            </h1>
-            <p className="text-xl text-slate-600 mb-8 leading-relaxed">
-              In a single tap you photograph a physical invoice, and the app automatically delivers it to your email or directly to your OCR import address — where your accounting software takes over.
-            </p>
-            <p className="text-lg text-slate-700 mb-8">
-              No manual entry, no fuss — <strong>fast, simple and reliable</strong>.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center mb-6">
-              <Link
-                href="/scan"
-                className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-lg h-12 px-8 rounded-lg font-medium transition-colors"
-              >
-                📷 Start scanning
-              </Link>
-              <Link
-                href="/en/how-it-works"
-                className="inline-flex items-center justify-center gap-2 border border-gray-300 bg-white hover:bg-gray-100 text-lg h-12 px-8 rounded-lg font-medium transition-colors"
-              >
-                Learn more
-              </Link>
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            <div className="text-center lg:text-left">
+              <Badge className="mb-4 bg-blue-100 text-blue-700 hover:bg-blue-200 border-0">
+                Works with any accounting app that supports OCR email import
+              </Badge>
+              <h1 className="text-5xl sm:text-6xl lg:text-6xl xl:text-7xl tracking-tight mb-6 bg-gradient-to-r from-slate-900 via-blue-800 to-indigo-900 bg-clip-text text-transparent font-bold">
+                Photograph an invoice and send it in one click
+              </h1>
+              <p className="text-xl text-slate-600 mb-6 leading-relaxed">
+                In a single tap you photograph a physical invoice, and the app automatically delivers it to your email or directly to your OCR import address — where your accounting software takes over.
+              </p>
+              <p className="text-lg text-slate-700 mb-8">
+                No manual entry, no fuss — <strong>fast, simple and reliable</strong>.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 lg:justify-start justify-center mb-6">
+                <Link
+                  href="/scan"
+                  className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-lg h-12 px-8 rounded-lg font-medium transition-colors"
+                >
+                  📷 Start scanning
+                </Link>
+                <Link
+                  href="/en/how-it-works"
+                  className="inline-flex items-center justify-center gap-2 border border-gray-300 bg-white hover:bg-gray-100 text-lg h-12 px-8 rounded-lg font-medium transition-colors"
+                >
+                  Learn more
+                </Link>
+              </div>
+
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-left max-w-2xl mx-auto lg:mx-0">
+                <div className="flex gap-3">
+                  <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                  <div className="text-sm text-amber-900">
+                    <strong>Prerequisite:</strong> your accounting software must accept invoices via email with OCR processing enabled. Check the import settings in Minimax, Birokrat, Pantheon or your program of choice.
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-left max-w-2xl mx-auto">
-              <div className="flex gap-3">
-                <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                <div className="text-sm text-amber-900">
-                  <strong>Prerequisite:</strong> your accounting software must accept invoices via email with OCR processing enabled. Check the import settings in Minimax, Birokrat, Pantheon or your program of choice.
-                </div>
+            <div className="relative flex justify-center lg:justify-end">
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-indigo-500/10 to-purple-500/10 blur-3xl rounded-full" />
+              <div className="relative">
+                <Image
+                  src="/hero-app.webp"
+                  alt="Slikaj Račun mobile app — invoice send screen"
+                  width={420}
+                  height={860}
+                  priority
+                  className="w-full max-w-[420px] h-auto drop-shadow-2xl"
+                />
               </div>
             </div>
           </div>
