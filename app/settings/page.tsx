@@ -193,15 +193,8 @@ function SettingsContent() {
             ))}
 
             {!isPro && companyList.length >= 1 ? (
-              <div className="flex items-center gap-3 py-3 px-4 rounded-xl border border-dashed border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20">
-                <span className="text-base">⭐</span>
-                <p className="text-sm text-amber-800 dark:text-amber-300 flex-1">
-                  Več podjetij je na voljo samo v Pro paketu.
-                </p>
-                <a href="/upgrade" className="text-sm font-bold text-amber-700 dark:text-amber-400 hover:underline whitespace-nowrap">
-                  Nadgradi na Pro →
-                </a>
-              </div>
+              // PRO upsell hidden — was creating noise on free/basic
+              null
             ) : showAdd ? (
               <div className="bg-gray-50 dark:bg-slate-800 border border-dashed border-gray-300 dark:border-slate-600 rounded-xl p-4 space-y-2">
                 <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Ime podjetja (npr. ABC d.o.o.)"
