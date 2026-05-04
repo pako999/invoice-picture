@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { Webhook } from "svix";
 import { getOrCreateSubscription } from "@/lib/subscription";
 import { getDb } from "@/lib/db";
-import { userSettings } from "@/lib/schema";
+import { userSettings, subscriptions, companies, invoices } from "@/lib/schema";
 import { eq } from "drizzle-orm";
 
 // Subset of the Clerk user.created payload we actually use. Clerk's
@@ -76,6 +76,32 @@ export async function POST(req: NextRequest) {
       } catch (e) {
         // Non-fatal — webhook should still acknowledge so Clerk doesn't retry forever
         console.warn("[clerk-webhook] failed to seed default email:", e);
+      }
+    }
+  }
+
+  if (event.type === "user.deleted") {
+    // GDPR right-to-erasure + data hygiene: when a Clerk user is
+    // deleted (via the user's own Account → Delete, the Clerk
+    // dashboard, or the API), wipe everything we have on them.
+    //
+    // Order matters: delete child rows first (invoices, companies)
+    // before the parent (userSettings, subscriptions). All four are
+    // keyed off clerkUserId so we just iterate.
+    const userId = event.data.id;
+    if (userId) {
+      try {
+        const db = getDb();
+        // No explicit FK constraints in the schema yet, so just delete
+        // each table independently. Wrapped in try/catch so a failure
+        // in one table doesn't prevent the rest from running.
+        await db.delete(invoices).where(eq(invoices.clerkUserId, userId));
+        await db.delete(companies).where(eq(companies.clerkUserId, userId));
+        await db.delete(userSettings).where(eq(userSettings.clerkUserId, userId));
+        await db.delete(subscriptions).where(eq(subscriptions.clerkUserId, userId));
+        console.log(`[clerk-webhook] purged data for deleted user ${userId}`);
+      } catch (e) {
+        console.warn("[clerk-webhook] failed to purge user data:", e);
       }
     }
   }
