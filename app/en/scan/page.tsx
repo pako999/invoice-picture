@@ -178,7 +178,7 @@ export default function ScanPage() {
   const isFreeAtLimit = subStatus?.isFree && subStatus.monthlyLimit !== null && subStatus.monthlyUsage >= subStatus.monthlyLimit;
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-10">
+    <div className="max-w-2xl mx-auto px-4 py-10 pb-[60vh]">
       {showLimitModal && <FreeLimitModal onClose={() => setShowLimitModal(false)} />}
 
       <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white mb-2">Send invoice</h1>
@@ -371,6 +371,11 @@ export default function ScanPage() {
           type="text"
           value={subject}
           onChange={(e) => setSubject(e.target.value)}
+          onFocus={(e) => {
+            setTimeout(() => {
+              e.target.scrollIntoView({ behavior: "smooth", block: "center" });
+            }, 300);
+          }}
           placeholder="Invoice"
           className="w-full border border-gray-200 dark:border-slate-600 rounded-xl px-4 py-3 text-sm bg-white dark:bg-slate-900 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         />

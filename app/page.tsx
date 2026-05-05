@@ -1,7 +1,6 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PaddleCheckoutButton } from "@/components/paddle-checkout";
@@ -142,19 +141,37 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Phone screenshot — actual app screen, fills column height on lg+. */}
+            {/* Phone mockup — CSS-built phone frame with simplified app UI */}
             <div className="relative flex justify-center lg:justify-end items-center">
               <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-indigo-500/10 to-purple-500/10 blur-3xl rounded-full" />
-              <div className="relative h-full flex items-center">
-                <Image
-                  src="/hero-app.webp"
-                  alt="Slikaj Račun mobilna aplikacija — zaslon za pošiljanje računa"
-                  width={420}
-                  height={860}
-                  priority
-                  sizes="(min-width: 1024px) 50vw, 90vw"
-                  className="w-auto max-w-full h-auto lg:h-full lg:max-h-[700px] object-contain drop-shadow-2xl"
-                />
+              <div className="relative w-[280px] h-[560px] bg-slate-900 rounded-[2.5rem] p-3 shadow-2xl ring-1 ring-slate-800">
+                <div className="absolute top-3 left-1/2 -translate-x-1/2 w-24 h-5 bg-slate-900 rounded-b-2xl z-10" />
+                <div className="w-full h-full bg-white rounded-[2rem] overflow-hidden flex flex-col">
+                  <div className="px-5 pt-10 pb-3">
+                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Slikaj Račun</p>
+                    <h3 className="text-lg font-extrabold text-gray-900 mt-1">Pošlji račun</h3>
+                  </div>
+
+                  <div className="mx-5 flex-1 rounded-2xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center gap-3">
+                    <FileText className="w-12 h-12 text-blue-500" />
+                    <p className="text-xs text-gray-500 font-medium">Povleci ali fotografiraj</p>
+                  </div>
+
+                  <div className="px-5 py-3">
+                    <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Zadeva</div>
+                    <div className="h-9 bg-gray-100 rounded-lg px-3 flex items-center text-xs text-gray-700">Račun</div>
+                  </div>
+
+                  <div className="px-5 pb-5 flex gap-2">
+                    <button className="flex-1 h-11 rounded-xl bg-gray-100 flex items-center justify-center gap-1.5 text-xs font-semibold text-gray-700">
+                      <Camera className="w-4 h-4" />
+                      Fotografiraj
+                    </button>
+                    <button className="flex-1 h-11 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 flex items-center justify-center gap-1.5 text-xs font-bold text-white">
+                      Pošlji
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
