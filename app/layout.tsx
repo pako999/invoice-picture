@@ -4,6 +4,7 @@ import "./globals.css";
 import { Nav } from "@/components/nav";
 import { Footer } from "@/components/footer";
 import { TrialBanner } from "@/components/trial-banner";
+import { CookieBanner } from "@/components/cookie-banner";
 import { getDict } from "@/lib/i18n";
 import { SITE_URL } from "@/lib/i18n/config";
 
@@ -119,6 +120,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <TrialBanner />
           <main className="pb-20 md:pb-0">{children}</main>
           <Footer />
+          <CookieBanner />
         </body>
       </html>
     </ClerkProvider>
