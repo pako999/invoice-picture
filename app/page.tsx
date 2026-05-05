@@ -142,8 +142,7 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Phone screenshot — fills column height on lg+, mobile keeps
-                a sensible max width. Source file: /public/hero-app.webp */}
+            {/* Phone screenshot — actual app screen, fills column height on lg+. */}
             <div className="relative flex justify-center lg:justify-end items-center">
               <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-indigo-500/10 to-purple-500/10 blur-3xl rounded-full" />
               <div className="relative h-full flex items-center">
