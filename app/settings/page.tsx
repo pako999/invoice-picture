@@ -87,10 +87,11 @@ function SettingsContent() {
   const [planInfo, setPlanInfo] = useState<{ plan: string; isFree: boolean; monthlyUsage: number; monthlyLimit: number | null } | null>(null);
 
   useEffect(() => {
+    const noStore: RequestInit = { cache: "no-store", headers: { "Cache-Control": "no-cache" } };
     Promise.all([
-      fetch("/api/settings").then(r => r.json()).catch(() => ({})),
-      fetch("/api/companies").then(r => r.json()).catch(() => []),
-      fetch("/api/subscription").then(r => r.json()).catch(() => ({})),
+      fetch("/api/settings", noStore).then(r => r.json()).catch(() => ({})),
+      fetch("/api/companies", noStore).then(r => r.json()).catch(() => []),
+      fetch("/api/subscription", noStore).then(r => r.json()).catch(() => ({})),
     ]).then(([settings, comps, sub]) => {
       setEmail(settings.recipientEmail ?? "");
       setCompanyList(Array.isArray(comps) ? comps : []);
@@ -106,11 +107,13 @@ function SettingsContent() {
     try {
       const res = await fetch("/api/settings", {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+        headers: { "Content-Type": "application/json", "Cache-Control": "no-cache" },
         body: JSON.stringify({ recipientEmail: email.trim() }),
       });
       const json = await res.json();
       if (!res.ok) { setError(json.error ?? "Napaka."); return; }
+      if (json.recipientEmail) setEmail(json.recipientEmail);
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch {

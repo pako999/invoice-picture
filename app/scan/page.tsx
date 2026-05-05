@@ -100,10 +100,11 @@ export default function ScanPage() {
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    const noStore: RequestInit = { cache: "no-store", headers: { "Cache-Control": "no-cache" } };
     Promise.all([
-      fetch("/api/settings").then(r => r.json()).catch(() => ({})),
-      fetch("/api/companies").then(r => r.json()).catch(() => []),
-      fetch("/api/subscription").then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch("/api/settings", noStore).then(r => r.json()).catch(() => ({})),
+      fetch("/api/companies", noStore).then(r => r.json()).catch(() => []),
+      fetch("/api/subscription", noStore).then(r => r.ok ? r.json() : null).catch(() => null),
     ]).then(([settings, comps, sub]) => {
       setRecipientEmail(settings.recipientEmail || null);
       const list: Company[] = Array.isArray(comps) ? comps : [];
