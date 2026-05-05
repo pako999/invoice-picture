@@ -36,6 +36,7 @@ export const slugMap: Record<string, string> = {
   vracila: "refunds",
   piskotki: "cookies",
   gdpr: "gdpr",
+  "izbrisi-racun": "delete-account",
   contact: "contact",
   upgrade: "upgrade",
   blog: "blog",
