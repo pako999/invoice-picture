@@ -59,7 +59,7 @@ export default function ComparisonBlog() {
 
           <h2>1. Slikaj Račun (priporočeno za Slovenijo)</h2>
           <p>
-            <strong>Cena:</strong> brezplačno do 3 računov / mesec, 6,90 € / mesec za neomejeno, 17,90 € / mesec za PRO (več podjetij).
+            <strong>Cena:</strong> brezplačno do 3 računov / mesec, 6,99 € / mesec za neomejeno, 17,99 € / mesec za PRO (več podjetij).
           </p>
           <p>
             <strong>Podprti programi:</strong> Minimax, Birokrat, Pantheon, SAOP, E-računi, Metakocka — vsak računovodski program z email uvozom.
@@ -183,7 +183,7 @@ export default function ComparisonBlog() {
               <tbody>
                 <tr>
                   <td className="p-3 border border-slate-200 font-semibold">Slikaj Račun</td>
-                  <td className="p-3 border border-slate-200">0–17,90 €</td>
+                  <td className="p-3 border border-slate-200">0–17,99 €</td>
                   <td className="p-3 border border-slate-200">✅</td>
                   <td className="p-3 border border-slate-200">✅ (PRO)</td>
                   <td className="p-3 border border-slate-200">✅ vsi</td>

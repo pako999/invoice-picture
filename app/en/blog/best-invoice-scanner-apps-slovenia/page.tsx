@@ -63,7 +63,7 @@ export default function Page() {
           </ol>
 
           <h2>1. Slikaj Račun (recommended for Slovenia)</h2>
-          <p><strong>Price:</strong> free up to 3 invoices/month, €6.90/month for unlimited, €17.90/month for PRO (multiple companies).</p>
+          <p><strong>Price:</strong> free up to 3 invoices/month, €6.99/month for unlimited, €17.99/month for PRO (multiple companies).</p>
           <p><strong>Supported programs:</strong> Minimax, Birokrat, Pantheon, SAOP, E-računi, Metakocka — and any accounting program with email-based invoice import.</p>
           <p><strong>Pros:</strong></p>
           <ul>
@@ -151,7 +151,7 @@ export default function Page() {
               <tbody>
                 <tr>
                   <td className="p-3 border border-slate-200 font-semibold">Slikaj Račun</td>
-                  <td className="p-3 border border-slate-200">€0–17.90</td>
+                  <td className="p-3 border border-slate-200">€0–17.99</td>
                   <td className="p-3 border border-slate-200">✅</td>
                   <td className="p-3 border border-slate-200">✅ (PRO)</td>
                   <td className="p-3 border border-slate-200">✅ all</td>

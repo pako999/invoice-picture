@@ -31,14 +31,17 @@ const integrations = [
 export default function Home() {
   const [isYearly, setIsYearly] = useState(false);
 
-  const basicMonthly = 6.9;
-  const proMonthly = 17.9;
-  const yearlyDiscount = 0.2;
+  // Prices match the App Store / Play Store tiers; yearly is set
+  // explicitly (not computed) so it lines up with the chosen store tier.
+  const basicMonthly = 6.99;
+  const basicYearly  = 66.90;  // explicit store tier
+  const proMonthly   = 17.99;
+  const proYearly    = 171.99; // explicit store tier
 
-  const basicPrice = isYearly ? (basicMonthly * 12 * (1 - yearlyDiscount)).toFixed(2) : basicMonthly.toFixed(2);
-  const proPrice = isYearly ? (proMonthly * 12 * (1 - yearlyDiscount)).toFixed(2) : proMonthly.toFixed(2);
-  const basicMonthlySavings = (basicMonthly * 12 * yearlyDiscount).toFixed(2);
-  const proMonthlySavings = (proMonthly * 12 * yearlyDiscount).toFixed(2);
+  const basicPrice = (isYearly ? basicYearly : basicMonthly).toFixed(2);
+  const proPrice   = (isYearly ? proYearly   : proMonthly).toFixed(2);
+  const basicMonthlySavings = (basicMonthly * 12 - basicYearly).toFixed(2);
+  const proMonthlySavings   = (proMonthly * 12 - proYearly).toFixed(2);
 
   const softwareJsonLd = {
     "@context": "https://schema.org",

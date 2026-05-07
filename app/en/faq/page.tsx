@@ -26,7 +26,7 @@ const faqs = [
   { question: "How long are invoices kept in the archive?", answer: "All sent invoices are stored in the archive without any time limits. You can access them any time." },
   { question: "Can I use the app for multiple companies?", answer: "Yes. The Basic plan supports one company. For multiple companies you need the PRO plan, which lets you manage unlimited entities." },
   { question: "What if an invoice wasn't recognised correctly?", answer: "OCR quality depends on your accounting program and the image quality. Make sure the photo has good lighting and is sharp. If the issue persists, contact your accounting software vendor." },
-  { question: "Is there a free trial?", answer: "Yes — every new user gets a 7-day free trial without entering a credit card. After it ends you can upgrade to Basic (€6.90/month) or PRO (€17.90/month)." },
+  { question: "Is there a free trial?", answer: "Yes — every new user gets a 7-day free trial without entering a credit card. After it ends you can upgrade to Basic (€6.99/month) or PRO (€17.99/month)." },
   { question: "How do I get support?", answer: "Reach out via the contact page or email our support team. We're happy to help with setup and troubleshooting." },
 ];
 

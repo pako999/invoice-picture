@@ -42,14 +42,15 @@ const proFeatures = [
 export default function Pricing() {
   const [isYearly, setIsYearly] = useState(false);
 
-  const basicMonthly = 6.9;
-  const proMonthly = 17.9;
-  const yearlyDiscount = 0.2;
+  const basicMonthly = 6.99;
+  const basicYearly  = 66.90;
+  const proMonthly   = 17.99;
+  const proYearly    = 171.99;
 
-  const basicPrice = isYearly ? (basicMonthly * 12 * (1 - yearlyDiscount)).toFixed(2) : basicMonthly.toFixed(2);
-  const proPrice = isYearly ? (proMonthly * 12 * (1 - yearlyDiscount)).toFixed(2) : proMonthly.toFixed(2);
-  const basicMonthlySavings = (basicMonthly * 12 * yearlyDiscount).toFixed(2);
-  const proMonthlySavings = (proMonthly * 12 * yearlyDiscount).toFixed(2);
+  const basicPrice = (isYearly ? basicYearly : basicMonthly).toFixed(2);
+  const proPrice   = (isYearly ? proYearly   : proMonthly).toFixed(2);
+  const basicMonthlySavings = (basicMonthly * 12 - basicYearly).toFixed(2);
+  const proMonthlySavings   = (proMonthly * 12 - proYearly).toFixed(2);
 
   return (
     <div className="py-24 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 min-h-screen">

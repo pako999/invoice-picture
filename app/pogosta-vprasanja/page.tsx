@@ -25,7 +25,7 @@ const faqs = [
   { question: "Kako dolgo so računi shranjeni v arhivu?", answer: "Vsi poslani računi so shranjeni v arhivu brez časovnih omejitev. Do njih lahko dostopate kadarkoli." },
   { question: "Ali lahko uporabim aplikacijo za več podjetij?", answer: "Da. Z osnovnim paketom lahko upravljate eno podjetje. Za več podjetij potrebujete PRO paket, ki omogoča upravljanje neomejeno subjektov." },
   { question: "Kaj če račun ni bil pravilno prepoznan?", answer: "Kakovost OCR prepoznave je odvisna od vašega računovodskega programa in kvalitete slike. Poskrbite za dobro osvetlitev in ostro sliko. Če težave vztrajajo, kontaktirajte ponudnika vašega računovodskega programa." },
-  { question: "Ali ponujate brezplačno preizkusno dobo?", answer: "Da, vsak nov uporabnik dobi 7-dnevno brezplačno preizkusno dobo brez vnosa kreditne kartice. Po preteku se lahko odločite za nadgradnjo na osnovni paket (6,90 €/mesec) ali PRO paket (17,90 €/mesec)." },
+  { question: "Ali ponujate brezplačno preizkusno dobo?", answer: "Da, vsak nov uporabnik dobi 7-dnevno brezplačno preizkusno dobo brez vnosa kreditne kartice. Po preteku se lahko odločite za nadgradnjo na osnovni paket (6,99 €/mesec) ali PRO paket (17,99 €/mesec)." },
   { question: "Kako dobim podporo, če imam težave?", answer: "Kontaktirajte nas preko kontaktne strani ali pišite na našo podporo. Z veseljem vam pomagamo pri nastavitvi in reševanju težav." },
 ];
 
