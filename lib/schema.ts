@@ -14,6 +14,12 @@ export const subscriptions = pgTable("subscriptions", {
   currentPeriodEnd: timestamp("currentPeriodEnd"),
   paddleCustomerId: varchar("paddleCustomerId", { length: 64 }),
   paddleSubscriptionId: varchar("paddleSubscriptionId", { length: 64 }),
+  /** Google Play purchase token (≈100–300 chars) and the SKU it was bought
+   *  under. Set when the user subscribes via the Android app. The cron at
+   *  /api/cron/refresh-google-play re-fetches state from Google for every
+   *  row with a non-null token, so renewals/cancellations stay in sync. */
+  googlePlayPurchaseToken: text("googlePlayPurchaseToken"),
+  googlePlayProductId: varchar("googlePlayProductId", { length: 64 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
