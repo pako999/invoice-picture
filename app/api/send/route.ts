@@ -24,10 +24,12 @@ export async function POST(req: NextRequest) {
 
   const status = await getStatus(userId);
   if (!status.canSend) {
+    // Client matches on `code` and shows a localized message. `error` is a
+    // sensible fallback for older clients that only read the string.
     return NextResponse.json(
       {
         success: false,
-        error: "Preizkusna doba je potekla. Za nadaljevanje pošiljanja računov nadgradite paket.",
+        error: "Trial expired — upgrade to keep sending invoices.",
         code: "subscription_required",
         plan: status.plan,
       },
@@ -39,7 +41,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       {
         success: false,
-        error: "Dosegli ste mesečno omejitev 3 računov. Nadgradite na Osnovni paket za neomejeno obdelavo računov.",
+        error: "Monthly limit of 3 invoices reached on the Free plan.",
         code: "free_limit_reached",
       },
       { status: 403 },
@@ -63,7 +65,14 @@ export async function POST(req: NextRequest) {
     }
 
     if (!recipientEmail) {
-      return NextResponse.json({ success: false, error: "Nastavi email prejemnika v Nastavitvah." }, { status: 422 });
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Set a recipient email in Settings.",
+          code: "no_recipient",
+        },
+        { status: 422 },
+      );
     }
 
     const isPdf = data.mime === "application/pdf";
