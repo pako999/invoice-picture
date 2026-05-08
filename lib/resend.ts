@@ -11,20 +11,42 @@ export function getResend() {
   return _resend;
 }
 
+/** Lightweight HTML escape for user-supplied text — we never want raw user
+ *  input in the email body to break out of the surrounding tags. */
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 export async function sendInvoiceEmail({
   to,
   subject,
   imageBase64,
   filename,
   mime = "image/jpeg",
+  messageBody,
 }: {
   to: string;
   subject: string;
   imageBase64: string;
   filename: string;
   mime?: string;
+  messageBody?: string;
 }) {
   const from = process.env.RESEND_FROM ?? "onboarding@resend.dev";
+
+  // If the user added a personal note, render it as its own block above the
+  // invoice image. Newlines become <br> so multi-line notes survive transit.
+  const noteBlock = messageBody?.trim()
+    ? `
+        <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;padding:16px 20px;margin:0 0 20px;color:#374151;font-size:15px;line-height:1.5;white-space:pre-wrap">${escapeHtml(messageBody.trim()).replace(/\n/g, "<br>")}</div>
+      `
+    : "";
+
   return getResend().emails.send({
     from,
     to,
@@ -35,8 +57,9 @@ export async function sendInvoiceEmail({
           <span style="font-size:22px">🧾</span>
           <span style="font-size:20px;font-weight:700;color:#111">Slikaj Račun</span>
         </div>
-        <h1 style="font-size:24px;font-weight:700;color:#111;margin:0 0 8px">${subject}</h1>
-        <p style="color:#666;margin:0 0 28px;font-size:15px">Priložena je slika računa.</p>
+        <h1 style="font-size:24px;font-weight:700;color:#111;margin:0 0 8px">${escapeHtml(subject)}</h1>
+        <p style="color:#666;margin:0 0 20px;font-size:15px">Priložena je slika računa.</p>
+        ${noteBlock}
         <img src="cid:invoice" style="width:100%;max-width:560px;border-radius:12px;border:1px solid #e5e7eb" />
         <hr style="border:none;border-top:1px solid #e5e7eb;margin:32px 0" />
         <p style="color:#9ca3af;font-size:12px;margin:0">Poslano z <strong>Slikaj Račun</strong></p>

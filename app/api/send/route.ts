@@ -13,6 +13,9 @@ const schema = z.object({
   filename: z.string().min(1),
   mime: z.string().default("image/jpeg"),
   companyId: z.number().optional(),
+  // Optional free-text note from the user. Rendered above the invoice image
+  // in the outgoing email. Capped to keep transactional email small.
+  messageBody: z.string().max(2000).optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -80,7 +83,7 @@ export async function POST(req: NextRequest) {
     }).returning({ id: invoices.id });
 
     try {
-      await sendInvoiceEmail({ to: recipientEmail, subject: data.subject, imageBase64: data.imageBase64, filename: data.filename, mime: data.mime });
+      await sendInvoiceEmail({ to: recipientEmail, subject: data.subject, imageBase64: data.imageBase64, filename: data.filename, mime: data.mime, messageBody: data.messageBody });
       await db.update(invoices).set({ status: "sent", sentAt: new Date() }).where(eq(invoices.id, result.id));
       return NextResponse.json({ success: true, id: result.id });
     } catch (emailErr) {
