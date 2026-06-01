@@ -5,15 +5,7 @@ import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { subscriptions } from "@/lib/schema";
 import { getOrCreateSubscription } from "@/lib/subscription";
-
-const BUNDLE_ID = process.env.APPLE_BUNDLE_ID ?? "si.posljiracun.app";
-
-const PRODUCT_PLAN_MAP: Record<string, "basic" | "pro"> = {
-  "si.posljiracun.app.basic_monthly": "basic",
-  "si.posljiracun.app.basic_yearly":  "basic",
-  "si.posljiracun.app.pro_monthly":   "pro",
-  "si.posljiracun.app.pro_yearly":    "pro",
-};
+import { BUNDLE_ID, PRODUCT_PLAN_MAP } from "@/lib/apple-iap";
 
 async function makeAppleJWT(): Promise<string> {
   const keyId = process.env.APPLE_IAP_KEY_ID!;
@@ -76,7 +68,17 @@ export async function POST(req: Request) {
 
   await db
     .update(subscriptions)
-    .set({ plan, currentPeriodEnd, updatedAt: new Date() })
+    .set({
+      plan,
+      currentPeriodEnd,
+      // Persist the stable subscription id so App Store Server Notifications
+      // (/api/apple-iap/notifications) can map renewals back to this user.
+      appleOriginalTransactionId:
+        (txn.originalTransactionId as string | undefined) ??
+        (txn.transactionId as string | undefined),
+      appleProductId: productId,
+      updatedAt: new Date(),
+    })
     .where(eq(subscriptions.clerkUserId, userId));
 
   return NextResponse.json({ success: true, plan });

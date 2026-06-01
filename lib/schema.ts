@@ -20,6 +20,12 @@ export const subscriptions = pgTable("subscriptions", {
    *  row with a non-null token, so renewals/cancellations stay in sync. */
   googlePlayPurchaseToken: text("googlePlayPurchaseToken"),
   googlePlayProductId: varchar("googlePlayProductId", { length: 64 }),
+  /** Apple App Store identifiers. originalTransactionId is the stable id for
+   *  a subscription across renewals — App Store Server Notifications (V2) are
+   *  matched back to a user by this column so renewals/cancellations/refunds
+   *  stay in sync without the app re-verifying. Set in /api/apple-iap/verify. */
+  appleOriginalTransactionId: text("appleOriginalTransactionId"),
+  appleProductId: varchar("appleProductId", { length: 64 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
