@@ -54,18 +54,21 @@ Legend: ✅ filled from repo · ⚠️ needs your input · ❌ blocker for revie
 | Privacy "Nutrition Label" | ✅ Yes | Declare data collected (account email, invoice images). Match `/zasebnost`. |
 | In-app purchases | ✅ Yes (you sell subs) | Create/submit the subscription products; tiers must match the app. |
 
-## ⚠️ Data inconsistencies found in the repo — fix before publishing
+## ✅ Data inconsistencies — RESOLVED
 
-These would make the store listing contradict the site:
+These were fixed in the codebase so the store listing won't contradict the site.
+Source of truth: `TRIAL_DAYS = 7` (`lib/subscription.ts:5`) and the price
+constants in `app/cenik/page.tsx` / `app/upgrade/page.tsx`.
 
-1. **Trial length disagrees.** Hero & final CTA say **14-day**
-   (`lib/i18n/sl.ts:73`, `:129`; `en.ts:73`, `:129`), but the pricing page says
-   **7-day** (`app/cenik/page.tsx:141`, `:178`) and so does
-   `public/llms.txt:17`. Pick one number and make it consistent everywhere,
-   then use it in the App Store description / review notes.
-2. **Prices disagree.** Home pricing shows **6,99 €** / **17,99 €**
-   (`lib/i18n/sl.ts:113`, `:121`), while `public/llms.txt:17` says
-   **6,90 €** / **17,90 €**. Align these with the actual App Store / Play Store
-   subscription tiers (commit `bb509b0` updated tiers).
-3. **Contact email.** Site/JSON-LD use `info@posljiracun.si`; confirm that is
-   the address you want on the App Store listing and review contact.
+1. **Trial length → 7 days everywhere.** The stray **14-day** copy in the hero
+   trust-badge and final CTA (`lib/i18n/sl.ts`, `en.ts`) now reads **7-day**,
+   matching `/cenik` and `TRIAL_DAYS`. The unused key `heroTrust14Day` was
+   renamed to `heroTrust7Day`.
+2. **Prices → 6,99 € / 17,99 €.** The stale **6,90 / 17,90** values in
+   `public/llms.txt` and `public/llms-full.txt` (incl. yearly totals and the
+   FAQ/positioning lines) now match the real subscription tiers.
+3. **FAQ trial answer.** `llms-full.txt` previously claimed there is no free
+   trial ("Trenutno ne"); updated to reflect the 7-day trial.
+4. **Contact email.** Site/JSON-LD consistently use `info@posljiracun.si`
+   (also used in `review_information/email_address.txt`). Left as-is — confirm
+   it's the address you want on the listing, since your account email differs.

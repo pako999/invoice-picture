@@ -70,7 +70,7 @@ const sl = {
     heroCtaPrimary: "Začni brezplačno",
     heroCtaSecondary: "Glej kako deluje",
     heroTrustNoCard: "Brez kreditne kartice",
-    heroTrust14Day: "14-dnevni preizkus",
+    heroTrust7Day: "7-dnevni preizkus",
     heroTrustGdpr: "GDPR skladno",
     sectionHowTitle: "Kako deluje",
     sectionHowSubtitle: "Trije koraki do digitalnega računa",
@@ -126,7 +126,7 @@ const sl = {
     sectionPricingProFeature4: "Prednostna podpora",
     sectionPricingCta: "Začni z brezplačnim paketom",
     finalCtaTitle: "Pripravljen? Začni v eni minuti.",
-    finalCtaSubtitle: "Brez kreditne kartice. 14-dnevni preizkus PRO paketa.",
+    finalCtaSubtitle: "Brez kreditne kartice. 7-dnevni preizkus PRO paketa.",
     finalCtaButton: "Ustvari brezplačen račun",
   },
   // Page-specific dictionaries get added one by one.
