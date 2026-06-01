@@ -1,0 +1,18 @@
+Fotografiraj papirnat račun in ga v sekundi pošlji na email naslov svojega računovodskega programa — z enim klikom. Brez ročnega vnašanja, brez izgubljenih računov.
+
+Slikaj Račun deluje z vsemi slovenskimi računovodskimi programi, ki sprejemajo račune po emailu z OCR obdelavo: Minimax, Birokrat, Pantheon, SAOP, E-računi in Metakocka. Email naslov za uvoz nastaviš enkrat, nato pa vsak račun pošlješ s telefona v sekundi.
+
+Kako deluje:
+1. Fotografiraj papirnat račun (ali naloži PDF).
+2. En klik — račun se pošlje na email tvojega računovodskega programa.
+3. Program z OCR prepozna podatke in jih vnese v knjigovodstvo.
+
+Funkcionalnosti:
+• Pošiljanje z enim klikom
+• Arhiv računov s predogledom
+• Status pošiljanja v realnem času
+• Podpora za JPG, PNG, WEBP in PDF
+• Varna prijava (Clerk)
+• GDPR skladno
+
+Pogoj za uporabo je računovodski program, ki podpira sprejemanje računov po emailu z OCR.

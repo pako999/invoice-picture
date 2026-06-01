@@ -1,0 +1,1 @@
+TODO: the app requires a Clerk sign-in. Provide a demo account so App Review can sign in.

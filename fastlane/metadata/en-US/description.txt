@@ -1,0 +1,18 @@
+Photograph a paper invoice and send it to your accounting software's email in seconds — with a single click. No manual entry, no lost receipts.
+
+Slikaj Račun works with every Slovenian accounting program that accepts invoices by email with OCR: Minimax, Birokrat, Pantheon, SAOP, E-računi and Metakocka. You set the import email address once, then send every invoice from your phone in seconds.
+
+How it works:
+1. Photograph the paper invoice (or upload a PDF).
+2. One click — the invoice is sent to your accounting software's email.
+3. The software recognises the data via OCR and enters it into your books.
+
+Features:
+• One-click sending
+• Invoice archive with preview
+• Real-time delivery status
+• Supports JPG, PNG, WEBP and PDF
+• Secure sign-in (Clerk)
+• GDPR compliant
+
+Requires an accounting program that supports receiving invoices by email with OCR.
