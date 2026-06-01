@@ -16,14 +16,14 @@ export default function Zasebnost() {
         <div className="text-center mb-16">
           <Badge className="mb-4 bg-slate-100 text-slate-700 hover:bg-slate-200 border-0">Pravno</Badge>
           <h1 className="text-4xl sm:text-5xl tracking-tight mb-6 font-bold">Politika zasebnosti</h1>
-          <p className="text-lg text-slate-600">Zadnja posodobitev: April 2026</p>
+          <p className="text-lg text-slate-600">Zadnja posodobitev: junij 2026</p>
         </div>
 
         <div className="prose prose-slate max-w-none space-y-8 bg-white rounded-2xl border border-slate-200 p-8 sm:p-12 shadow-sm">
           <section>
             <h2 className="text-2xl mb-4 font-semibold">1. Uvod</h2>
             <p className="text-slate-700">
-              Aplikacija Računi spoštuje vašo zasebnost in je zavezana k zaščiti vaših osebnih podatkov. Ta politika zasebnosti vas seznanja s tem, kako zbiramo, uporabljamo, shranjujemo in varujemo vaše podatke.
+              SlikajRačun (storitev podjetja Sport Group d.o.o.) spoštuje vašo zasebnost in je zavezan k zaščiti vaših osebnih podatkov. Ta politika zasebnosti vas seznanja s tem, kako zbiramo, uporabljamo, shranjujemo in varujemo vaše podatke pri uporabi spletne strani in mobilne aplikacije.
             </p>
           </section>
 
@@ -31,10 +31,10 @@ export default function Zasebnost() {
             <h2 className="text-2xl mb-4 font-semibold">2. Zbiranje podatkov</h2>
             <p className="text-slate-700 mb-3">Zbiramo naslednje vrste podatkov:</p>
             <ul className="list-disc list-inside space-y-2 text-slate-700">
-              <li><strong>Identifikacijski podatki:</strong> Ime, priimek, email naslov</li>
+              <li><strong>E-poštni naslov računa:</strong> e-naslov, s katerim se prijavite (potreben za avtentikacijo in upravljanje naročnine)</li>
+              <li><strong>Slike računov:</strong> fotografije ali skenogrami računov, ki jih naložite in pošljete</li>
               <li><strong>Tehnični podatki:</strong> IP naslov, podatki o napravi, brskalnik</li>
-              <li><strong>Podatki o uporabi:</strong> Zgodovina poslanih računov, časovni žigi, status pošiljanja</li>
-              <li><strong>Slike računov:</strong> Fotografije ali skenogrami dokumentov, ki jih pošljete</li>
+              <li><strong>Podatki o uporabi:</strong> zgodovina poslanih računov, časovni žigi, status pošiljanja</li>
             </ul>
           </section>
 
@@ -61,11 +61,15 @@ export default function Zasebnost() {
           <section>
             <h2 className="text-2xl mb-4 font-semibold">5. Posredovanje podatkov tretjim osebam</h2>
             <p className="text-slate-700 mb-3">
-              Slike računov posredujemo na email naslov vašega računovodskega programa, ki ste ga nastavili v aplikaciji. Poleg tega lahko vaše podatke delimo z:
+              Slike računov posredujemo na email naslov vašega računovodskega programa, ki ste ga nastavili v aplikaciji. Za delovanje storitve uporabljamo naslednje obdelovalce podatkov:
             </p>
             <ul className="list-disc list-inside space-y-2 text-slate-700">
-              <li><strong>Ponudniki storitev:</strong> Gostovanje, plačilni sistem, email storitve</li>
-              <li><strong>Pravni zahtevki:</strong> Če to zahteva zakon ali pravni postopek</li>
+              <li><strong>Clerk</strong> — avtentikacija in upravljanje uporabniških računov</li>
+              <li><strong>Resend</strong> — dostava e-pošte s slikami vaših računov</li>
+              <li><strong>Neon</strong> — gostovanje podatkovne baze (EU)</li>
+              <li><strong>Vercel</strong> — gostovanje spletne aplikacije</li>
+              <li><strong>Apple App Store</strong> in <strong>Paddle</strong> — obdelava plačil naročnin (plačilnih podatkov ne prejemamo niti ne shranjujemo)</li>
+              <li><strong>Pravni zahtevki:</strong> če to zahteva zakon ali pravni postopek</li>
             </ul>
             <p className="text-slate-700 mt-3">Vaših podatkov ne prodajamo tretjim osebam za trženjske namene.</p>
           </section>
@@ -97,6 +101,12 @@ export default function Zasebnost() {
             <p className="text-slate-700 mt-3">
               Za uveljavljanje teh pravic nas kontaktirajte na{" "}
               <a href="mailto:info@posljiracun.si" className="text-blue-600 hover:underline">info@posljiracun.si</a>
+            </p>
+            <p className="text-slate-700 mt-3">
+              <strong>Izbris računa in podatkov:</strong> svoj uporabniški račun in vse povezane podatke (poslane račune, podatke o podjetjih in nastavljene e-naslove) lahko kadarkoli trajno izbrišete na strani{" "}
+              <Link href="/izbrisi-racun" className="text-blue-600 hover:underline">Izbris računa</Link>{" "}
+              ali tako, da nam pišete na{" "}
+              <a href="mailto:info@posljiracun.si" className="text-blue-600 hover:underline">info@posljiracun.si</a>. Izbris je dokončen.
             </p>
           </section>
 

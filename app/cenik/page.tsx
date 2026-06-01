@@ -198,6 +198,28 @@ export default function Cenik() {
             </Link>
           </p>
         </div>
+
+        <div className="mt-12 max-w-3xl mx-auto bg-white/70 border border-slate-200 rounded-2xl p-6 sm:p-8 text-left text-sm text-slate-600 space-y-3">
+          <h2 className="text-base font-semibold text-slate-900">Pogoji naročnine</h2>
+          <p>
+            <strong>Osnovni:</strong> 6,99 €/mesec ali 66,90 €/leto. <strong>PRO:</strong> 17,99 €/mesec ali 171,99 €/leto. Cene vključujejo DDV.
+          </p>
+          <p>
+            Naročnina vključuje <strong>7-dnevno brezplačno preizkusno dobo</strong>. Plačilo se zaračuna ob koncu preizkusne dobe, razen če naročnino prekličete prej.
+          </p>
+          <p>
+            Gre za <strong>samodejno obnovljivo naročnino</strong>. Obnovi se za enako obdobje in ceno, razen če jo prekličete vsaj 24 ur pred koncem tekočega obdobja; strošek obnove se zaračuna v zadnjih 24 urah obdobja.
+          </p>
+          <p>
+            Naročnino, sklenjeno prek aplikacije za iOS, upravljate in prekličete v nastavitvah svojega Apple računa (App Store → vaše ime → Naročnine). Naročnino, sklenjeno na spletni strani, prekličete v nastavitvah računa.
+          </p>
+          <p>
+            Več v{" "}
+            <Link href="/pogoji-uporabe" className="text-blue-600 hover:underline">Pogojih uporabe</Link>{" "}
+            in{" "}
+            <Link href="/zasebnost" className="text-blue-600 hover:underline">Politiki zasebnosti</Link>.
+          </p>
+        </div>
       </div>
     </div>
   );

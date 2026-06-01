@@ -16,7 +16,7 @@ export default function Terms() {
         <div className="text-center mb-16">
           <Badge className="mb-4 bg-slate-100 text-slate-700 hover:bg-slate-200 border-0">Legal</Badge>
           <h1 className="text-4xl sm:text-5xl tracking-tight mb-6 font-bold">Terms of Use</h1>
-          <p className="text-lg text-slate-600">Last updated: April 2026</p>
+          <p className="text-lg text-slate-600">Last updated: June 2026</p>
         </div>
 
         <div className="prose prose-slate max-w-none space-y-8 bg-white rounded-2xl border border-slate-200 p-8 sm:p-12 shadow-sm">
@@ -46,16 +46,23 @@ export default function Terms() {
           </section>
 
           <section>
-            <h2 className="text-2xl mb-4 font-semibold">4. Payment terms</h2>
-            <p className="text-slate-700">
-              The service is billed monthly or yearly depending on the plan you choose. Prices are listed on the website and include VAT. Payment is taken in advance for the current billing period. Failed payments may result in temporary service suspension.
+            <h2 className="text-2xl mb-4 font-semibold">4. Subscriptions and payment terms</h2>
+            <p className="text-slate-700 mb-3">
+              The service is offered in the following paid plans (prices include VAT):
+            </p>
+            <ul className="list-disc list-inside space-y-2 text-slate-700">
+              <li><strong>Basic:</strong> €6.99/month or €66.90/year</li>
+              <li><strong>PRO:</strong> €17.99/month or €171.99/year</li>
+            </ul>
+            <p className="text-slate-700 mt-3">
+              Subscriptions include a 7-day free trial. These are <strong>auto-renewable subscriptions</strong>: at the end of each period the subscription renews automatically for the same period and price unless you cancel at least 24 hours before the end of the current period. Payment is taken in advance for the current period, and the renewal charge is applied within the last 24 hours of the period. Failed payments may result in temporary service suspension.
             </p>
           </section>
 
           <section>
             <h2 className="text-2xl mb-4 font-semibold">5. Subscription cancellation</h2>
             <p className="text-slate-700">
-              You may cancel your subscription at any time. Cancellation takes effect at the end of the current paid period. Paid periods are non-refundable. After cancellation you retain access to the service until the end of the paid period.
+              You may cancel at any time. Subscriptions purchased through the iOS app are managed and cancelled in your Apple Account settings (App Store → your name → Subscriptions) at least 24 hours before the period ends, otherwise they renew. Subscriptions purchased on the website can be cancelled from your account settings. Cancellation takes effect at the end of the current paid period; paid periods are non-refundable and you retain access until the period ends.
             </p>
           </section>
 

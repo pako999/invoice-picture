@@ -198,6 +198,28 @@ export default function Pricing() {
             </Link>
           </p>
         </div>
+
+        <div className="mt-12 max-w-3xl mx-auto bg-white/70 border border-slate-200 rounded-2xl p-6 sm:p-8 text-left text-sm text-slate-600 space-y-3">
+          <h2 className="text-base font-semibold text-slate-900">Subscription terms</h2>
+          <p>
+            <strong>Basic:</strong> €6.99/month or €66.90/year. <strong>PRO:</strong> €17.99/month or €171.99/year. Prices include VAT.
+          </p>
+          <p>
+            Subscriptions include a <strong>7-day free trial</strong>. You are charged at the end of the trial unless you cancel before it ends.
+          </p>
+          <p>
+            These are <strong>auto-renewable subscriptions</strong>. They renew for the same period and price unless cancelled at least 24 hours before the end of the current period; the renewal charge is applied within the last 24 hours of the period.
+          </p>
+          <p>
+            Subscriptions purchased through the iOS app are managed and cancelled in your Apple Account settings (App Store → your name → Subscriptions). Subscriptions purchased on the website can be cancelled from your account settings.
+          </p>
+          <p>
+            See our{" "}
+            <Link href="/en/terms" className="text-blue-600 hover:underline">Terms of Use</Link>{" "}
+            and{" "}
+            <Link href="/en/privacy" className="text-blue-600 hover:underline">Privacy Policy</Link>.
+          </p>
+        </div>
       </div>
     </div>
   );

@@ -17,14 +17,14 @@ export default function Privacy() {
         <div className="text-center mb-16">
           <Badge className="mb-4 bg-slate-100 text-slate-700 hover:bg-slate-200 border-0">Legal</Badge>
           <h1 className="text-4xl sm:text-5xl tracking-tight mb-6 font-bold">Privacy Policy</h1>
-          <p className="text-lg text-slate-600">Last updated: April 2026</p>
+          <p className="text-lg text-slate-600">Last updated: June 2026</p>
         </div>
 
         <div className="prose prose-slate max-w-none space-y-8 bg-white rounded-2xl border border-slate-200 p-8 sm:p-12 shadow-sm">
           <section>
             <h2 className="text-2xl mb-4 font-semibold">1. Introduction</h2>
             <p className="text-slate-700">
-              Slikaj Račun respects your privacy and is committed to protecting your personal data. This privacy policy explains how we collect, use, store and protect your data.
+              Slikaj Račun (a service of Sport Group d.o.o.) respects your privacy and is committed to protecting your personal data. This privacy policy explains how we collect, use, store and protect your data when you use our website and mobile app.
             </p>
           </section>
 
@@ -32,10 +32,10 @@ export default function Privacy() {
             <h2 className="text-2xl mb-4 font-semibold">2. Data we collect</h2>
             <p className="text-slate-700 mb-3">We collect the following types of data:</p>
             <ul className="list-disc list-inside space-y-2 text-slate-700">
-              <li><strong>Identification data:</strong> first name, last name, email address</li>
+              <li><strong>Account email address:</strong> the email you sign in with (used for authentication and to manage your subscription)</li>
+              <li><strong>Invoice images:</strong> photographs or scans of invoices you upload and send</li>
               <li><strong>Technical data:</strong> IP address, device information, browser</li>
               <li><strong>Usage data:</strong> history of sent invoices, timestamps, delivery status</li>
-              <li><strong>Invoice images:</strong> photographs or scans of documents you submit</li>
             </ul>
           </section>
 
@@ -62,10 +62,14 @@ export default function Privacy() {
           <section>
             <h2 className="text-2xl mb-4 font-semibold">5. Sharing with third parties</h2>
             <p className="text-slate-700 mb-3">
-              Invoice images are forwarded to the email address of the accounting program you have configured in the app. In addition, we may share your data with:
+              Invoice images are forwarded to the email address of the accounting program you have configured in the app. To operate the service we use the following data processors:
             </p>
             <ul className="list-disc list-inside space-y-2 text-slate-700">
-              <li><strong>Service providers:</strong> hosting, payment processor, email delivery</li>
+              <li><strong>Clerk</strong> — authentication and user-account management</li>
+              <li><strong>Resend</strong> — email delivery of your invoice images</li>
+              <li><strong>Neon</strong> — database hosting (EU)</li>
+              <li><strong>Vercel</strong> — application hosting</li>
+              <li><strong>Apple App Store</strong> and <strong>Paddle</strong> — subscription payment processing (we never receive or store your payment details)</li>
               <li><strong>Legal obligations:</strong> when required by law or legal process</li>
             </ul>
             <p className="text-slate-700 mt-3">We do not sell your data to third parties for marketing purposes.</p>
@@ -96,6 +100,12 @@ export default function Privacy() {
             <p className="text-slate-700 mt-3">
               To exercise these rights, contact us at{" "}
               <a href="mailto:info@posljiracun.si" className="text-blue-600 hover:underline">info@posljiracun.si</a>
+            </p>
+            <p className="text-slate-700 mt-3">
+              <strong>Account &amp; data deletion:</strong> you can permanently delete your account and all related data (sent invoices, company details and configured email addresses) at any time on the{" "}
+              <Link href="/en/delete-account" className="text-blue-600 hover:underline">Delete account</Link>{" "}
+              page, or by emailing{" "}
+              <a href="mailto:info@posljiracun.si" className="text-blue-600 hover:underline">info@posljiracun.si</a>. Deletion is permanent.
             </p>
           </section>
 

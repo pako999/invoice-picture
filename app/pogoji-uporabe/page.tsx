@@ -15,7 +15,7 @@ export default function Pogoji() {
         <div className="text-center mb-16">
           <Badge className="mb-4 bg-slate-100 text-slate-700 hover:bg-slate-200 border-0">Pravno</Badge>
           <h1 className="text-4xl sm:text-5xl tracking-tight mb-6 font-bold">Pogoji uporabe</h1>
-          <p className="text-lg text-slate-600">Zadnja posodobitev: April 2026</p>
+          <p className="text-lg text-slate-600">Zadnja posodobitev: junij 2026</p>
         </div>
 
         <div className="prose prose-slate max-w-none space-y-8 bg-white rounded-2xl border border-slate-200 p-8 sm:p-12 shadow-sm">
@@ -45,16 +45,23 @@ export default function Pogoji() {
           </section>
 
           <section>
-            <h2 className="text-2xl mb-4 font-semibold">4. Plačilni pogoji</h2>
-            <p className="text-slate-700">
-              Storitev se obračunava mesečno ali letno, odvisno od izbranega paketa. Cene so navedene na spletni strani in vključujejo DDV. Plačilo se izvede vnaprej za tekoče obračunsko obdobje. Neuspešno plačilo lahko privede do začasne prekinitve storitve.
+            <h2 className="text-2xl mb-4 font-semibold">4. Naročnine in plačilni pogoji</h2>
+            <p className="text-slate-700 mb-3">
+              Storitev je na voljo v naslednjih plačljivih paketih (cene vključujejo DDV):
+            </p>
+            <ul className="list-disc list-inside space-y-2 text-slate-700">
+              <li><strong>Osnovni:</strong> 6,99 €/mesec ali 66,90 €/leto</li>
+              <li><strong>PRO:</strong> 17,99 €/mesec ali 171,99 €/leto</li>
+            </ul>
+            <p className="text-slate-700 mt-3">
+              Naročnina vključuje 7-dnevno brezplačno preizkusno dobo. Gre za <strong>samodejno obnovljivo naročnino</strong>: ob koncu vsakega obdobja se samodejno obnovi za enako obdobje in ceno, razen če jo prekličete vsaj 24 ur pred koncem tekočega obdobja. Plačilo se izvede vnaprej za tekoče obdobje, strošek obnove pa se zaračuna v zadnjih 24 urah obdobja. Neuspešno plačilo lahko privede do začasne prekinitve storitve.
             </p>
           </section>
 
           <section>
             <h2 className="text-2xl mb-4 font-semibold">5. Odpoved naročnine</h2>
             <p className="text-slate-700">
-              Naročnino lahko odpoveste kadarkoli. Odpoved začne veljati ob koncu tekočega plačanega obdobja. Plačano obdobje ni mogoče vrniti. Po odpovedi ohranite dostop do storitve do konca plačanega obdobja.
+              Naročnino lahko odpoveste kadarkoli. Naročnino, sklenjeno prek aplikacije za iOS, upravljate in prekličete v nastavitvah svojega Apple računa (App Store → vaše ime → Naročnine) — najmanj 24 ur pred koncem obdobja, sicer se obnovi. Naročnino, sklenjeno na spletni strani, prekličete v nastavitvah računa. Odpoved začne veljati ob koncu tekočega plačanega obdobja; plačano obdobje ni mogoče vrniti, dostop do storitve pa ohranite do njegovega konca.
             </p>
           </section>
 
