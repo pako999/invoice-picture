@@ -27,6 +27,23 @@ declare global {
 const PADDLE_TOKEN = process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN ?? "";
 const PADDLE_ENV = (process.env.NEXT_PUBLIC_PADDLE_ENV ?? "sandbox") as "sandbox" | "production";
 
+// The on-screen error reason from Paddle's own checkout error event. Set by the
+// global eventCallback below, read by whichever button opened the checkout.
+let onCheckoutError: ((message: string) => void) | null = null;
+
+function paddleEventCallback(event: unknown) {
+  const e = event as { name?: string; type?: string; error?: { detail?: string }; data?: { message?: string } };
+  const name = e?.name ?? e?.type;
+  if (name === "checkout.error") {
+    // Surfaces the real reason Paddle rejected the checkout (e.g. domain not
+    // approved, price not found, environment/token mismatch) instead of the
+    // opaque "Something went wrong" overlay.
+    console.error("[paddle] checkout.error:", event);
+    const detail = e?.error?.detail ?? e?.data?.message ?? "Plačilo se ni odprlo. Poskusite znova.";
+    onCheckoutError?.(detail);
+  }
+}
+
 const PRICE_IDS: Record<Tier, Record<Billing, string | undefined>> = {
   basic: {
     monthly: process.env.NEXT_PUBLIC_PADDLE_BASIC_MONTHLY_PRICE_ID,
@@ -51,8 +68,18 @@ function loadPaddle(): Promise<void> {
     script.async = true;
     script.onload = () => {
       if (!window.Paddle) return reject(new Error("Paddle script loaded but Paddle is undefined"));
+      // Catch the #1 cause of a post-open "Something went wrong": a live token
+      // running in sandbox mode (or vice-versa). Paddle client tokens are
+      // prefixed `live_` (production) and `test_` (sandbox).
+      const tokenEnv = PADDLE_TOKEN.startsWith("live_") ? "production" : PADDLE_TOKEN.startsWith("test_") ? "sandbox" : null;
+      if (tokenEnv && tokenEnv !== PADDLE_ENV) {
+        console.warn(
+          `[paddle] env mismatch: NEXT_PUBLIC_PADDLE_ENV="${PADDLE_ENV}" but the client token looks like "${tokenEnv}". ` +
+          `Set NEXT_PUBLIC_PADDLE_ENV to "${tokenEnv}" (and make sure the price IDs come from that same environment).`,
+        );
+      }
       window.Paddle.Environment.set(PADDLE_ENV);
-      window.Paddle.Initialize({ token: PADDLE_TOKEN });
+      window.Paddle.Initialize({ token: PADDLE_TOKEN, eventCallback: paddleEventCallback });
       paddleLoaded = true;
       resolve();
     };
@@ -89,6 +116,9 @@ export function PaddleCheckoutButton({ tier, billing, children, className, varia
       return;
     }
     setBusy(true);
+    setError(null);
+    // Route Paddle's own checkout.error event to this button's message.
+    onCheckoutError = (msg) => setError(msg);
     try {
       await loadPaddle();
       if (!window.Paddle) throw new Error("Paddle not loaded");
