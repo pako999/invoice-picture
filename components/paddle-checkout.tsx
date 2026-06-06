@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { useUser, useClerk } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
+import { useNativeApp, postToNative } from "@/components/use-native-app";
 
 type Tier = "basic" | "pro";
 type Billing = "monthly" | "yearly";
@@ -91,6 +92,7 @@ function loadPaddle(): Promise<void> {
 export function PaddleCheckoutButton({ tier, billing, children, className, variant = "default" }: Props) {
   const { user, isSignedIn } = useUser();
   const clerk = useClerk();
+  const isNative = useNativeApp();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -98,8 +100,10 @@ export function PaddleCheckoutButton({ tier, billing, children, className, varia
   const configured = Boolean(PADDLE_TOKEN && priceId);
 
   useEffect(() => {
-    if (configured) loadPaddle().catch((e) => setError(e.message));
-  }, [configured]);
+    // Never load Paddle inside the native app — iOS/Android subscriptions must
+    // go through StoreKit / Play Billing, not an external web checkout.
+    if (configured && !isNative) loadPaddle().catch((e) => setError(e.message));
+  }, [configured, isNative]);
 
   async function handleClick() {
     if (!configured) {
@@ -138,6 +142,26 @@ export function PaddleCheckoutButton({ tier, billing, children, className, varia
     } finally {
       setBusy(false);
     }
+  }
+
+  // Inside the iOS/Android app: never show the web (Paddle) checkout. Route the
+  // subscribe intent to the native layer, which opens StoreKit / Play Billing.
+  if (isNative) {
+    return (
+      <div className="flex flex-col gap-2">
+        <Button
+          variant={variant}
+          className={className}
+          onClick={() => {
+            const sent = postToNative({ type: "subscribe", tier, billing, clerkUserId: user?.id });
+            if (!sent) setError("Naročnino sklenete v aplikaciji.");
+          }}
+        >
+          {children}
+        </Button>
+        {error && <p className="text-xs text-red-600">{error}</p>}
+      </div>
+    );
   }
 
   return (
