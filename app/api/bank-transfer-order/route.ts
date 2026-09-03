@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { z } from "zod";
 import { getResend } from "@/lib/resend";
+import { brandedEmail } from "@/lib/email-template";
 
 const orderSchema = z.object({
   tier: z.enum(["basic", "pro"]),
@@ -52,31 +53,35 @@ export async function POST(req: NextRequest) {
 
     const row = (label: string, value: string) => `
       <tr><td style="padding:8px 12px;color:#64748b;border-bottom:1px solid #e2e8f0">${label}</td><td style="padding:8px 12px;font-weight:600;border-bottom:1px solid #e2e8f0">${escapeHtml(value)}</td></tr>`;
+    const orderDetailRows = `
+        ${row("Paket", `${plan} – ${price}`)}
+        ${row("Tip stranke", customer)}
+        ${row("Ime in priimek", data.fullName)}
+        ${row("E-pošta", data.email)}
+        ${row("Telefon", data.phone)}
+        ${row("Naslov", data.streetAddress)}
+        ${row("Pošta in kraj", `${data.postalCode} ${data.city}`)}
+        ${row("Država", data.country)}
+        ${data.customerType === "company" ? row("Podjetje", data.companyName ?? "") + row("Davčna številka", data.taxNumber ?? "") : ""}
+        ${data.note ? row("Opomba", data.note) : ""}`;
+    const orderDetails = `
+      <table style="width:100%;border-collapse:collapse;background:#f8fafc;border:1px solid #e2e8f0;margin:20px 0">
+        ${orderDetailRows}
+      </table>`;
 
     const adminResult = await getResend().emails.send({
       from,
       to: "info@posljiracun.si",
       replyTo: data.email,
       subject: `Novo naročilo po predračunu – ${plan} – ${data.fullName}`,
-      html: `
-        <div style="font-family:Arial,sans-serif;max-width:680px;margin:auto;color:#0f172a">
-          <h1>Novo naročilo po predračunu</h1>
-          <table style="width:100%;border-collapse:collapse;background:#f8fafc;border:1px solid #e2e8f0">
-            ${row("Paket", `${plan} – ${price}`)}
-            ${row("Tip stranke", customer)}
-            ${row("Ime in priimek", data.fullName)}
-            ${row("E-pošta", data.email)}
-            ${row("Telefon", data.phone)}
-            ${row("Naslov", data.streetAddress)}
-            ${row("Pošta in kraj", `${data.postalCode} ${data.city}`)}
-            ${row("Država", data.country)}
-            ${data.customerType === "company" ? row("Podjetje", data.companyName ?? "") + row("Davčna številka", data.taxNumber ?? "") : ""}
-            ${data.note ? row("Opomba", data.note) : ""}
-            ${row("Clerk uporabnik", userId ?? "ni prijavljen")}
-          </table>
-          <p style="margin-top:20px">Odgovorite neposredno na to sporočilo in pošljite stranki predračun.</p>
-          <p><a href="${activationUrl}" style="display:inline-block;background:#2563eb;color:#fff;text-decoration:none;padding:12px 18px;border-radius:8px;font-weight:700">Aktiviraj paket po prejetem plačilu</a></p>
-        </div>`,
+      html: brandedEmail({
+        preheader: `Novo naročilo po predračunu – ${plan}`,
+        eyebrow: "Administrativno obvestilo",
+        title: "Novo naročilo po predračunu",
+        introHtml: "<p style=\"margin:0\">Prejeli ste novo naročilo. Odgovorite neposredno na to sporočilo in stranki pošljite predračun.</p>",
+        contentHtml: `<table style="width:100%;border-collapse:collapse;background:#f8fafc;border:1px solid #e2e8f0;margin:20px 0">${orderDetailRows}${row("Clerk uporabnik", userId ?? "ni prijavljen")}</table>`,
+        cta: { label: "Aktiviraj paket po prejetem plačilu", url: activationUrl },
+      }),
     });
 
     if (adminResult.error) throw new Error(adminResult.error.message);
@@ -85,9 +90,21 @@ export async function POST(req: NextRequest) {
       from,
       to: data.email,
       subject: data.locale === "en" ? "We received your pro forma invoice request" : "Prejeli smo vaše naročilo za predračun",
-      html: data.locale === "en"
-        ? `<div style="font-family:Arial,sans-serif;max-width:600px;margin:auto"><h1>Thank you for your order</h1><p>We received your request for the <strong>${plan} – ${price}</strong> plan. We will prepare and email your pro forma invoice shortly.</p><p>As soon as payment is received, we will activate your plan and email you an activation confirmation.</p><p>Slikaj Račun</p></div>`
-        : `<div style="font-family:Arial,sans-serif;max-width:600px;margin:auto"><h1>Hvala za naročilo</h1><p>Prejeli smo naročilo za paket <strong>${plan} – ${price}</strong>. Predračun bomo pripravili in vam ga v kratkem poslali po e-pošti.</p><p>Takoj ko bo plačilo prejeto, bomo paket aktivirali in vam po e-pošti poslali potrdilo o aktivaciji.</p><p>Slikaj Račun</p></div>`,
+      html: brandedEmail(data.locale === "en" ? {
+        preheader: "We received your pro forma invoice request",
+        eyebrow: "Order confirmation",
+        title: "Thank you for your order",
+        introHtml: `<p style="margin:0">We received your request for the <strong>${plan} – ${price}</strong> plan. We will prepare and email your pro forma invoice shortly.</p>`,
+        contentHtml: `<h2 style="font-size:18px;margin:26px 0 0">Your order details</h2>${orderDetails}`,
+        noticeHtml: "<strong>What happens next?</strong><br>As soon as payment is received, we will activate your plan and email you an activation confirmation.",
+      } : {
+        preheader: "Prejeli smo vaše naročilo za predračun",
+        eyebrow: "Potrditev naročila",
+        title: "Hvala za naročilo",
+        introHtml: `<p style="margin:0">Prejeli smo naročilo za paket <strong>${plan} – ${price}</strong>. Predračun bomo pripravili in vam ga v kratkem poslali po e-pošti.</p>`,
+        contentHtml: `<h2 style="font-size:18px;margin:26px 0 0">Podatki vašega naročila</h2>${orderDetails}`,
+        noticeHtml: "<strong>Kaj sledi?</strong><br>Takoj ko bo plačilo prejeto, bomo paket aktivirali in vam po e-pošti poslali potrdilo o aktivaciji.",
+      }),
     });
 
     return NextResponse.json({ success: true });

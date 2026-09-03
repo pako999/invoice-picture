@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import { brandedEmail } from "./email-template";
 
 let _resend: Resend | null = null;
 
@@ -51,20 +52,13 @@ export async function sendInvoiceEmail({
     from,
     to,
     subject,
-    html: `
-      <div style="font-family:system-ui,sans-serif;max-width:600px;margin:0 auto;padding:32px 24px">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:28px">
-          <span style="font-size:22px">🧾</span>
-          <span style="font-size:20px;font-weight:700;color:#111">Slikaj Račun</span>
-        </div>
-        <h1 style="font-size:24px;font-weight:700;color:#111;margin:0 0 8px">${escapeHtml(subject)}</h1>
-        <p style="color:#666;margin:0 0 20px;font-size:15px">Priložena je slika računa.</p>
-        ${noteBlock}
-        <img src="cid:invoice" style="width:100%;max-width:560px;border-radius:12px;border:1px solid #e5e7eb" />
-        <hr style="border:none;border-top:1px solid #e5e7eb;margin:32px 0" />
-        <p style="color:#9ca3af;font-size:12px;margin:0">Poslano z <strong>Slikaj Račun</strong></p>
-      </div>
-    `,
+    html: brandedEmail({
+      preheader: subject,
+      eyebrow: "Nov dokument",
+      title: escapeHtml(subject),
+      introHtml: "<p style=\"margin:0\">V priponki je račun, poslan prek aplikacije Slikaj Račun.</p>",
+      contentHtml: `${noteBlock}<div style="margin-top:20px"><img src="cid:invoice" alt="Predogled računa" style="display:block;width:100%;max-width:560px;border-radius:12px;border:1px solid #e5e7eb" /></div>`,
+    }),
     attachments: [{ filename, content: imageBase64, contentType: mime }],
   });
 }

@@ -6,6 +6,7 @@ import { subscriptions } from "@/lib/schema";
 import { eq } from "drizzle-orm";
 import { isCurrentUserAdmin } from "@/lib/admin";
 import { getResend } from "@/lib/resend";
+import { brandedEmail } from "@/lib/email-template";
 
 const schema = z.object({
   email: z.string().trim().email().max(320).optional(),
@@ -72,7 +73,14 @@ export async function POST(req: NextRequest) {
       from: process.env.RESEND_FROM ?? "onboarding@resend.dev",
       to: email,
       subject: "Vaš paket Slikaj Račun je aktiviran",
-      html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;color:#0f172a"><h1>Paket je aktiviran</h1><p>Vaš paket <strong>${data.plan === "pro" ? "PRO" : "Osnovni"}</strong> je aktiviran oziroma podaljšan do <strong>${currentPeriodEnd.toLocaleDateString("sl-SI")}</strong> in ga lahko takoj uporabljate.</p><p><a href="https://www.posljiracun.si/scan" style="display:inline-block;background:#2563eb;color:#fff;text-decoration:none;padding:12px 18px;border-radius:8px;font-weight:700">Odpri Slikaj Račun</a></p></div>`,
+      html: brandedEmail({
+        preheader: "Vaš paket Slikaj Račun je aktiviran",
+        eyebrow: "Paket je pripravljen",
+        title: "Paket je aktiviran",
+        introHtml: `<p style="margin:0">Vaš paket <strong>${data.plan === "pro" ? "PRO" : "Osnovni"}</strong> je aktiviran oziroma podaljšan do <strong>${currentPeriodEnd.toLocaleDateString("sl-SI")}</strong>.</p>`,
+        noticeHtml: "Vse funkcije izbranega paketa lahko začnete uporabljati takoj.",
+        cta: { label: "Odpri Slikaj Račun", url: "https://www.posljiracun.si/scan" },
+      }),
     });
 
     return NextResponse.json({

@@ -5,6 +5,7 @@ import { clerkClient } from "@clerk/nextjs/server";
 import { getDb } from "@/lib/db";
 import { subscriptions } from "@/lib/schema";
 import { getResend } from "@/lib/resend";
+import { brandedEmail } from "@/lib/email-template";
 
 type Tier = "basic" | "pro";
 type Billing = "monthly" | "yearly";
@@ -69,7 +70,14 @@ async function sendActivationEmail(clerkUserId: string, tier: Tier, suppliedEmai
     from: process.env.RESEND_FROM ?? "onboarding@resend.dev",
     to: email,
     subject: "Vaš paket Slikaj Račun je aktiviran",
-    html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;color:#0f172a"><h1>Plačilo je uspešno</h1><p>Vaš paket <strong>${tier === "pro" ? "PRO" : "Osnovni"}</strong> je aktiviran in ga lahko takoj uporabljate.</p><p><a href="https://www.posljiracun.si/scan" style="display:inline-block;background:#2563eb;color:#fff;text-decoration:none;padding:12px 18px;border-radius:8px;font-weight:700">Odpri Slikaj Račun</a></p></div>`,
+    html: brandedEmail({
+      preheader: "Plačilo je uspešno in paket je aktiviran",
+      eyebrow: "Uspešno plačilo",
+      title: "Vaš paket je aktiviran",
+      introHtml: `<p style="margin:0">Hvala za plačilo. Paket <strong>${tier === "pro" ? "PRO" : "Osnovni"}</strong> je aktiviran in ga lahko takoj uporabljate.</p>`,
+      noticeHtml: "Vaša naročnina je aktivna. Račune lahko zdaj pošiljate brez prekinitve.",
+      cta: { label: "Odpri Slikaj Račun", url: "https://www.posljiracun.si/scan" },
+    }),
   });
   if (result.error) console.error("[paddle webhook] activation email failed", result.error);
 }
