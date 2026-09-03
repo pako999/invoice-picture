@@ -15,7 +15,7 @@ interface SelectedFile {
   url: string;
 }
 
-const MAX_BATCH_FILES = 50;
+const MAX_BATCH_FILES = 500;
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
 function readFileAsBase64(file: File): Promise<{ base64: string; mime: string }> {
@@ -376,10 +376,14 @@ export default function ScanPage() {
         </div>
       ) : (
         <div
+          onClick={(e) => {
+            if ((e.target as HTMLElement).closest("button, input")) return;
+            fileInputRef.current?.click();
+          }}
           onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
           onDragLeave={() => setDragging(false)}
           onDrop={onDrop}
-          className={`mb-6 rounded-2xl border-2 border-dashed transition-colors select-none
+          className={`mb-6 rounded-2xl border-2 border-dashed transition-colors select-none cursor-pointer
             ${dragging
               ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
               : "border-gray-300 dark:border-slate-600"
@@ -389,20 +393,20 @@ export default function ScanPage() {
             <span className="text-5xl">📄</span>
             <div className="text-center">
               <p className="text-sm font-semibold text-gray-700 dark:text-slate-300">Drop documents here</p>
-              <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">Up to 50 documents · JPG · PNG · WEBP · <strong>PDF</strong> — 10 MB each</p>
+              <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">Click or drop up to 500 documents · JPG · PNG · WEBP · <strong>PDF</strong> — 10 MB each</p>
               <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">Each document is sent as a separate email.</p>
             </div>
           </div>
 
           <div className="flex border-t border-gray-200 dark:border-slate-700">
             <button
-              onClick={() => cameraInputRef.current?.click()}
+              onClick={(e) => { e.stopPropagation(); cameraInputRef.current?.click(); }}
               className="flex-1 flex items-center justify-center gap-2 py-4 text-sm font-semibold text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800/60 transition-colors rounded-bl-2xl border-r border-gray-200 dark:border-slate-700"
             >
               📷 Camera
             </button>
             <button
-              onClick={() => fileInputRef.current?.click()}
+              onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
               className="flex-1 flex items-center justify-center gap-2 py-4 text-sm font-semibold text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800/60 transition-colors rounded-br-2xl"
             >
               📁 Upload PDF or image
@@ -465,6 +469,12 @@ export default function ScanPage() {
           <>📤 Send {files.length === 1 ? "invoice" : `${files.length} documents`}</>
         )}
       </button>
+
+      {files.length > 50 && status !== "sending" && (
+        <p className="text-center text-xs text-orange-600 dark:text-orange-400 mt-3">
+          Keep this page open until all documents have finished sending.
+        </p>
+      )}
 
       {isFreeAtLimit && (
         <p className="text-center text-sm text-gray-500 dark:text-slate-400 mt-3">

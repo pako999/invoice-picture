@@ -15,7 +15,7 @@ interface SelectedFile {
   url: string;
 }
 
-const MAX_BATCH_FILES = 50;
+const MAX_BATCH_FILES = 500;
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
 function readFileAsBase64(file: File): Promise<{ base64: string; mime: string }> {
@@ -385,10 +385,14 @@ export default function ScanPage() {
       ) : (
         /* Drop zone */
         <div
+          onClick={(e) => {
+            if ((e.target as HTMLElement).closest("button, input")) return;
+            fileInputRef.current?.click();
+          }}
           onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
           onDragLeave={() => setDragging(false)}
           onDrop={onDrop}
-          className={`mb-6 rounded-2xl border-2 border-dashed transition-colors select-none
+          className={`mb-6 rounded-2xl border-2 border-dashed transition-colors select-none cursor-pointer
             ${dragging
               ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
               : "border-gray-300 dark:border-slate-600"
@@ -398,7 +402,7 @@ export default function ScanPage() {
             <span className="text-5xl">📄</span>
             <div className="text-center">
               <p className="text-sm font-semibold text-gray-700 dark:text-slate-300">Povleci dokumente sem</p>
-              <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">Do 50 dokumentov · JPG · PNG · WEBP · <strong>PDF</strong> — vsak do 10 MB</p>
+              <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">Klikni ali povleci do 500 dokumentov · JPG · PNG · WEBP · <strong>PDF</strong> — vsak do 10 MB</p>
               <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">Vsak dokument se pošlje kot ločen email.</p>
             </div>
           </div>
@@ -406,13 +410,13 @@ export default function ScanPage() {
           {/* Two action buttons */}
           <div className="flex border-t border-gray-200 dark:border-slate-700">
             <button
-              onClick={() => cameraInputRef.current?.click()}
+              onClick={(e) => { e.stopPropagation(); cameraInputRef.current?.click(); }}
               className="flex-1 flex items-center justify-center gap-2 py-4 text-sm font-semibold text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800/60 transition-colors rounded-bl-2xl border-r border-gray-200 dark:border-slate-700"
             >
               📷 Fotografiraj
             </button>
             <button
-              onClick={() => fileInputRef.current?.click()}
+              onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
               className="flex-1 flex items-center justify-center gap-2 py-4 text-sm font-semibold text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800/60 transition-colors rounded-br-2xl"
             >
               📁 Naloži PDF ali sliko
@@ -478,6 +482,12 @@ export default function ScanPage() {
           <>📤 Pošlji {files.length === 1 ? "račun" : `${files.length} dokumentov`}</>
         )}
       </button>
+
+      {files.length > 50 && status !== "sending" && (
+        <p className="text-center text-xs text-orange-600 dark:text-orange-400 mt-3">
+          Pri pošiljanju večjega števila dokumentov pustite to stran odprto do zaključka.
+        </p>
+      )}
 
       {isFreeAtLimit && (
         <p className="text-center text-sm text-gray-500 dark:text-slate-400 mt-3">
