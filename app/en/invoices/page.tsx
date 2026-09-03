@@ -39,7 +39,23 @@ function fmt(d: string | Date | null) {
   });
 }
 
-function PreviewModal({ inv, onClose }: { inv: Invoice; onClose: () => void }) {
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).split(",")[1] ?? "");
+    reader.onerror = () => reject(new Error("The file could not be read."));
+    reader.readAsDataURL(file);
+  });
+}
+
+function PreviewModal({ inv, onClose, onRestore }: {
+  inv: Invoice;
+  onClose: () => void;
+  onRestore: (file: File) => Promise<void>;
+}) {
+  const [restoring, setRestoring] = useState(false);
+  const [restoreError, setRestoreError] = useState("");
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     document.addEventListener("keydown", handler);
@@ -84,6 +100,31 @@ function PreviewModal({ inv, onClose }: { inv: Invoice; onClose: () => void }) {
               <span className="text-6xl">📋</span>
               <p className="font-semibold text-gray-600 dark:text-slate-300">Preview unavailable for older PDFs</p>
               <p className="text-sm">{inv.filename ?? "invoice.pdf"}</p>
+              <label className="mt-3 inline-flex min-h-11 cursor-pointer items-center justify-center rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-blue-700">
+                {restoring ? "Restoring preview..." : "Select this PDF again"}
+                <input
+                  type="file"
+                  accept="application/pdf,.pdf"
+                  className="hidden"
+                  disabled={restoring}
+                  onChange={async (event) => {
+                    const file = event.target.files?.[0];
+                    event.target.value = "";
+                    if (!file) return;
+                    setRestoring(true);
+                    setRestoreError("");
+                    try {
+                      await onRestore(file);
+                    } catch (error) {
+                      setRestoreError(error instanceof Error ? error.message : "The preview could not be restored.");
+                    } finally {
+                      setRestoring(false);
+                    }
+                  }}
+                />
+              </label>
+              <p className="max-w-md text-center text-xs">The file is only attached to this archived invoice. No email is resent and no quota is used.</p>
+              {restoreError && <p className="text-sm font-medium text-red-500">{restoreError}</p>}
             </div>
           ) : inv.imageData ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -174,6 +215,31 @@ export default function InvoicesPage() {
     setPreview(full);
   }
 
+  async function restorePreview(inv: Invoice, file: File) {
+    if (!file.name.toLowerCase().endsWith(".pdf")) {
+      throw new Error("Select a PDF file.");
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      throw new Error("The PDF is larger than 10 MB.");
+    }
+
+    const imageBase64 = await fileToBase64(file);
+    const res = await fetch(`/api/invoices/${inv.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ imageBase64, filename: file.name, mime: "application/pdf" }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => null) as { error?: string } | null;
+      throw new Error(body?.error ?? "The preview could not be restored.");
+    }
+
+    const restored = { ...inv, imageData: imageBase64, imageMime: "application/pdf", filename: file.name };
+    setDetails((current) => ({ ...current, [inv.id]: restored }));
+    setList((current) => current.map((item) => item.id === inv.id ? { ...item, filename: file.name } : item));
+    setPreview(restored);
+  }
+
   async function handleDelete(e: React.MouseEvent, id: number) {
     e.stopPropagation();
     if (!confirm("Are you sure you want to delete this invoice?")) return;
@@ -250,7 +316,13 @@ export default function InvoicesPage() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-10">
-      {preview && <PreviewModal inv={preview} onClose={() => setPreview(null)} />}
+      {preview && (
+        <PreviewModal
+          inv={preview}
+          onClose={() => setPreview(null)}
+          onRestore={(file) => restorePreview(preview, file)}
+        />
+      )}
 
       <div className="flex items-center justify-between mb-8 flex-wrap gap-3">
         <div>

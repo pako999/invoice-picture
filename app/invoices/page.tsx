@@ -40,7 +40,23 @@ function fmt(d: string | Date | null) {
   });
 }
 
-function PreviewModal({ inv, onClose }: { inv: Invoice; onClose: () => void }) {
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).split(",")[1] ?? "");
+    reader.onerror = () => reject(new Error("Datoteke ni bilo mogoče prebrati."));
+    reader.readAsDataURL(file);
+  });
+}
+
+function PreviewModal({ inv, onClose, onRestore }: {
+  inv: Invoice;
+  onClose: () => void;
+  onRestore: (file: File) => Promise<void>;
+}) {
+  const [restoring, setRestoring] = useState(false);
+  const [restoreError, setRestoreError] = useState("");
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     document.addEventListener("keydown", handler);
@@ -87,6 +103,31 @@ function PreviewModal({ inv, onClose }: { inv: Invoice; onClose: () => void }) {
               <span className="text-6xl">📋</span>
               <p className="font-semibold text-gray-600 dark:text-slate-300">Predogled starejšega PDF-ja ni na voljo</p>
               <p className="text-sm">{inv.filename ?? "račun.pdf"}</p>
+              <label className="mt-3 inline-flex min-h-11 cursor-pointer items-center justify-center rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-blue-700">
+                {restoring ? "Obnavljam predogled..." : "Ponovno izberi ta PDF"}
+                <input
+                  type="file"
+                  accept="application/pdf,.pdf"
+                  className="hidden"
+                  disabled={restoring}
+                  onChange={async (event) => {
+                    const file = event.target.files?.[0];
+                    event.target.value = "";
+                    if (!file) return;
+                    setRestoring(true);
+                    setRestoreError("");
+                    try {
+                      await onRestore(file);
+                    } catch (error) {
+                      setRestoreError(error instanceof Error ? error.message : "Predogleda ni bilo mogoče obnoviti.");
+                    } finally {
+                      setRestoring(false);
+                    }
+                  }}
+                />
+              </label>
+              <p className="max-w-md text-center text-xs">Datoteka se samo doda temu arhiviranemu računu. E-pošta se ne pošlje ponovno in kvota se ne porabi.</p>
+              {restoreError && <p className="text-sm font-medium text-red-500">{restoreError}</p>}
             </div>
           ) : inv.imageData ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -179,6 +220,31 @@ export default function InvoicesPage() {
     setPreview(full);
   }
 
+  async function restorePreview(inv: Invoice, file: File) {
+    if (!file.name.toLowerCase().endsWith(".pdf")) {
+      throw new Error("Izberi PDF datoteko.");
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      throw new Error("PDF je večji od 10 MB.");
+    }
+
+    const imageBase64 = await fileToBase64(file);
+    const res = await fetch(`/api/invoices/${inv.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ imageBase64, filename: file.name, mime: "application/pdf" }),
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => null) as { error?: string } | null;
+      throw new Error(body?.error ?? "Predogleda ni bilo mogoče obnoviti.");
+    }
+
+    const restored = { ...inv, imageData: imageBase64, imageMime: "application/pdf", filename: file.name };
+    setDetails((current) => ({ ...current, [inv.id]: restored }));
+    setList((current) => current.map((item) => item.id === inv.id ? { ...item, filename: file.name } : item));
+    setPreview(restored);
+  }
+
   async function handleDelete(e: React.MouseEvent, id: number) {
     e.stopPropagation();
     if (!confirm("Res želiš izbrisati ta račun?")) return;
@@ -262,7 +328,13 @@ export default function InvoicesPage() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-10">
-      {preview && <PreviewModal inv={preview} onClose={() => setPreview(null)} />}
+      {preview && (
+        <PreviewModal
+          inv={preview}
+          onClose={() => setPreview(null)}
+          onRestore={(file) => restorePreview(preview, file)}
+        />
+      )}
 
       <div className="flex items-center justify-between mb-8 flex-wrap gap-3">
         <div>
