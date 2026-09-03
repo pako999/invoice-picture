@@ -1,6 +1,10 @@
 import { currentUser } from "@clerk/nextjs/server";
 
-const DEFAULT_ADMIN_EMAILS = ["info@posljiracun.si", "mortmark44@gmail.com"];
+const DEFAULT_ADMIN_EMAILS = [
+  "info@posljiracun.si",
+  "info@surf-store.com",
+  "mortmark44@gmail.com",
+];
 
 function adminEmails() {
   return new Set(
