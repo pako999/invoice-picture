@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 // Auth-protected routes (signed-in app surface). Mirror in /en too.
 const isProtected = createRouteMatcher([
   "/scan(.*)", "/invoices(.*)", "/settings(.*)",
+  "/admin(.*)",
   "/en/scan(.*)", "/en/invoices(.*)", "/en/settings(.*)",
 ]);
 

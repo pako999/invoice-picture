@@ -19,10 +19,14 @@ declare global {
   interface Window {
     Paddle?: {
       Environment: { set: (env: "sandbox" | "production") => void };
-      Initialize: (options: { token: string; eventCallback?: (event: unknown) => void }) => void;
+      Initialize: (options: { token: string; eventCallback?: (event: PaddleEvent) => void }) => void;
       Checkout: { open: (options: Record<string, unknown>) => void };
     };
   }
+}
+
+interface PaddleEvent {
+  name?: string;
 }
 
 const PADDLE_TOKEN = process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN ?? "";
@@ -40,11 +44,28 @@ const PRICE_IDS: Record<Tier, Record<Billing, string | undefined>> = {
 };
 
 let paddleLoaded = false;
+let paddleLoading: Promise<void> | null = null;
+
+function initializePaddle() {
+  if (!window.Paddle || paddleLoaded) return;
+  window.Paddle.Environment.set(PADDLE_ENV);
+  window.Paddle.Initialize({
+    token: PADDLE_TOKEN,
+    eventCallback: (event) => {
+      if (event.name === "checkout.completed") {
+        window.dispatchEvent(new Event("paddle:checkout-completed"));
+      }
+    },
+  });
+  paddleLoaded = true;
+}
+
 function loadPaddle(): Promise<void> {
   if (paddleLoaded || typeof window === "undefined") return Promise.resolve();
-  return new Promise((resolve, reject) => {
+  if (paddleLoading) return paddleLoading;
+  paddleLoading = new Promise((resolve, reject) => {
     if (window.Paddle) {
-      paddleLoaded = true;
+      initializePaddle();
       return resolve();
     }
     const script = document.createElement("script");
@@ -52,14 +73,13 @@ function loadPaddle(): Promise<void> {
     script.async = true;
     script.onload = () => {
       if (!window.Paddle) return reject(new Error("Paddle script loaded but Paddle is undefined"));
-      window.Paddle.Environment.set(PADDLE_ENV);
-      window.Paddle.Initialize({ token: PADDLE_TOKEN });
-      paddleLoaded = true;
+      initializePaddle();
       resolve();
     };
     script.onerror = () => reject(new Error("Failed to load Paddle script"));
     document.head.appendChild(script);
   });
+  return paddleLoading;
 }
 
 export function PaddleCheckoutButton({ tier, billing, children, className, variant = "default" }: Props) {
@@ -82,6 +102,14 @@ export function PaddleCheckoutButton({ tier, billing, children, className, varia
   useEffect(() => {
     if (configured) loadPaddle().catch((e) => setError(e.message));
   }, [configured]);
+
+  useEffect(() => {
+    const onCompleted = () => {
+      window.location.assign(`${isEn ? "/en" : ""}/scan?upgraded=1`);
+    };
+    window.addEventListener("paddle:checkout-completed", onCompleted);
+    return () => window.removeEventListener("paddle:checkout-completed", onCompleted);
+  }, [isEn]);
 
   async function handleClick() {
     if (!isSignedIn) {
@@ -114,7 +142,12 @@ export function PaddleCheckoutButton({ tier, billing, children, className, varia
         customer: user?.primaryEmailAddress?.emailAddress
           ? { email: user.primaryEmailAddress.emailAddress }
           : undefined,
-        customData: { clerkUserId: user?.id, tier, billing },
+        customData: {
+          clerkUserId: user?.id,
+          customerEmail: user?.primaryEmailAddress?.emailAddress,
+          tier,
+          billing,
+        },
         settings: {
           locale: isEn ? "en" : "sl",
           successUrl: typeof window !== "undefined" ? `${window.location.origin}${isEn ? "/en" : ""}/scan?upgraded=1` : undefined,
@@ -202,7 +235,7 @@ export function PaddleCheckoutButton({ tier, billing, children, className, varia
               <div className="py-12 text-center">
                 <div className="mb-4 text-5xl">✅</div>
                 <h3 className="text-xl font-bold text-slate-900">{isEn ? "Request received" : "Naročilo je prejeto"}</h3>
-                <p className="mx-auto mt-2 max-w-md text-slate-600">{isEn ? "We will prepare the pro forma invoice and send it to your email shortly." : "Predračun bomo pripravili in vam ga v kratkem poslali na vpisani e-poštni naslov."}</p>
+                <p className="mx-auto mt-2 max-w-md text-slate-600">{isEn ? "We will prepare the pro forma invoice and send it to your email shortly. As soon as payment is received, we will activate your plan and email you an activation confirmation." : "Predračun bomo pripravili in vam ga v kratkem poslali na vpisani e-poštni naslov. Takoj ko bo plačilo prejeto, bomo paket aktivirali in vam po e-pošti poslali potrdilo o aktivaciji."}</p>
                 <Button type="button" className="mt-6 bg-blue-600 text-white hover:bg-blue-700" onClick={() => setShowPayment(false)}>{isEn ? "Close" : "Zapri"}</Button>
               </div>
             ) : method === "choice" ? (

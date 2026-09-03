@@ -48,6 +48,7 @@ export async function POST(req: NextRequest) {
     const price = prices[data.tier][data.billing];
     const plan = data.tier === "basic" ? "Osnovni" : "PRO";
     const customer = data.customerType === "company" ? "Podjetje" : "Fizična oseba";
+    const activationUrl = `https://www.posljiracun.si/admin/subscriptions?email=${encodeURIComponent(data.email)}&plan=${data.tier}&billing=${data.billing}`;
 
     const row = (label: string, value: string) => `
       <tr><td style="padding:8px 12px;color:#64748b;border-bottom:1px solid #e2e8f0">${label}</td><td style="padding:8px 12px;font-weight:600;border-bottom:1px solid #e2e8f0">${escapeHtml(value)}</td></tr>`;
@@ -74,6 +75,7 @@ export async function POST(req: NextRequest) {
             ${row("Clerk uporabnik", userId ?? "ni prijavljen")}
           </table>
           <p style="margin-top:20px">Odgovorite neposredno na to sporočilo in pošljite stranki predračun.</p>
+          <p><a href="${activationUrl}" style="display:inline-block;background:#2563eb;color:#fff;text-decoration:none;padding:12px 18px;border-radius:8px;font-weight:700">Aktiviraj paket po prejetem plačilu</a></p>
         </div>`,
     });
 
@@ -84,8 +86,8 @@ export async function POST(req: NextRequest) {
       to: data.email,
       subject: data.locale === "en" ? "We received your pro forma invoice request" : "Prejeli smo vaše naročilo za predračun",
       html: data.locale === "en"
-        ? `<div style="font-family:Arial,sans-serif;max-width:600px;margin:auto"><h1>Thank you for your order</h1><p>We received your request for the <strong>${plan} – ${price}</strong> plan. We will prepare and email your pro forma invoice shortly.</p><p>Slikaj Račun</p></div>`
-        : `<div style="font-family:Arial,sans-serif;max-width:600px;margin:auto"><h1>Hvala za naročilo</h1><p>Prejeli smo naročilo za paket <strong>${plan} – ${price}</strong>. Predračun bomo pripravili in vam ga v kratkem poslali po e-pošti.</p><p>Slikaj Račun</p></div>`,
+        ? `<div style="font-family:Arial,sans-serif;max-width:600px;margin:auto"><h1>Thank you for your order</h1><p>We received your request for the <strong>${plan} – ${price}</strong> plan. We will prepare and email your pro forma invoice shortly.</p><p>As soon as payment is received, we will activate your plan and email you an activation confirmation.</p><p>Slikaj Račun</p></div>`
+        : `<div style="font-family:Arial,sans-serif;max-width:600px;margin:auto"><h1>Hvala za naročilo</h1><p>Prejeli smo naročilo za paket <strong>${plan} – ${price}</strong>. Predračun bomo pripravili in vam ga v kratkem poslali po e-pošti.</p><p>Takoj ko bo plačilo prejeto, bomo paket aktivirali in vam po e-pošti poslali potrdilo o aktivaciji.</p><p>Slikaj Račun</p></div>`,
     });
 
     return NextResponse.json({ success: true });
