@@ -3,14 +3,16 @@ import { clerkClient } from "@clerk/nextjs/server";
 import { z } from "zod";
 import { getDb } from "@/lib/db";
 import { subscriptions } from "@/lib/schema";
+import { eq } from "drizzle-orm";
 import { isCurrentUserAdmin } from "@/lib/admin";
 import { getResend } from "@/lib/resend";
 
 const schema = z.object({
-  email: z.string().trim().email().max(320),
+  email: z.string().trim().email().max(320).optional(),
+  userId: z.string().trim().min(1).max(255).optional(),
   plan: z.enum(["basic", "pro"]),
   billing: z.enum(["monthly", "yearly"]),
-});
+}).refine((data) => data.email || data.userId, { message: "E-pošta ali uporabnik je obvezen." });
 
 function addBillingPeriod(from: Date, billing: "monthly" | "yearly") {
   const result = new Date(from);
@@ -27,18 +29,31 @@ export async function POST(req: NextRequest) {
   try {
     const data = schema.parse(await req.json());
     const client = await clerkClient();
-    const result = await client.users.getUserList({ emailAddress: [data.email], limit: 10 });
-    const user = result.data.find((candidate) =>
-      candidate.emailAddresses.some((item) => item.emailAddress.toLowerCase() === data.email.toLowerCase()),
-    );
+    const user = data.userId
+      ? await client.users.getUser(data.userId).catch(() => null)
+      : (await client.users.getUserList({ emailAddress: [data.email!], limit: 10 })).data.find((candidate) =>
+          candidate.emailAddresses.some((item) => item.emailAddress.toLowerCase() === data.email!.toLowerCase()),
+        );
 
     if (!user) {
       return NextResponse.json({ error: "Uporabnik s tem e-poštnim naslovom ni registriran." }, { status: 404 });
     }
 
+    const email = user.emailAddresses.find((item) => item.id === user.primaryEmailAddressId)?.emailAddress
+      ?? user.emailAddresses[0]?.emailAddress;
+    if (!email) {
+      return NextResponse.json({ error: "Uporabnik nima e-poštnega naslova." }, { status: 400 });
+    }
+
     const now = new Date();
-    const currentPeriodEnd = addBillingPeriod(now, data.billing);
-    await getDb().insert(subscriptions).values({
+    const db = getDb();
+    const [existing] = await db.select().from(subscriptions)
+      .where(eq(subscriptions.clerkUserId, user.id)).limit(1);
+    const extensionBase = existing?.currentPeriodEnd && existing.currentPeriodEnd > now
+      ? existing.currentPeriodEnd
+      : now;
+    const currentPeriodEnd = addBillingPeriod(extensionBase, data.billing);
+    await db.insert(subscriptions).values({
       clerkUserId: user.id,
       plan: data.plan,
       trialEndsAt: now,
@@ -55,9 +70,9 @@ export async function POST(req: NextRequest) {
 
     const emailResult = await getResend().emails.send({
       from: process.env.RESEND_FROM ?? "onboarding@resend.dev",
-      to: data.email,
+      to: email,
       subject: "Vaš paket Slikaj Račun je aktiviran",
-      html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;color:#0f172a"><h1>Paket je aktiviran</h1><p>Vaš paket <strong>${data.plan === "pro" ? "PRO" : "Osnovni"}</strong> je aktiviran in ga lahko takoj uporabljate.</p><p><a href="https://www.posljiracun.si/scan" style="display:inline-block;background:#2563eb;color:#fff;text-decoration:none;padding:12px 18px;border-radius:8px;font-weight:700">Odpri Slikaj Račun</a></p></div>`,
+      html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;color:#0f172a"><h1>Paket je aktiviran</h1><p>Vaš paket <strong>${data.plan === "pro" ? "PRO" : "Osnovni"}</strong> je aktiviran oziroma podaljšan do <strong>${currentPeriodEnd.toLocaleDateString("sl-SI")}</strong> in ga lahko takoj uporabljate.</p><p><a href="https://www.posljiracun.si/scan" style="display:inline-block;background:#2563eb;color:#fff;text-decoration:none;padding:12px 18px;border-radius:8px;font-weight:700">Odpri Slikaj Račun</a></p></div>`,
     });
 
     return NextResponse.json({

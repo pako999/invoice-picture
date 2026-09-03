@@ -9,6 +9,7 @@ import type { Locale } from "@/lib/i18n/config";
 import { localeUrl, slugMap } from "@/lib/i18n/config";
 
 const COOKIE = "preferred-lang";
+const ADMIN_EMAILS = new Set(["info@posljiracun.si", "info@surf-store.com", "mortmark44@gmail.com"]);
 
 function setLangCookie(locale: Locale) {
   const oneYear = 60 * 60 * 24 * 365;
@@ -52,7 +53,8 @@ function switchLocaleUrl(pathname: string, currentLocale: Locale, target: Locale
 export function Nav() {
   const path = usePathname();
   const router = useRouter();
-  const { isSignedIn, isLoaded } = useUser();
+  const { isSignedIn, isLoaded, user } = useUser();
+  const isAdmin = Boolean(user?.emailAddresses.some((item) => ADMIN_EMAILS.has(item.emailAddress.toLowerCase())));
   const locale = detectLocale(path);
   const dict = getDict(locale);
   const t = dict.nav;
@@ -61,6 +63,7 @@ export function Nav() {
   const appPaths = [
     "/scan", "/invoices", "/settings",
     "/en/scan", "/en/invoices", "/en/settings",
+    "/admin",
   ];
   const isApp = appPaths.some((p) => path === p || path.startsWith(p + "/"));
   const isPublic = !isApp;
@@ -72,13 +75,15 @@ export function Nav() {
   // we're in the EN subtree.
   const appLinks = useMemo(() => {
     const prefix = locale === "en" ? "/en" : "";
-    return [
+    const links = [
       { href: `${prefix}/scan`,     label: t.scan,     icon: "📷" },
       { href: `${prefix}/invoices`, label: t.invoices, icon: "📋" },
       { href: `${prefix}/settings`, label: t.settings, icon: "⚙️" },
       { href: `${prefix}/contact`,  label: t.contact,  icon: "📨" },
     ];
-  }, [locale, t]);
+    if (isAdmin) links.push({ href: "/admin/subscriptions", label: "Admin", icon: "📊" });
+    return links;
+  }, [isAdmin, locale, t]);
 
   const publicLinks = useMemo(
     () => [
