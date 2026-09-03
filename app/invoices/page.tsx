@@ -53,7 +53,7 @@ function PreviewModal({ inv, onClose }: { inv: Invoice; onClose: () => void }) {
       onClick={onClose}
     >
       <div
-        className="relative bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+        className="relative bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-[95vw] h-[92vh] overflow-hidden flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -75,11 +75,17 @@ function PreviewModal({ inv, onClose }: { inv: Invoice; onClose: () => void }) {
         </div>
 
         {/* Image / PDF */}
-        <div className="p-4">
-          {inv.imageMime === "application/pdf" ? (
+        <div className="p-4 flex-1 min-h-0 flex items-center justify-center bg-gray-50 dark:bg-slate-950">
+          {inv.imageMime === "application/pdf" && inv.imageData ? (
+            <iframe
+              src={`data:application/pdf;base64,${inv.imageData}#toolbar=1&navpanes=0&view=FitH`}
+              title={inv.filename ?? "Račun PDF"}
+              className="w-full h-full rounded-xl border border-gray-200 dark:border-slate-700 bg-white"
+            />
+          ) : inv.imageMime === "application/pdf" ? (
             <div className="flex flex-col items-center justify-center py-16 gap-3 text-gray-400">
               <span className="text-6xl">📋</span>
-              <p className="font-semibold text-gray-600 dark:text-slate-300">PDF dokument</p>
+              <p className="font-semibold text-gray-600 dark:text-slate-300">Predogled starejšega PDF-ja ni na voljo</p>
               <p className="text-sm">{inv.filename ?? "račun.pdf"}</p>
             </div>
           ) : inv.imageData ? (
@@ -87,7 +93,7 @@ function PreviewModal({ inv, onClose }: { inv: Invoice; onClose: () => void }) {
             <img
               src={`data:${inv.imageMime};base64,${inv.imageData}`}
               alt="Račun"
-              className="w-full rounded-xl border border-gray-200 dark:border-slate-700"
+              className="max-w-full max-h-full object-contain rounded-xl border border-gray-200 dark:border-slate-700"
             />
           ) : (
             <div className="flex flex-col items-center justify-center py-16 gap-3 text-gray-400">
@@ -117,6 +123,8 @@ export default function InvoicesPage() {
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState<number | null>(null);
   const [preview, setPreview] = useState<Invoice | null>(null);
+  const [details, setDetails] = useState<Record<number, Invoice>>({});
+  const [detailLoading, setDetailLoading] = useState<Set<number>>(new Set());
   const [filter, setFilter] = useState<FilterMode>("all");
   const [companyFilter, setCompanyFilter] = useState<CompanyFilter>("all");
   const [customFrom, setCustomFrom] = useState<string>(""); // YYYY-MM-DD
@@ -143,6 +151,33 @@ export default function InvoicesPage() {
   }
 
   useEffect(() => { load(); }, []);
+
+  async function loadInvoiceDetail(inv: Invoice): Promise<Invoice> {
+    if (inv.imageData || details[inv.id]) {
+      return details[inv.id] ?? inv;
+    }
+
+    setDetailLoading((current) => new Set(current).add(inv.id));
+    try {
+      const res = await fetch(`/api/invoices/${inv.id}`);
+      if (!res.ok) return inv;
+      const full = await res.json() as Invoice;
+      setDetails((current) => ({ ...current, [inv.id]: full }));
+      return full;
+    } finally {
+      setDetailLoading((current) => {
+        const next = new Set(current);
+        next.delete(inv.id);
+        return next;
+      });
+    }
+  }
+
+  async function openPreview(inv: Invoice) {
+    setPreview(details[inv.id] ?? inv);
+    const full = await loadInvoiceDetail(inv);
+    setPreview(full);
+  }
 
   async function handleDelete(e: React.MouseEvent, id: number) {
     e.stopPropagation();
@@ -388,24 +423,37 @@ export default function InvoicesPage() {
         </div>
       ) : (
         <div className="grid gap-3">
-          {filtered.map((inv) => (
+          {filtered.map((inv) => {
+            const displayInv = details[inv.id] ?? inv;
+            return (
             <div
               key={inv.id}
-              onClick={() => setPreview(inv)}
-              className="flex items-start gap-4 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-2xl p-4 cursor-pointer hover:border-blue-300 dark:hover:border-blue-600 hover:shadow-md transition-all"
+              onMouseEnter={() => { void loadInvoiceDetail(inv); }}
+              onClick={() => { void openPreview(inv); }}
+              className="group flex items-start gap-4 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-2xl p-4 cursor-pointer hover:border-blue-300 dark:hover:border-blue-600 hover:shadow-md transition-all duration-200"
             >
               {/* Thumbnail */}
               {inv.imageMime === "application/pdf" ? (
-                <div className="w-16 h-16 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800 flex flex-col items-center justify-center flex-shrink-0 gap-0.5">
-                  <span className="text-xl">📋</span>
-                  <span className="text-xs font-bold text-red-500 uppercase tracking-wide">PDF</span>
+                <div className="w-16 h-16 group-hover:w-40 group-hover:h-52 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800 flex flex-col items-center justify-center flex-shrink-0 gap-0.5 overflow-hidden transition-all duration-200">
+                  {displayInv.imageData ? (
+                    <iframe
+                      src={`data:application/pdf;base64,${displayInv.imageData}#toolbar=0&navpanes=0&scrollbar=0&view=FitH`}
+                      title={`Predogled ${displayInv.filename}`}
+                      className="hidden group-hover:block w-full h-full bg-white pointer-events-none"
+                    />
+                  ) : (
+                    <>
+                      <span className="text-xl">{detailLoading.has(inv.id) ? "⏳" : "📋"}</span>
+                      <span className="text-xs font-bold text-red-500 uppercase tracking-wide">PDF</span>
+                    </>
+                  )}
                 </div>
               ) : inv.imageData ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={`data:${inv.imageMime};base64,${inv.imageData}`}
                   alt="thumb"
-                  className="w-16 h-16 rounded-xl object-cover flex-shrink-0 border border-gray-200 dark:border-slate-700"
+                  className="w-16 h-16 group-hover:w-40 group-hover:h-52 rounded-xl object-contain bg-gray-50 dark:bg-slate-950 flex-shrink-0 border border-gray-200 dark:border-slate-700 transition-all duration-200"
                 />
               ) : (
                 <div className="w-16 h-16 rounded-xl bg-gray-100 dark:bg-slate-800 flex items-center justify-center text-2xl flex-shrink-0">
@@ -441,7 +489,8 @@ export default function InvoicesPage() {
                 </button>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

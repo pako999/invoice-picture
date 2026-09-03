@@ -75,9 +75,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const isPdf = data.mime === "application/pdf";
-    const thumbData = isPdf ? null : data.imageBase64;
-
     const [result] = await db.insert(invoices).values({
       clerkUserId: userId,
       recipientEmail,
@@ -85,7 +82,10 @@ export async function POST(req: NextRequest) {
       // Falls through as null when the user sends via their default email.
       companyId: data.companyId ?? null,
       subject: data.subject,
-      imageData: thumbData,
+      // Keep the original document so the archive can show a real preview.
+      // The list endpoint excludes PDF data and fetches it lazily by id, so
+      // large batches do not make /api/invoices responses enormous.
+      imageData: data.imageBase64,
       imageMime: data.mime,
       filename: data.filename,
       status: "pending",
