@@ -17,6 +17,11 @@ import {
   Archive,
   AlertCircle,
   ExternalLink,
+  ArrowRight,
+  Building2,
+  Users,
+  ShieldCheck,
+  Sparkles,
 } from "lucide-react";
 
 const integrations = [
@@ -99,106 +104,136 @@ export default function Home() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareJsonLd) }}
       />
-      {/* Hero Section */}
-      <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-grid-slate-100 [mask-image:linear-gradient(0deg,transparent,black)] opacity-50" />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-24 relative">
-          {/* 2-col grid on lg+ — text left, phone screenshot right.
-              items-stretch so the image column fills the text-column height */}
-          <div className="grid lg:grid-cols-2 gap-12 items-stretch">
-            <div className="text-center lg:text-left">
-              <Badge className="mb-4 bg-blue-100 text-blue-700 hover:bg-blue-200 border-0">
-                🇸🇮 Narejen za slovensko računovodstvo
-              </Badge>
-              <h1 className="text-5xl sm:text-6xl lg:text-6xl xl:text-7xl tracking-tight mb-6 bg-gradient-to-r from-slate-900 via-blue-800 to-indigo-900 bg-clip-text text-transparent font-bold">
-                Slikaj račun in ga pošlji z enim klikom
+      {/* Redesigned product hero */}
+      <section className="relative overflow-hidden bg-white">
+        <div className="absolute -left-32 top-12 h-96 w-96 rounded-full bg-blue-200/40 blur-3xl" />
+        <div className="absolute -right-32 top-0 h-[30rem] w-[30rem] rounded-full bg-indigo-200/40 blur-3xl" />
+        <div className="relative mx-auto max-w-7xl px-4 pb-20 pt-16 sm:px-6 lg:px-8 lg:pb-28 lg:pt-24">
+          <div className="grid items-center gap-14 lg:grid-cols-[1.02fr_.98fr]">
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-bold text-blue-700">
+                <Sparkles className="h-4 w-4" />
+                Najhitrejša pot od računa do računovodstva
+              </div>
+              <h1 className="mt-7 max-w-3xl text-5xl font-black leading-[1.02] tracking-[-0.045em] text-slate-950 sm:text-6xl lg:text-7xl">
+                Račun poslikate.
+                <span className="block bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">Mi ga pošljemo naprej.</span>
               </h1>
-              <p className="text-xl text-slate-600 mb-6 leading-relaxed">
-                Z enim klikom fotografirate fizični račun, aplikacija pa ga samodejno pošlje na vaš e-mail ali neposredno na OCR e-mail, kjer ga vaš računovodski program obdela naprej.
+              <p className="mt-7 max-w-2xl text-lg leading-8 text-slate-600 sm:text-xl">
+                Fotografirajte ali naložite PDF in ga z enim klikom pošljite neposredno v Minimax, Birokrat, Pantheon ali na kateri koli računovodski e-poštni naslov.
               </p>
-              <p className="text-lg text-slate-700 mb-8">
-                Brez ročnega vnosa, brez kompliciranja — <strong>hitro, enostavno in učinkovito</strong>.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-4 lg:justify-start justify-center mb-6">
-                <Link
-                  href="/scan"
-                  className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-lg h-12 px-8 rounded-lg font-medium transition-colors"
-                >
-                  📷 Začni skenirati
+              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                <Link href="/scan" className="inline-flex h-13 items-center justify-center gap-2 rounded-xl bg-blue-600 px-7 py-3.5 text-base font-bold text-white shadow-lg shadow-blue-600/20 transition hover:-translate-y-0.5 hover:bg-blue-700">
+                  Začni brezplačno <ArrowRight className="h-5 w-5" />
                 </Link>
-                <Link
-                  href="/kako-deluje"
-                  className="inline-flex items-center justify-center gap-2 border border-gray-300 bg-white hover:bg-gray-100 text-lg h-12 px-8 rounded-lg font-medium transition-colors"
-                >
-                  Več o aplikaciji
+                <Link href="#za-racunovodstva" className="inline-flex h-13 items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-7 py-3.5 text-base font-bold text-slate-700 transition hover:border-blue-300 hover:bg-blue-50">
+                  Rešitev za računovodstva
                 </Link>
               </div>
-
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-left max-w-2xl mx-auto lg:mx-0">
-                <div className="flex gap-3">
-                  <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                  <div className="text-sm text-amber-900">
-                    <strong>Pogoj za uporabo:</strong> V vašem računovodskem programu mora biti vklopljeno sprejemanje računov po emailu z OCR obdelavo. Preverite nastavitve pri Minimax, Birokrat, Pantheon ali vašem programu.
-                  </div>
-                </div>
+              <div className="mt-8 flex flex-wrap gap-x-6 gap-y-3 text-sm font-semibold text-slate-600">
+                <span className="flex items-center gap-2"><CheckCircle className="h-5 w-5 text-green-500" /> 3 računi mesečno brezplačno</span>
+                <span className="flex items-center gap-2"><ShieldCheck className="h-5 w-5 text-blue-500" /> Brez podatkov kartice</span>
+                <span className="flex items-center gap-2"><CheckCircle className="h-5 w-5 text-green-500" /> JPG, PNG in PDF</span>
               </div>
             </div>
 
-            {/* Phone mockup — CSS-built phone frame with simplified app UI */}
-            <div className="relative flex justify-center lg:justify-end items-center">
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-indigo-500/10 to-purple-500/10 blur-3xl rounded-full" />
-              <div className="relative w-[280px] h-[560px] bg-slate-900 rounded-[2.5rem] p-3 shadow-2xl ring-1 ring-slate-800">
-                <div className="absolute top-3 left-1/2 -translate-x-1/2 w-24 h-5 bg-slate-900 rounded-b-2xl z-10" />
-                <div className="w-full h-full bg-white rounded-[2rem] overflow-hidden flex flex-col">
-                  <div className="px-5 pt-10 pb-3">
-                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Slikaj Račun</p>
-                    <h3 className="text-lg font-extrabold text-gray-900 mt-1">Pošlji račun</h3>
+            <div className="relative">
+              <div className="absolute inset-8 rounded-[2.5rem] bg-gradient-to-br from-blue-500 to-indigo-600 blur-2xl opacity-20" />
+              <div className="relative overflow-hidden rounded-[2rem] border border-slate-200 bg-slate-950 p-3 shadow-2xl shadow-slate-900/20">
+                <div className="flex items-center gap-2 px-4 py-3">
+                  <span className="h-2.5 w-2.5 rounded-full bg-red-400" />
+                  <span className="h-2.5 w-2.5 rounded-full bg-amber-400" />
+                  <span className="h-2.5 w-2.5 rounded-full bg-green-400" />
+                  <span className="ml-3 text-xs font-semibold text-slate-400">posljiracun.si/scan</span>
+                </div>
+                <div className="rounded-[1.4rem] bg-white p-5 sm:p-7">
+                  <div className="flex items-center justify-between">
+                    <div><p className="text-xs font-bold uppercase tracking-wider text-blue-600">Nov račun</p><h3 className="mt-1 text-xl font-black text-slate-900">Pošlji v računovodstvo</h3></div>
+                    <div className="rounded-xl bg-blue-50 p-3"><FileText className="h-6 w-6 text-blue-600" /></div>
                   </div>
-
-                  <div className="mx-5 flex-1 rounded-2xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center gap-3">
-                    <FileText className="w-12 h-12 text-blue-500" />
-                    <p className="text-xs text-gray-500 font-medium">Povleci ali fotografiraj</p>
+                  <div className="mt-6 rounded-2xl border-2 border-dashed border-blue-200 bg-blue-50/60 px-6 py-10 text-center">
+                    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-600 text-white shadow-lg shadow-blue-200"><Camera className="h-7 w-7" /></div>
+                    <p className="mt-4 font-bold text-slate-800">Fotografiraj ali naloži dokumente</p>
+                    <p className="mt-1 text-sm text-slate-500">Tudi do 500 PDF računov naenkrat</p>
                   </div>
-
-                  <div className="px-5 py-3">
-                    <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Zadeva</div>
-                    <div className="h-9 bg-gray-100 rounded-lg px-3 flex items-center text-xs text-gray-700">Račun</div>
+                  <div className="mt-5 rounded-xl border border-slate-200 p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-100"><Building2 className="h-5 w-5 text-green-700" /></div>
+                      <div className="min-w-0 flex-1"><p className="text-xs text-slate-500">Pošlji za podjetje</p><p className="truncate font-bold text-slate-900">Sport Group d.o.o.</p></div>
+                      <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-bold text-green-700">Izbrano</span>
+                    </div>
                   </div>
-
-                  <div className="px-5 pb-5 flex gap-2">
-                    <button className="flex-1 h-11 rounded-xl bg-gray-100 flex items-center justify-center gap-1.5 text-xs font-semibold text-gray-700">
-                      <Camera className="w-4 h-4" />
-                      Fotografiraj
-                    </button>
-                    <button className="flex-1 h-11 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 flex items-center justify-center gap-1.5 text-xs font-bold text-white">
-                      Pošlji
-                    </button>
+                  <div className="mt-4 flex items-center justify-between rounded-xl bg-slate-900 px-5 py-4 text-white">
+                    <div><p className="text-xs text-slate-400">Ciljni OCR naslov</p><p className="text-sm font-bold">uvoz@racunovodstvo.si</p></div>
+                    <Send className="h-5 w-5 text-blue-300" />
                   </div>
                 </div>
+              </div>
+              <div className="absolute -bottom-5 -left-5 hidden items-center gap-3 rounded-2xl border border-green-200 bg-white p-4 shadow-xl sm:flex">
+                <div className="rounded-full bg-green-100 p-2"><CheckCircle className="h-5 w-5 text-green-600" /></div>
+                <div><p className="text-xs text-slate-500">Status</p><p className="text-sm font-bold text-slate-900">Račun uspešno poslan</p></div>
               </div>
             </div>
           </div>
+        </div>
+      </section>
 
-          {/* Process Flow */}
-          <div className="mt-16 relative">
-            <div className="absolute inset-0 bg-gradient-to-t from-blue-600/20 to-transparent blur-3xl" />
-            <div className="relative bg-white rounded-2xl shadow-2xl border border-slate-200 p-8">
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4 md:gap-6">
+      {/* Dedicated accounting-firm hero */}
+      <section id="za-racunovodstva" className="relative overflow-hidden bg-slate-950 py-24 text-white">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(37,99,235,.28),transparent_38%),radial-gradient(circle_at_85%_70%,rgba(79,70,229,.22),transparent_35%)]" />
+        <div className="relative mx-auto grid max-w-7xl items-center gap-14 px-4 sm:px-6 lg:grid-cols-2 lg:px-8">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full border border-blue-400/30 bg-blue-500/10 px-4 py-2 text-sm font-bold text-blue-300">
+              <Users className="h-4 w-4" /> Za računovodske servise
+            </div>
+            <h2 className="mt-6 text-4xl font-black leading-tight tracking-tight sm:text-5xl">
+              En račun za vsa podjetja, ki jih vodite.
+            </h2>
+            <p className="mt-6 text-lg leading-8 text-slate-300">
+              Ne potrebujete ločene prijave za vsako stranko. V enem uporabniškem računu dodate vsa podjetja, vsakemu določite njegov OCR e-poštni naslov in pri pošiljanju samo izberete pravo podjetje.
+            </p>
+            <div className="mt-8 grid gap-4 sm:grid-cols-2">
+              {[
+                ["Neomejeno podjetij", "Vse stranke upravljate iz ene prijave."],
+                ["Ločen OCR naslov", "Vsak račun vedno prispe v pravo podjetje."],
+                ["Hiter preklop", "Pred pošiljanjem izberete podjetje z enim klikom."],
+                ["Ločeni arhivi", "Pregled računov in statusov za vsako podjetje."],
+              ].map(([title, description]) => (
+                <div key={title} className="rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur">
+                  <CheckCircle className="h-5 w-5 text-green-400" />
+                  <h3 className="mt-3 font-bold">{title}</h3>
+                  <p className="mt-1 text-sm leading-6 text-slate-400">{description}</p>
+                </div>
+              ))}
+            </div>
+            <Link href="#cenik" className="mt-8 inline-flex items-center gap-2 rounded-xl bg-white px-6 py-3.5 font-bold text-slate-950 transition hover:bg-blue-50">
+              Poglej paket PRO <ArrowRight className="h-5 w-5" />
+            </Link>
+          </div>
+
+          <div className="rounded-[2rem] border border-white/10 bg-white/5 p-4 shadow-2xl backdrop-blur sm:p-6">
+            <div className="rounded-2xl bg-white p-5 text-slate-900 sm:p-6">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-5">
+                <div><p className="text-xs font-bold uppercase tracking-wider text-blue-600">Moja podjetja</p><h3 className="mt-1 text-xl font-black">12 aktivnih podjetij</h3></div>
+                <button className="rounded-lg bg-blue-600 px-3 py-2 text-xs font-bold text-white">+ Dodaj podjetje</button>
+              </div>
+              <div className="mt-4 space-y-3">
                 {[
-                  { Icon: FileText, color: "bg-blue-100 text-blue-600", emoji: "🧾", label: "Papirnat račun" },
-                  { Icon: Camera, color: "bg-green-100 text-green-600", emoji: "📱", label: "Fotografiraš" },
-                  { Icon: Send, color: "bg-purple-100 text-purple-600", emoji: "📤", label: "Pošlješ" },
-                  { Icon: Bot, color: "bg-orange-100 text-orange-600", emoji: "🤖", label: "OCR obdela" },
-                  { Icon: CheckCircle, color: "bg-teal-100 text-teal-600", emoji: "✅", label: "Knjiženo!" },
-                ].map((step, i) => (
-                  <div key={i} className="text-center">
-                    <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3 ${step.color}`}>
-                      <step.Icon className="w-8 h-8" />
-                    </div>
-                    <p className="text-2xl mb-1">{step.emoji}</p>
-                    <p className="text-sm">{step.label}</p>
+                  ["Sport Group d.o.o.", "uvoz@sportgroup.si", "38 računov"],
+                  ["ABC Trgovina d.o.o.", "ocr@abctrgovina.si", "21 računov"],
+                  ["Studio Kovač s.p.", "racuni@studiokovac.si", "14 računov"],
+                ].map(([company, email, count], index) => (
+                  <div key={company} className={`flex items-center gap-3 rounded-xl border p-4 ${index === 0 ? "border-blue-300 bg-blue-50" : "border-slate-200"}`}>
+                    <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${index === 0 ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-500"}`}><Building2 className="h-5 w-5" /></div>
+                    <div className="min-w-0 flex-1"><p className="truncate font-bold">{company}</p><p className="truncate text-xs text-slate-500">{email}</p></div>
+                    <span className="text-xs font-semibold text-slate-500">{count}</span>
                   </div>
                 ))}
+              </div>
+              <div className="mt-5 grid grid-cols-3 gap-3">
+                <div className="rounded-xl bg-slate-50 p-3 text-center"><p className="text-xl font-black">12</p><p className="text-[11px] text-slate-500">podjetij</p></div>
+                <div className="rounded-xl bg-slate-50 p-3 text-center"><p className="text-xl font-black">186</p><p className="text-[11px] text-slate-500">ta mesec</p></div>
+                <div className="rounded-xl bg-green-50 p-3 text-center"><p className="text-xl font-black text-green-700">100%</p><p className="text-[11px] text-green-700">dostavljeno</p></div>
               </div>
             </div>
           </div>
