@@ -4,11 +4,11 @@ import { Check, ArrowRight } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Programi za račune v Sloveniji 2026: primerjava in izbira",
-  description: "Primerjava programov za račune v Sloveniji: Minimax, Birokrat, Pantheon, SAOP, E-računi, Metakocka in Slikaj Račun. Kaj izbrati za izdajo, OCR in pošiljanje prejetih računov.",
+  description: "Primerjava programov za račune in računovodske programske opreme v Sloveniji: Minimax, Birokrat, Pantheon, SAOP, E-računi, Metakocka in Slikaj Račun.",
   alternates: { canonical: "/programi-za-racune" },
   openGraph: {
     title: "Programi za račune v Sloveniji 2026 – primerjava",
-    description: "Primerjajte programe za izdajanje računov, računovodstvo, OCR in zajem prejetih računov.",
+    description: "Primerjajte programe za izdajanje računov, spletno računovodstvo, OCR in zajem prejetih računov.",
     url: "https://www.posljiracun.si/programi-za-racune",
     type: "article",
   },
@@ -41,15 +41,24 @@ export default function ProgramiZaRacunePage() {
       acceptedAnswer: { "@type": "Answer", text: a },
     })),
   };
+  const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Domov", item: "https://www.posljiracun.si/" },
+      { "@type": "ListItem", position: 2, name: "Programi za račune", item: "https://www.posljiracun.si/programi-za-racune" },
+    ],
+  };
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }} />
       <section className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-12">
         <p className="text-sm font-semibold uppercase tracking-wider text-blue-700 mb-4">Primerjava 2026</p>
         <h1 className="text-4xl sm:text-6xl font-bold tracking-tight text-slate-950 mb-6">Programi za račune v Sloveniji: kateri je pravi za vas?</h1>
         <p className="text-xl text-slate-600 leading-relaxed max-w-4xl">
-          Izraz <strong>programi za račune</strong> pokriva več različnih potreb: izdajo računov, računovodstvo, OCR obdelavo ter zajem prejetih papirnatih računov. Spodaj je praktična primerjava najpogosteje uporabljenih rešitev in razlaga, kdaj potrebujete katero.
+          Izraz <strong>programi za račune</strong> pokriva več različnih potreb: izdajo računov, računovodsko programsko opremo, OCR obdelavo ter zajem prejetih papirnatih računov. Spodaj je praktična primerjava najpogosteje uporabljenih rešitev in razlaga, kdaj potrebujete katero.
         </p>
       </section>
 
@@ -86,14 +95,20 @@ export default function ProgramiZaRacunePage() {
           <li><Check className="inline w-4 h-4" /> dokument lahko pošljete takoj ob prejemu.</li>
         </ul>
 
-        <h2>Programi za račune in integracije</h2>
+        <h2>Spletni računovodski programi in cloud računovodstvo</h2>
+        <p>Sodobni spletni računovodski programi omogočajo delo v oblaku, zato lahko dokumente pošiljate iz telefona ali računalnika. Pri takem <strong>cloud računovodstvu</strong> je pomembna predvsem dobra integracija med zajemom dokumenta in programom, kjer računovodja dokument obdela.</p>
+
+        <h2>Mobilno računovodstvo: kaj dejansko potrebujete na telefonu?</h2>
+        <p>Za mobilno računovodstvo ni nujno, da imate celoten računovodski sistem na telefonu. V praksi je najpomembnejše, da lahko račun takoj fotografirate, ga pravilno usmerite v pravo podjetje in pošljete v računovodsko programsko opremo brez dodatnega prepisovanja.</p>
+
+        <h2>Programi za račune in računovodska integracija</h2>
         <p>Če vaš računovodski program sprejema dokumente po emailu ali ima OCR vhod, ga lahko vključite v isti proces. Oglejte si našo stran <Link href="/integracije">integracije z računovodskimi programi</Link>, kjer so posebej opisani Minimax, Birokrat, Pantheon, SAOP, E-računi in Metakocka.</p>
 
         <h2>Minimax OCR in email uvoz</h2>
-        <p>Za uporabnike Minimaxa imamo ločen <Link href="/blog/minimax-email-uvoz-racunov">vodnik za Minimax email uvoz računov</Link>. To je trenutno tudi ena izmed najbolje uvrščenih vsebin na naši strani.</p>
+        <p>Za uporabnike Minimaxa imamo ločen <Link href="/blog/minimax-email-uvoz-racunov">vodnik za Minimax OCR in email uvoz računov</Link>.</p>
 
         <h2>Aplikacija za skeniranje računov</h2>
-        <p>Če iščete predvsem mobilni zajem, preberite primerjavo <Link href="/blog/najboljse-aplikacije-za-skeniranje-racunov">najboljših aplikacij za skeniranje računov</Link>. Tako lahko ločite običajen scanner od rešitve, ki račun tudi pošlje neposredno v računovodstvo.</p>
+        <p>Če iščete predvsem mobilni zajem, preberite primerjavo <Link href="/blog/najboljse-aplikacije-za-skeniranje-racunov">aplikacij za skeniranje računov</Link>. Tako lahko ločite običajen scanner od rešitve, ki račun tudi pošlje neposredno v računovodstvo.</p>
 
         <h2>Pogosta vprašanja</h2>
         {faq.map(([q, a]) => <section key={q}><h3>{q}</h3><p>{a}</p></section>)}
