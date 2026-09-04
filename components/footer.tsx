@@ -15,15 +15,21 @@ export function Footer() {
   const locale = detectLocale(path);
   const dict = getDict(locale);
   const t = dict.footer;
-  const home = localeUrl(locale, "");
   const year = new Date().getFullYear();
 
   const productLinks = [
-    { label: t.productHowItWorks,   href: `${home === "/" ? "" : home}#kako-deluje` },
-    { label: t.productIntegrations, href: `${home === "/" ? "" : home}#integracije` },
-    { label: t.productFeatures,     href: `${home === "/" ? "" : home}#funkcionalnosti` },
-    { label: t.productPricing,      href: `${home === "/" ? "" : home}#cenik` },
+    { label: t.productHowItWorks,   href: localeUrl(locale, "kako-deluje") },
+    { label: t.productIntegrations, href: localeUrl(locale, "integracije") },
+    { label: t.productFeatures,     href: localeUrl(locale, "funkcionalnosti") },
+    { label: t.productPricing,      href: localeUrl(locale, "cenik") },
     { label: t.productBlog,         href: localeUrl(locale, "blog") },
+    ...(locale === "sl"
+      ? [
+          { label: "Programi za račune", href: "/programi-za-racune" },
+          { label: "Program za račune", href: "/program-za-racune" },
+          { label: "Aplikacija za račune", href: "/aplikacija-za-racune" },
+        ]
+      : []),
   ];
   const helpLinks = [
     { label: t.helpUserGuide, href: localeUrl(locale, "navodila-za-uporabo") },
@@ -60,7 +66,7 @@ export function Footer() {
             <h4 className="text-white font-bold text-sm mb-4 tracking-wide">{t.productTitle}</h4>
             <ul className="flex flex-col gap-3">
               {productLinks.map((l) => (
-                <li key={l.label}>
+                <li key={`${l.label}-${l.href}`}>
                   <Link href={l.href} className="text-sm text-slate-400 hover:text-white transition-colors">{l.label}</Link>
                 </li>
               ))}
