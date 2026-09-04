@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { CheckCircle2, Camera, Mail, Building2, ArrowRight } from "lucide-react";
+import { Camera, Mail, Building2, ArrowRight } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Program za račune: hitrejše pošiljanje računov v računovodstvo | Slikaj Račun",
@@ -19,6 +19,12 @@ const faq = [
   { q: "Ali Slikaj Račun izdaja račune?", a: "Ne. Slikaj Račun dopolnjuje vaš obstoječi računovodski program. Račun fotografirate, aplikacija pa ga pošlje na email naslov za uvoz dokumentov v vašem računovodstvu." },
   { q: "S katerimi računovodskimi programi deluje?", a: "Deluje z Minimax, Birokrat, Pantheon, SAOP, E-računi, Metakocka in drugimi programi, ki omogočajo sprejem dokumentov po emailu." },
   { q: "Ali lahko uporabljam več podjetij?", a: "Da. Paket za računovodstva omogoča upravljanje več podjetij iz enega uporabniškega računa in ločene ciljne email naslove za vsako podjetje." },
+];
+
+const steps = [
+  { Icon: Camera, title: "1. Fotografiraj račun", text: "Odpri aplikacijo in fotografiraj papirnat račun ali dokument." },
+  { Icon: Building2, title: "2. Izberi podjetje", text: "Pri več podjetjih izbereš pravo podjetje in njegov računovodski program." },
+  { Icon: Mail, title: "3. Pošlji", text: "Slika se pošlje na nastavljeni email za OCR oziroma uvoz dokumentov." },
 ];
 
 export default function ProgramZaRacunePage() {
@@ -58,16 +64,11 @@ export default function ProgramZaRacunePage() {
 
       <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
         <div className="grid md:grid-cols-3 gap-6">
-          {[
-            [Camera, "1. Fotografiraj račun", "Odpri aplikacijo in fotografiraj papirnat račun ali dokument."],
-            [Building2, "2. Izberi podjetje", "Pri več podjetjih izbereš pravo podjetje in njegov računovodski program."],
-            [Mail, "3. Pošlji", "Slika se pošlje na nastavljeni email za OCR oziroma uvoz dokumentov."],
-          ].map(([Icon, title, text]) => (
-            <div key={String(title)} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-              {/* @ts-expect-error tuple component type */}
+          {steps.map(({ Icon, title, text }) => (
+            <div key={title} className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
               <Icon className="w-8 h-8 text-blue-600 mb-4" />
-              <h2 className="text-xl font-bold mb-2">{String(title)}</h2>
-              <p className="text-slate-600">{String(text)}</p>
+              <h2 className="text-xl font-bold mb-2">{title}</h2>
+              <p className="text-slate-600">{text}</p>
             </div>
           ))}
         </div>
