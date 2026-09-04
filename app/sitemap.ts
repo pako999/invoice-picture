@@ -4,12 +4,6 @@ import { posts } from "@/lib/blog";
 
 const SITE_URL = "https://www.posljiracun.si";
 
-// Pages live in BOTH locales — sitemap emits the SL canonical with
-// hreflang alternates so Google understands the EN counterpart exists.
-// The 4 legal pages were translated; marketing/help pages still
-// being translated incrementally — but we list both versions
-// so Google indexes them as soon as the EN slug is live.
-
 const bilingualRoutes: { slug: string; priority: number; changeFrequency: MetadataRoute.Sitemap[number]["changeFrequency"] }[] = [
   { slug: "",                         priority: 1.0, changeFrequency: "weekly" },
   { slug: "kako-deluje",              priority: 0.9, changeFrequency: "monthly" },
@@ -29,6 +23,11 @@ const bilingualRoutes: { slug: string; priority: number; changeFrequency: Metada
   { slug: "blog",                     priority: 0.8, changeFrequency: "weekly" },
 ];
 
+const slOnlySeoRoutes: { slug: string; priority: number }[] = [
+  { slug: "program-za-racune", priority: 0.9 },
+  { slug: "aplikacija-za-racune", priority: 0.9 },
+];
+
 export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date();
   const entries: MetadataRoute.Sitemap = [];
@@ -37,7 +36,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
     const slUrl = `${SITE_URL}${localeUrl("sl", r.slug)}`;
     const enUrl = `${SITE_URL}${localeUrl("en", r.slug)}`;
 
-    // Slovenian primary
     entries.push({
       url: slUrl,
       lastModified: now,
@@ -46,38 +44,49 @@ export default function sitemap(): MetadataRoute.Sitemap {
       alternates: {
         languages: {
           "sl-SI": slUrl,
-          "en":    enUrl,
+          "en": enUrl,
           "x-default": slUrl,
         },
       },
     });
 
-    // English mirror
     entries.push({
       url: enUrl,
       lastModified: now,
       changeFrequency: r.changeFrequency,
-      // Slightly lower priority for the secondary language so Google
-      // doesn't dilute ranking signal between the two versions
       priority: Math.max(0.1, r.priority - 0.1),
       alternates: {
         languages: {
           "sl-SI": slUrl,
-          "en":    enUrl,
+          "en": enUrl,
           "x-default": slUrl,
         },
       },
     });
   }
 
-  // Blog posts — both locales with hreflang alternates
+  for (const r of slOnlySeoRoutes) {
+    entries.push({
+      url: `${SITE_URL}/${r.slug}`,
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: r.priority,
+      alternates: {
+        languages: {
+          "sl-SI": `${SITE_URL}/${r.slug}`,
+          "x-default": `${SITE_URL}/${r.slug}`,
+        },
+      },
+    });
+  }
+
   for (const p of posts) {
     const slUrl = `${SITE_URL}/blog/${p.slug}`;
     const enUrl = `${SITE_URL}/en/blog/${p.slugEn}`;
     const alternates = {
       languages: {
         "sl-SI": slUrl,
-        "en":    enUrl,
+        "en": enUrl,
         "x-default": slUrl,
       },
     };
