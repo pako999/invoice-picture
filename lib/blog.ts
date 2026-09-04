@@ -8,15 +8,9 @@
 // search keywords. Programmatic SEO: branded long-tail per language.
 
 export type BlogPost = {
-  // ── shared ───────────────────────────────────────────────────────
-  /** Stable internal id — not used in URLs. */
   id: string;
-  /** ISO date string. */
   publishedAt: string;
-  /** Hero / cover image (Unsplash, CC0). Used on listing + post header. */
   coverImage: string;
-
-  // ── Slovenian (primary) ──────────────────────────────────────────
   slug: string;
   keyword: string;
   title: string;
@@ -24,8 +18,6 @@ export type BlogPost = {
   readingMinutes: number;
   excerpt: string;
   coverAlt: string;
-
-  // ── English (mirror) ─────────────────────────────────────────────
   slugEn: string;
   keywordEn: string;
   titleEn: string;
@@ -40,17 +32,15 @@ export const posts: BlogPost[] = [
     id: "minimax-email-import",
     publishedAt: "2026-05-04",
     coverImage: "https://images.unsplash.com/photo-1450101499163-c8848c66ca85?auto=format&fit=crop&w=1600&q=80",
-
     slug: "minimax-email-uvoz-racunov",
-    keyword: "minimax email uvoz",
-    title: "Minimax email uvoz računov: kompletni vodnik 2026",
+    keyword: "minimax ocr",
+    title: "Minimax OCR in email uvoz računov: vodnik 2026",
     description:
-      "Kako pravilno nastaviti email uvoz računov v Minimax in pošiljati papirnate račune z ene fotografije. Korak za korakom, z OCR primeri.",
+      "Minimax OCR: kako najti @minimax.si email za uvoz, pravilno poslati fotografijo računa in avtomatizirati obdelavo prejetih računov. Vodnik 2026.",
     readingMinutes: 7,
     excerpt:
-      "Vse, kar moraš vedeti o email uvozu računov v Minimax — od iskanja pravega naslova do pošiljanja prve slike z mobilno aplikacijo.",
-    coverAlt: "Pametni telefon, ki fotografira papirnat račun",
-
+      "Vse, kar moraš vedeti o Minimax OCR in email uvozu računov — od pravega @minimax.si naslova do pošiljanja fotografije z mobilno aplikacijo.",
+    coverAlt: "Pametni telefon, ki fotografira papirnat račun za Minimax OCR",
     slugEn: "minimax-email-invoice-import",
     keywordEn: "minimax email invoice import",
     titleEn: "Minimax email invoice import: complete 2026 guide",
@@ -65,7 +55,6 @@ export const posts: BlogPost[] = [
     id: "birokrat-ocr",
     publishedAt: "2026-05-04",
     coverImage: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1600&q=80",
-
     slug: "birokrat-ocr-uvoz-racunov",
     keyword: "birokrat ocr",
     title: "Birokrat OCR: kako nastaviti uvoz računov po emailu",
@@ -75,7 +64,6 @@ export const posts: BlogPost[] = [
     excerpt:
       "Birokrat OCR omogoča avtomatsko branje podatkov s fotografije računa. Tukaj je celotna pot od aktivacije do prvega knjiženja.",
     coverAlt: "Računovodska programska oprema na zaslonu prenosnika",
-
     slugEn: "birokrat-ocr-invoice-import",
     keywordEn: "birokrat ocr",
     titleEn: "Birokrat OCR: how to set up email invoice import",
@@ -90,7 +78,6 @@ export const posts: BlogPost[] = [
     id: "pantheon-ebooks-ocr",
     publishedAt: "2026-05-04",
     coverImage: "https://images.unsplash.com/photo-1554224155-6726b3ff858f?auto=format&fit=crop&w=1600&q=80",
-
     slug: "pantheon-ebooks-ocr-vodnik",
     keyword: "pantheon ocr",
     title: "Pantheon eBooks OCR: vodnik za avtomatsko knjiženje",
@@ -100,7 +87,6 @@ export const posts: BlogPost[] = [
     excerpt:
       "Datalab Pantheon ima eBooks OCR storitev za avtomatsko obdelavo dokumentov. Razložim, kako jo povezati z mobilnim slikanjem računov.",
     coverAlt: "Dokumenti in računi razporejeni na pisalni mizi",
-
     slugEn: "pantheon-ebooks-ocr-guide",
     keywordEn: "pantheon ebooks ocr",
     titleEn: "Pantheon eBooks OCR: a guide to automatic invoice booking",
@@ -115,17 +101,15 @@ export const posts: BlogPost[] = [
     id: "best-invoice-scanner-apps",
     publishedAt: "2026-05-04",
     coverImage: "https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&w=1600&q=80",
-
     slug: "najboljse-aplikacije-za-skeniranje-racunov",
     keyword: "aplikacija za skeniranje računov",
-    title: "Najboljše aplikacije za skeniranje računov v Sloveniji 2026",
+    title: "Aplikacija za skeniranje računov: 6 najboljših v Sloveniji (2026)",
     description:
-      "Primerjava 6 mobilnih aplikacij za skeniranje in pošiljanje računov v računovodske programe. Kaj so prednosti, slabosti in cene v Sloveniji.",
+      "Iščete aplikacijo za skeniranje računov? Primerjava 6 rešitev za fotografiranje, PDF, OCR in pošiljanje računov v Minimax, Birokrat, Pantheon in druge programe.",
     readingMinutes: 9,
     excerpt:
-      "Kateri aplikaciji za fotografiranje računov zaupati v Sloveniji? Naredil sem direktno primerjavo, ceniki, podprti programi in slabosti.",
-    coverAlt: "Različne mobilne aplikacije na zaslonu pametnega telefona",
-
+      "Primerjava aplikacij za skeniranje računov v Sloveniji: hitrost zajema, OCR, pošiljanje v računovodstvo, podprti programi in cene.",
+    coverAlt: "Aplikacija za skeniranje računov na pametnem telefonu",
     slugEn: "best-invoice-scanner-apps-slovenia",
     keywordEn: "best invoice scanner app",
     titleEn: "Best invoice scanner apps in Slovenia (2026 review)",
