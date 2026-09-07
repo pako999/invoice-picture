@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { invoiceDocuments, invoiceProcessingJobs } from "@/lib/schema";
 
@@ -22,11 +23,10 @@ export async function enqueueInvoiceDocument(input: {
   const readerConfigured = Boolean(process.env.MISTRAL_API_KEY) || /xml/i.test(input.mimeType) || /\.xml$/i.test(input.filename);
   const db = getDb();
 
-  const [existing] = await db.select({ id: invoiceDocuments.id, status: invoiceDocuments.status })
+  const [existing] = await db.select({ id: invoiceDocuments.id })
     .from(invoiceDocuments)
-    .where(invoiceDocuments.idempotencyKey.eq?.(idempotencyKey) as never)
-    .limit(1)
-    .catch(() => [] as Array<{ id: number; status: string }>);
+    .where(eq(invoiceDocuments.idempotencyKey, idempotencyKey))
+    .limit(1);
   if (existing) return existing.id;
 
   const [document] = await db.insert(invoiceDocuments).values({
@@ -43,17 +43,16 @@ export async function enqueueInvoiceDocument(input: {
     retentionUntil,
   }).onConflictDoNothing({ target: invoiceDocuments.idempotencyKey }).returning({ id: invoiceDocuments.id });
 
-  if (!document) {
-    const [row] = await db.select({ id: invoiceDocuments.id }).from(invoiceDocuments)
-      .where(invoiceDocuments.idempotencyKey.eq?.(idempotencyKey) as never)
-      .limit(1);
-    return row?.id ?? null;
-  }
+  const documentId = document?.id ?? (await db.select({ id: invoiceDocuments.id })
+    .from(invoiceDocuments)
+    .where(eq(invoiceDocuments.idempotencyKey, idempotencyKey))
+    .limit(1))[0]?.id;
 
+  if (!documentId) return null;
   if (readerConfigured) {
-    await db.insert(invoiceProcessingJobs).values({ documentId: document.id, status: "queued" }).onConflictDoNothing();
+    await db.insert(invoiceProcessingJobs).values({ documentId, status: "queued" }).onConflictDoNothing();
   }
-  return document.id;
+  return documentId;
 }
 
 function sanitizeFilename(filename: string) {
