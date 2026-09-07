@@ -4,11 +4,14 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "drizzle-kit push && next build",
+    "build": "drizzle-kit migrate && next build",
     "start": "next start",
     "db:push": "drizzle-kit push",
+    "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
     "check": "tsc --noEmit",
+    "test:invoice": "tsx --test tests/invoice-intelligence*.test.ts",
+    "eval:invoice": "tsx scripts/evaluate-invoice-extraction.ts",
     "grant-pro": "tsx --env-file .env.local scripts/grant-pro.ts"
   },
   "dependencies": {
