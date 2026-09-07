@@ -10,6 +10,7 @@ export async function enqueueInvoiceDocument(input: {
   filename: string;
   mimeType: string;
   base64: string;
+  metadata?: Record<string, unknown> | null;
 }) {
   const bytes = Buffer.from(input.base64, "base64");
   const sha256 = createHash("sha256").update(bytes).digest("hex");
@@ -36,6 +37,7 @@ export async function enqueueInvoiceDocument(input: {
     filename: sanitizeFilename(input.filename),
     mimeType: input.mimeType,
     originalBase64: input.base64,
+    originalValueMetadataJson: input.metadata ? JSON.stringify(input.metadata) : null,
     sha256,
     byteSize: bytes.length,
     idempotencyKey,
