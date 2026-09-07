@@ -15,6 +15,13 @@
       "when": 1788784200000,
       "tag": "0002_ocr_safety_limits",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1788790800000,
+      "tag": "0003_invoice_delivery_modes",
+      "breakpoints": true
     }
   ]
 }
