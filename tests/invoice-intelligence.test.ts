@@ -106,7 +106,8 @@ test("incorrect totals are detected", () => {
 });
 
 test("multi-page PDF text layer is preferred before OCR when usable", async () => {
-  const fakePdf = `%PDF-1.4\n/Type /Page\n/Type /Page\n(Test Supplier d.o.o.) Tj\n(Račun št: INV-777) Tj\n(Datum izdaje: 01.09.2026) Tj\n(Valuta EUR) Tj\n(Neto 100.00) Tj\n(DDV 22.00) Tj\n(Skupaj 122.00 EUR) Tj\n%%EOF`;
+  const filler = "Postavka opis količina cena brez DDV davčna osnova skupni znesek plačilo rok plačila referenca ".repeat(8);
+  const fakePdf = `%PDF-1.4\n/Type /Page\n/Type /Page\n(Test Supplier d.o.o.) Tj\n(Račun št: INV-777) Tj\n(Datum izdaje: 01.09.2026) Tj\n(Valuta EUR) Tj\n(Neto 100.00) Tj\n(DDV 22.00) Tj\n(Skupaj 122.00 EUR) Tj\n(${filler}) Tj\n%%EOF`;
   const result = await readDeterministically({ base64: Buffer.from(fakePdf).toString("base64"), mimeType: "application/pdf", filename: "multi-page.pdf" });
   assert.ok(result);
   assert.equal(result?.provider, "deterministic");
