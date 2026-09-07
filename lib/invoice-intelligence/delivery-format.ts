@@ -95,7 +95,7 @@ export function resolveXmlDelivery(args: {
     const isXml = /xml/i.test(args.originalMimeType) || /\.xml$/i.test(args.originalFilename);
     const original = isXml ? Buffer.from(args.originalBase64, "base64").toString("utf8") : "";
     if (!isLikelyEslog20Xml(original)) {
-      throw new Error("eSLOG 2.0 delivery requires an original eSLOG XML document. OCR-derived invoices are exported as UBL 2.1 instead.");
+      throw new Error("eSLOG 2.0 delivery requires an original eSLOG 2.0 XML document. OCR-derived invoices are exported as UBL 2.1 instead.");
     }
     return { xml: original, filename: replaceExt(args.originalFilename, ".xml"), format: "eslog_2_0" as const };
   }
@@ -106,10 +106,15 @@ export function resolveXmlDelivery(args: {
   };
 }
 
+/** eSLOG 2.0 has its own XML syntax. Require the actual namespace and invoice
+ * message element so CII/Factur-X/UBL documents cannot be mislabeled as eSLOG. */
 export function isLikelyEslog20Xml(value: string) {
   if (!value.trim().startsWith("<")) return false;
-  return /eSLOG|e-SLOG|E_SLOG|CrossIndustryInvoice|UNH|INVOIC/i.test(value)
-    && /(Invoice|Ra[cč]un|INVOIC|CrossIndustryInvoice)/i.test(value);
+  const hasEslogNamespace = /xmlns(?:\s*)=(?:\s*)["']urn:eslog:2\.00["']/i.test(value)
+    || /xmlns:[A-Za-z0-9_-]+(?:\s*)=(?:\s*)["']urn:eslog:2\.00["']/i.test(value);
+  const hasInvoiceRoot = /<(?:[A-Za-z0-9_-]+:)?Invoice(?:\s|>)/i.test(value);
+  const hasMessage = /<(?:[A-Za-z0-9_-]+:)?M_INVOIC(?:\s|>)/i.test(value);
+  return hasEslogNamespace && hasInvoiceRoot && hasMessage;
 }
 
 export function validatePublicHttpsUrl(value: string) {
