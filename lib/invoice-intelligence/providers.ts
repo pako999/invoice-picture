@@ -129,7 +129,7 @@ export async function readWithMistral(input: { base64: string; mimeType: string;
     rawResponse: raw,
     evidence,
     pagesProcessed: pageCount,
-    costMicros: Number.isFinite(costPerAnnotatedPageMicros) ? pageCount * costPerAnnotatedPageCostMicros : null,
+    costMicros: Number.isFinite(costPerAnnotatedPageMicros) ? pageCount * costPerAnnotatedPageMicros : null,
   };
 }
 
