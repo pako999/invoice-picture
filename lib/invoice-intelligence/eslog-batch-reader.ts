@@ -97,7 +97,8 @@ export async function readInvoiceBatchChunk(input: {
   });
 
   const responsePages = Array.isArray((raw as any).pages) ? (raw as any).pages : [];
-  const pagesProcessed = Number((raw as any).usage_info?.pages_processed ?? responsePages.length ?? input.pages.length || 1);
+  const pagesProcessedRaw = (raw as any).usage_info?.pages_processed ?? responsePages.length ?? input.pages.length;
+  const pagesProcessed = Number(pagesProcessedRaw || 1);
   const perPage = Number(process.env.MISTRAL_ANNOTATED_PAGE_COST_MICROS ?? 5000);
   return {
     invoices,
