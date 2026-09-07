@@ -8,6 +8,13 @@
       "when": 1788780600000,
       "tag": "0001_invoice_intelligence",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1788784200000,
+      "tag": "0002_ocr_safety_limits",
+      "breakpoints": true
     }
   ]
 }
