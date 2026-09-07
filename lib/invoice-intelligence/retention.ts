@@ -1,4 +1,4 @@
-import { and, isNotNull, lte } from "drizzle-orm";
+import { and, eq, isNotNull, lte } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { invoiceAuditLogs, invoiceDocuments } from "@/lib/schema";
 
@@ -16,7 +16,7 @@ export async function purgeExpiredInvoiceDocuments(limit = 50) {
       action: "retention_delete",
       metadataJson: JSON.stringify({ reason: "retention_period_expired" }),
     });
-    await db.delete(invoiceDocuments).where(invoiceDocuments.id.eq?.(row.id) as never);
+    await db.delete(invoiceDocuments).where(eq(invoiceDocuments.id, row.id));
   }
   return expired.length;
 }
