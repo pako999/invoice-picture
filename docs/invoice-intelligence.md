@@ -20,12 +20,15 @@ Every supported source document is stored privately in `invoiceDocuments`, check
 
 Accepted server-side MIME types are PDF, JPEG, PNG, WebP, HEIC/HEIF and XML. The existing browser scan UI remains backward-compatible with its current photo/PDF workflow. HEIC conversion is not done unsafely in the browser; providers receive the original supported file when used through the reader API.
 
+The reader upload endpoint validates file size/type, checks the PDF header, rejects common active PDF actions (`/JavaScript`, `/JS`, `/Launch`) and applies a database-backed per-tenant upload limit. The default is 300 documents/minute, so normal 100+ document batches remain supported.
+
 ### Reader priority
 
-1. **Structured data first** — XML/e-invoice data is parsed before OCR where visible to the application.
-2. **Usable PDF text layer** — a deterministic text-layer reader is attempted before OCR.
-3. **Mistral OCR** — primary OCR/document reader with strict JSON Schema annotations.
-4. **Azure Document Intelligence `prebuilt-invoice`** — optional fallback only when Mistral fails, critical confidence is low, or validation conflicts.
+1. **Structured XML first** — eSLOG/UBL/XML is parsed before OCR.
+2. **Hybrid PDF XML** — PDF bytes are inspected for embedded Factur-X/ZUGFeRD/CrossIndustryInvoice XML, including best-effort `FlateDecode` streams. Usable embedded XML is preferred over OCR.
+3. **Usable PDF text layer** — a deterministic text-layer reader is attempted before OCR.
+4. **Mistral OCR** — primary OCR/document reader with strict JSON Schema annotations.
+5. **Azure Document Intelligence `prebuilt-invoice`** — optional fallback only when Mistral fails, critical confidence is low, or validation conflicts.
 
 Provider results are never blindly field-merged. When both providers return results, the processor compares complete candidates using deterministic validation, critical-field completeness and confidence. Material disagreement sends the document to manual review.
 
@@ -36,14 +39,17 @@ All financial values are stored as decimal strings. Validation converts decimal 
 Validation includes:
 
 - net + VAT = gross
-- VAT breakdown reconciliation
-- line-item sums
+- VAT breakdown net/VAT/gross reconciliation
+- line-item net/VAT/gross sums
+- quantity × unit price − discount checks
+- discount percentage vs discount amount checks
+- line-item net + VAT = gross checks
 - amount-due logic
 - ISO currency check
 - date normalization/order
 - IBAN MOD-97
 - country-aware VAT-number formatting
-- supplier/buyer reversal heuristic
+- supplier/buyer reversal heuristics
 - credit-note sign warning
 - duplicate checks by SHA-256 and supplier VAT + invoice number + issue date + gross total + currency
 
@@ -66,6 +72,8 @@ Structured XML can be auto-approved without model confidence when deterministic 
 ### Durable asynchronous worker
 
 `invoiceProcessingJobs` is a database-backed durable queue. `/api/cron/process-invoices` runs every minute on Vercel and processes a small configurable batch. Jobs are unique per document, locked before work, retried with exponential backoff and capped attempts.
+
+If OCR is enabled after documents were already stored in `uploaded`, the cron worker backfills those documents into the queue automatically.
 
 States are exactly:
 
@@ -91,6 +99,9 @@ The browser request is never kept open while OCR is running.
 - approve/edit/reject/reprocess
 - previous/next navigation
 - keyboard shortcuts (`Cmd/Ctrl+S`, `Alt+A`, `Alt+←/→`)
+- correction audit trail
+- OCR processing attempt history (provider/model/duration/pages/cost/errors)
+- general document audit history
 - mobile-responsive layout
 
 Every correction stores old value, new value, Clerk user ID, timestamp and optional reason. Reusable supplier mappings are stored for recurring supplier-specific corrections.
@@ -102,11 +113,14 @@ Every correction stores old value, new value, Clerk user ID, timestamp and optio
 - File responses use `private, no-store`, `nosniff` and sandboxed content-security headers.
 - Filenames are sanitized server-side.
 - MIME, size and PDF magic bytes are validated.
+- Common active PDF actions are rejected before processing.
+- Upload frequency is rate-limited per tenant using shared database state rather than process-local memory.
 - API keys are server-only environment variables.
 - Application logs must not include OCR document text or raw invoice content.
 - Clerk `user.deleted` removes all invoice-reader data, supplier mappings and audit logs for that user.
 - `INVOICE_RETENTION_DAYS` creates an automatic retention deadline; the cron worker purges expired private documents.
-- View/edit/download/export/delete/reprocess actions generate audit events.
+- View/edit/download/export/GDPR-export/delete/reprocess actions generate audit events.
+- `/api/invoice-reader/gdpr-export` exports the user's OCR metadata, approved/normalized values, corrections, mappings, processing history and audit trail.
 
 The current private storage implementation uses encrypted-at-rest Neon PostgreSQL because that is the project's existing data infrastructure. For very high document volume, move `originalBase64` to private object storage and keep only an object key in Postgres; the API contract and signed route can stay unchanged.
 
@@ -128,6 +142,8 @@ Additive tables only:
 
 No existing production table is renamed or deleted.
 
+The production build uses `drizzle-kit migrate`, not interactive `drizzle-kit push`. Migration `drizzle/0001_invoice_intelligence.sql` is additive and recorded in `drizzle/meta/_journal.json`.
+
 ## Required production environment variables
 
 Primary:
@@ -139,6 +155,7 @@ INVOICE_CONFIDENCE_THRESHOLD=0.92
 INVOICE_MONETARY_TOLERANCE=0.02
 INVOICE_OCR_TIMEOUT_MS=90000
 INVOICE_CRON_BATCH_SIZE=3
+INVOICE_UPLOADS_PER_MINUTE=300
 INVOICE_RETENTION_DAYS=365
 DOCUMENT_URL_SIGNING_SECRET=<random 32+ bytes>
 CRON_SECRET=<random 32+ bytes>
@@ -164,14 +181,15 @@ Set cost values to the actual provider/contract price before relying on monthly 
 
 ## Production enablement
 
-1. Add environment variables in Vercel Production and Preview environments.
-2. Deploy the additive Drizzle schema and confirm `/api/health` reports `invoiceReaderTables: true`.
-3. Confirm `CRON_SECRET` is configured so `/api/cron/process-invoices` is authorized by Vercel Cron.
-4. Test with synthetic/anonymized invoices first.
-5. Run `pnpm test:invoice`.
-6. Run `pnpm check`.
-7. Run the production build.
-8. For measured quality, prepare ground-truth pairs and run:
+1. Add required environment variables in Vercel Production and Preview environments.
+2. Deploy; `drizzle-kit migrate` applies only pending additive migrations before `next build`.
+3. Confirm `/api/health` reports the invoice-reader tables and provider configuration booleans.
+4. Confirm `CRON_SECRET` is configured so `/api/cron/process-invoices` is authorized by Vercel Cron.
+5. Test with synthetic/anonymized invoices first.
+6. Run `pnpm test:invoice`.
+7. Run `pnpm check`.
+8. Run the production build.
+9. For measured quality, prepare ground-truth pairs and run:
 
 ```bash
 pnpm eval:invoice -- ./evaluation-fixtures
@@ -189,8 +207,9 @@ The evaluation command reports field-level accuracy, critical document-level acc
 ## Known limitations
 
 - Generic PDF text extraction intentionally handles only a safe/simple text-layer subset; complex PDFs fall through to OCR.
-- Embedded Factur-X/ZUGFeRD XML is detected only when the XML is directly visible in the PDF byte stream. Fully compressed/encoded PDF attachments may require a dedicated PDF attachment parser in a future iteration.
+- Embedded Factur-X/ZUGFeRD extraction handles XML visible in PDF bytes and best-effort `FlateDecode` streams. Highly complex PDF object-stream/xref/attachment encodings can still fall through to OCR; a full general-purpose PDF attachment library would be required for exhaustive arbitrary-PDF extraction.
 - Bounding-box formats differ by provider. Image highlighting is best-effort; PDF review currently relies on page evidence plus the native PDF viewer rather than pixel-perfect overlay coordinates.
 - HEIC is accepted by the reader API but is not converted in-browser; provider support/normalization should be verified with real anonymized HEIC samples.
 - Rotated-photo quality, real duplicate isolation and full Clerk tenant-route tests require anonymized integration fixtures/test credentials and are explicitly not represented as passing unit tests.
 - Supplier VAT-format validation covers common European country patterns and falls back to a generic EU pattern for countries without a dedicated rule.
+- Original private bytes are currently stored in Neon as base64. This is secure/private in the current architecture but object storage is recommended when document volume grows substantially.
