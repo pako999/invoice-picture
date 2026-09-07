@@ -1,3 +1,4 @@
+import { inflateSync } from "node:zlib";
 import {
   emptyInvoice,
   invoiceJsonSchema,
@@ -14,7 +15,7 @@ const AZURE_API_VERSION = process.env.AZURE_DOCUMENT_INTELLIGENCE_API_VERSION ??
 export async function readDeterministically(input: { base64: string; mimeType: string; filename: string }): Promise<ReaderResult | null> {
   const bytes = Buffer.from(input.base64, "base64");
   const text = bytes.toString("utf8");
-  const looksXml = /xml/i.test(input.mimeType) || /\.xml$/i.test(input.filename) || /^\s*<\?xml|^\s*<(Invoice|CreditNote|eSlog)/i.test(text);
+  const looksXml = /xml/i.test(input.mimeType) || /\.xml$/i.test(input.filename) || /^\s*<\?xml|^\s*<(?:[A-Za-z0-9_-]+:)?(Invoice|CreditNote|eSlog|CrossIndustryInvoice)/i.test(text);
 
   if (looksXml) {
     const invoice = parseStructuredXml(text);
@@ -32,6 +33,25 @@ export async function readDeterministically(input: { base64: string; mimeType: s
   }
 
   if (input.mimeType === "application/pdf" || /\.pdf$/i.test(input.filename)) {
+    const embeddedXml = extractEmbeddedInvoiceXml(bytes);
+    if (embeddedXml) {
+      const invoice = parseStructuredXml(embeddedXml);
+      if (invoice) {
+        invoice.warnings = invoice.warnings.filter((w) => !/verify unsupported local extensions/i.test(w));
+        invoice.warnings.push("Embedded Factur-X/ZUGFeRD/UBL-style XML was preferred over OCR.");
+        return {
+          provider: "deterministic",
+          model: "hybrid-pdf-xml-v1",
+          invoice: normalizeInvoiceValues(invoice),
+          rawText: stripXml(embeddedXml),
+          rawResponse: { source: "embedded_invoice_xml", filename: input.filename },
+          evidence: [],
+          pagesProcessed: estimatePdfPages(bytes),
+          costMicros: 0,
+        };
+      }
+    }
+
     const pdfText = extractSimplePdfText(bytes);
     if (pdfText.length >= 250 && /(invoice|račun|racun|rechnung|fattura|račun broj|ddv|vat)/i.test(pdfText)) {
       const invoice = parseTextLayer(pdfText);
@@ -162,22 +182,40 @@ export function azureConfigured() {
 }
 
 function parseStructuredXml(xml: string): NormalizedInvoice | null {
-  if (!/<(Invoice|CreditNote|eSlog|Racun|Račun)(\s|>)/i.test(xml)) return null;
+  const isCii = /<(?:[A-Za-z0-9_-]+:)?CrossIndustryInvoice(\s|>)/i.test(xml);
+  if (!isCii && !/<(?:[A-Za-z0-9_-]+:)?(Invoice|CreditNote|eSlog|Racun|Račun)(\s|>)/i.test(xml)) return null;
   const invoice = emptyInvoice();
-  invoice.documentType = /<CreditNote(\s|>)/i.test(xml) ? "credit_note" : "invoice";
-  invoice.invoiceNumber = firstTag(xml, ["ID", "InvoiceNumber", "StevilkaRacuna", "ŠtevilkaRačuna"]);
-  invoice.issueDate = firstTag(xml, ["IssueDate", "DatumIzdaje"]);
-  invoice.dueDate = firstTag(xml, ["DueDate", "DatumZapadlosti"]);
-  invoice.currency = firstTag(xml, ["DocumentCurrencyCode", "Currency", "Valuta"]);
-  invoice.supplier.name = firstNested(xml, ["AccountingSupplierParty", "SellerSupplierParty", "Dobavitelj"], ["RegistrationName", "Name", "Naziv"]);
-  invoice.supplier.vatNumber = firstNested(xml, ["AccountingSupplierParty", "SellerSupplierParty", "Dobavitelj"], ["CompanyID", "VATIdentifier", "DavcnaStevilka"]);
-  invoice.buyer.name = firstNested(xml, ["AccountingCustomerParty", "BuyerCustomerParty", "Kupec"], ["RegistrationName", "Name", "Naziv"]);
-  invoice.buyer.vatNumber = firstNested(xml, ["AccountingCustomerParty", "BuyerCustomerParty", "Kupec"], ["CompanyID", "VATIdentifier", "DavcnaStevilka"]);
-  invoice.totals.netAmount = firstTag(xml, ["TaxExclusiveAmount", "LineExtensionAmount", "NetAmount"]);
-  invoice.totals.vatAmount = firstNested(xml, ["TaxTotal", "Davki"], ["TaxAmount", "VATAmount"]);
-  invoice.totals.grossAmount = firstTag(xml, ["TaxInclusiveAmount", "PayableAmount", "GrossAmount"]);
-  invoice.totals.amountDue = firstTag(xml, ["PayableAmount", "AmountDue"]);
-  invoice.supplier.iban = firstTag(xml, ["ID", "IBAN"]);
+  invoice.documentType = /<(?:[A-Za-z0-9_-]+:)?CreditNote(\s|>)/i.test(xml) ? "credit_note" : "invoice";
+
+  if (isCii) {
+    invoice.invoiceNumber = firstNested(xml, ["ExchangedDocument"], ["ID"]);
+    invoice.issueDate = normalizeCompactDate(firstNested(xml, ["IssueDateTime"], ["DateTimeString"]));
+    invoice.currency = firstTag(xml, ["InvoiceCurrencyCode"]);
+    invoice.supplier.name = firstNested(xml, ["SellerTradeParty"], ["Name"]);
+    invoice.supplier.vatNumber = firstNested(xml, ["SellerTradeParty"], ["ID"]);
+    invoice.buyer.name = firstNested(xml, ["BuyerTradeParty"], ["Name"]);
+    invoice.buyer.vatNumber = firstNested(xml, ["BuyerTradeParty"], ["ID"]);
+    invoice.totals.netAmount = firstTag(xml, ["LineTotalAmount", "TaxBasisTotalAmount"]);
+    invoice.totals.vatAmount = firstTag(xml, ["TaxTotalAmount"]);
+    invoice.totals.grossAmount = firstTag(xml, ["GrandTotalAmount"]);
+    invoice.totals.amountDue = firstTag(xml, ["DuePayableAmount"]);
+    invoice.dueDate = normalizeCompactDate(firstNested(xml, ["ApplicableTradePaymentTerms"], ["DateTimeString"]));
+  } else {
+    invoice.invoiceNumber = firstTag(xml, ["ID", "InvoiceNumber", "StevilkaRacuna", "ŠtevilkaRačuna"]);
+    invoice.issueDate = firstTag(xml, ["IssueDate", "DatumIzdaje"]);
+    invoice.dueDate = firstTag(xml, ["DueDate", "DatumZapadlosti"]);
+    invoice.currency = firstTag(xml, ["DocumentCurrencyCode", "Currency", "Valuta"]);
+    invoice.supplier.name = firstNested(xml, ["AccountingSupplierParty", "SellerSupplierParty", "Dobavitelj"], ["RegistrationName", "Name", "Naziv"]);
+    invoice.supplier.vatNumber = firstNested(xml, ["AccountingSupplierParty", "SellerSupplierParty", "Dobavitelj"], ["CompanyID", "VATIdentifier", "DavcnaStevilka"]);
+    invoice.buyer.name = firstNested(xml, ["AccountingCustomerParty", "BuyerCustomerParty", "Kupec"], ["RegistrationName", "Name", "Naziv"]);
+    invoice.buyer.vatNumber = firstNested(xml, ["AccountingCustomerParty", "BuyerCustomerParty", "Kupec"], ["CompanyID", "VATIdentifier", "DavcnaStevilka"]);
+    invoice.totals.netAmount = firstTag(xml, ["TaxExclusiveAmount", "LineExtensionAmount", "NetAmount"]);
+    invoice.totals.vatAmount = firstNested(xml, ["TaxTotal", "Davki"], ["TaxAmount", "VATAmount"]);
+    invoice.totals.grossAmount = firstTag(xml, ["TaxInclusiveAmount", "PayableAmount", "GrossAmount"]);
+    invoice.totals.amountDue = firstTag(xml, ["PayableAmount", "AmountDue"]);
+    invoice.supplier.iban = firstTag(xml, ["IBAN"]);
+  }
+
   invoice.confidence = { overall: 0.98, fields: {} };
   invoice.warnings.push("Structured XML parsed deterministically; verify unsupported local extensions if present.");
   invoice.validationStatus = "pending";
@@ -315,6 +353,57 @@ function firstNested(xml: string, parents: string[], children: string[]) {
     if (section) {
       const value = firstTag(section, children);
       if (value) return value;
+    }
+  }
+  return null;
+}
+
+function normalizeCompactDate(value: string | null) {
+  if (!value) return null;
+  const digits = value.replace(/\D/g, "");
+  if (digits.length === 8) return `${digits.slice(0, 4)}-${digits.slice(4, 6)}-${digits.slice(6, 8)}`;
+  return value;
+}
+
+function extractEmbeddedInvoiceXml(bytes: Buffer): string | null {
+  const latin = bytes.toString("latin1");
+  const direct = findInvoiceXml(latin);
+  if (direct) return direct;
+
+  const streamRegex = /stream\r?\n/g;
+  let hit: RegExpExecArray | null;
+  while ((hit = streamRegex.exec(latin))) {
+    const start = hit.index + hit[0].length;
+    const end = latin.indexOf("endstream", start);
+    if (end < 0) break;
+    const dictionary = latin.slice(Math.max(0, hit.index - 500), hit.index);
+    if (/\/FlateDecode\b/.test(dictionary)) {
+      try {
+        const inflated = inflateSync(bytes.subarray(start, end)).toString("utf8");
+        const xml = findInvoiceXml(inflated);
+        if (xml) return xml;
+      } catch {
+        // Not every FlateDecode stream is an attachment; continue scanning.
+      }
+    }
+    streamRegex.lastIndex = end + 9;
+  }
+  return null;
+}
+
+function findInvoiceXml(text: string) {
+  const rootPattern = /<(?:[A-Za-z0-9_-]+:)?(CrossIndustryInvoice|Invoice|CreditNote|eSlog|Racun|Račun)(?:\s|>)/ig;
+  let hit: RegExpExecArray | null;
+  while ((hit = rootPattern.exec(text))) {
+    const start = hit.index;
+    const root = hit[1];
+    const close = new RegExp(`<\\/(?:[A-Za-z0-9_-]+:)?${root}\\s*>`, "ig");
+    close.lastIndex = rootPattern.lastIndex;
+    const end = close.exec(text);
+    if (end) {
+      const prefix = text.lastIndexOf("<?xml", start);
+      const xmlStart = prefix >= 0 && start - prefix < 500 ? prefix : start;
+      return text.slice(xmlStart, end.index + end[0].length);
     }
   }
   return null;
