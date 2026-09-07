@@ -18,7 +18,7 @@ export async function GET() {
   } catch {}
 
   const { userId } = await auth();
-  const mistralConfigured = Boolean(process.env.MISTRAL_API_KEY && process.env.MISTRAL_OCR_MODEL);
+  const mistralConfigured = Boolean(process.env.MISTRAL_API_KEY);
   const azureConfigured = Boolean(process.env.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT && process.env.AZURE_DOCUMENT_INTELLIGENCE_KEY);
 
   return NextResponse.json({
@@ -32,11 +32,14 @@ export async function GET() {
     hasDatabaseUrl: !!process.env.DATABASE_URL,
     invoiceReader: {
       primaryConfigured: mistralConfigured,
-      primaryModel: process.env.MISTRAL_OCR_MODEL || null,
+      primaryModel: process.env.MISTRAL_OCR_MODEL || "mistral-ocr-latest",
       azureFallbackConfigured: azureConfigured,
       azureModel: azureConfigured ? (process.env.AZURE_DOCUMENT_INTELLIGENCE_MODEL || "prebuilt-invoice") : null,
+      cronSecretConfigured: Boolean(process.env.CRON_SECRET),
+      dedicatedSigningSecretConfigured: Boolean(process.env.DOCUMENT_URL_SIGNING_SECRET),
+      signingFallbackAvailable: Boolean(process.env.CLERK_SECRET_KEY),
       confidenceThreshold: Number(process.env.INVOICE_CONFIDENCE_THRESHOLD ?? 0.92),
       monetaryTolerance: process.env.INVOICE_MONETARY_TOLERANCE ?? "0.02",
     },
-  });
+  }, { headers: { "Cache-Control": "private, no-store" } });
 }
