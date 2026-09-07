@@ -8,7 +8,7 @@ import { eq, and } from "drizzle-orm";
 import { z } from "zod";
 import { enqueueInvoiceDocument } from "@/lib/invoice-intelligence/queue";
 import { getCompanyDeliverySettings } from "@/lib/invoice-intelligence/delivery-settings";
-import type { DeliveryMode } from "@/lib/invoice-intelligence/delivery-format";
+import type { DeliveryMode, XmlDeliveryFormat } from "@/lib/invoice-intelligence/delivery-format";
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
 const ALLOWED_MIME = new Set([
@@ -66,13 +66,18 @@ export async function POST(req: NextRequest) {
     const db = getDb();
     let recipientEmail: string | null | undefined;
     let deliveryMode: DeliveryMode = "email_ocr";
+    let xmlFormat: XmlDeliveryFormat = "ubl_2_1";
 
     if (data.companyId) {
       const [company] = await db.select().from(companies)
         .where(and(eq(companies.id, data.companyId), eq(companies.clerkUserId, userId)))
         .limit(1);
       recipientEmail = company?.recipientEmail;
-      if (company) deliveryMode = (await getCompanyDeliverySettings(company.id, userId)).mode;
+      if (company) {
+        const delivery = await getCompanyDeliverySettings(company.id, userId);
+        deliveryMode = delivery.mode;
+        xmlFormat = delivery.xmlFormat;
+      }
     } else {
       const [settings] = await db.select().from(userSettings).where(eq(userSettings.clerkUserId, userId)).limit(1);
       recipientEmail = settings?.recipientEmail;
@@ -107,6 +112,10 @@ export async function POST(req: NextRequest) {
         filename,
         mimeType: data.mime,
         base64: data.imageBase64,
+        metadata: {
+          deliveryModeAtUpload: deliveryMode,
+          xmlFormatAtUpload: xmlFormat,
+        },
       });
     } catch (queueError) {
       queueErrorMessage = queueError instanceof Error ? queueError.message : "unknown";
