@@ -5,8 +5,13 @@ import { companies, invoiceAuditLogs, invoiceDocuments, invoices } from "@/lib/s
 import { getResend } from "@/lib/resend";
 import { brandedEmail } from "@/lib/email-template";
 import { normalizedInvoiceSchema } from "./types";
-import { buildInvoiceApiPayload, resolveXmlDelivery } from "./delivery-format";
+import { buildInvoiceApiPayload, resolveXmlDelivery, type DeliveryMode, type XmlDeliveryFormat } from "./delivery-format";
 import { getCompanyDeliverySettings, getDeliverySecret } from "./delivery-settings";
+
+type DeliverySnapshot = {
+  mode: DeliveryMode | null;
+  xmlFormat: XmlDeliveryFormat | null;
+};
 
 export async function queuePendingApprovedDeliveries(limit = 100) {
   const sql = rawDb();
@@ -14,11 +19,11 @@ export async function queuePendingApprovedDeliveries(limit = 100) {
     INSERT INTO "invoiceDeliveryJobs" ("documentId", "status", "attempts", "availableAt", "createdAt", "updatedAt")
     SELECT d."id", 'queued', 0, now(), now(), now()
     FROM "invoiceDocuments" d
-    JOIN "companyDeliverySettings" s ON s."companyId" = d."companyId" AND s."clerkUserId" = d."clerkUserId"
+    LEFT JOIN "companyDeliverySettings" s ON s."companyId" = d."companyId" AND s."clerkUserId" = d."clerkUserId"
     LEFT JOIN "invoiceDeliveryJobs" j ON j."documentId" = d."id"
     WHERE d."status" = 'approved'
       AND d."approvedJson" IS NOT NULL
-      AND s."mode" IN ('api_json', 'xml_email')
+      AND COALESCE(d."originalValueMetadataJson"::jsonb ->> 'deliveryModeAtUpload', s."mode", 'email_ocr') IN ('api_json', 'xml_email')
       AND j."id" IS NULL
     ORDER BY d."approvedAt" ASC NULLS LAST, d."id" ASC
     LIMIT ${Math.max(1, Math.min(500, limit))}
@@ -92,14 +97,18 @@ export async function deliverInvoiceDocument(documentId: number) {
   if (!document.approvedJson) throw new Error("Invoice is not approved yet");
 
   const settings = await getCompanyDeliverySettings(document.companyId, document.clerkUserId);
-  if (settings.mode === "email_ocr") return { mode: settings.mode, skipped: true };
+  const snapshot = parseDeliverySnapshot(document.originalValueMetadataJson);
+  const effectiveMode = snapshot.mode ?? settings.mode;
+  const effectiveXmlFormat = snapshot.xmlFormat ?? settings.xmlFormat;
+  if (effectiveMode === "email_ocr") return { mode: effectiveMode, skipped: true };
+
   const invoice = normalizedInvoiceSchema.parse(JSON.parse(document.approvedJson));
   const [company] = await db.select().from(companies)
     .where(and(eq(companies.id, document.companyId), eq(companies.clerkUserId, document.clerkUserId)))
     .limit(1);
   if (!company) throw new Error("Company not found");
 
-  if (settings.mode === "api_json") {
+  if (effectiveMode === "api_json") {
     if (!settings.apiEndpoint) throw new Error("JSON API endpoint is not configured");
     const token = await getDeliverySecret(document.companyId, document.clerkUserId);
     const payload = buildInvoiceApiPayload({
@@ -111,6 +120,7 @@ export async function deliverInvoiceDocument(documentId: number) {
     });
     const response = await fetch(settings.apiEndpoint, {
       method: "POST",
+      redirect: "error",
       headers: {
         "Content-Type": "application/json",
         "User-Agent": "SlikajRacun/1.0",
@@ -123,12 +133,16 @@ export async function deliverInvoiceDocument(documentId: number) {
     });
     if (!response.ok) throw new Error(`Accounting API rejected invoice (${response.status}): ${(await response.text()).slice(0, 500)}`);
     await markSourceInvoice(documentId, true);
-    await audit(documentId, "structured_delivery_success", { mode: settings.mode, endpointHost: new URL(settings.apiEndpoint).hostname });
-    return { mode: settings.mode, status: response.status };
+    await audit(documentId, "structured_delivery_success", {
+      mode: effectiveMode,
+      endpointHost: new URL(settings.apiEndpoint).hostname,
+      modeSnapshotted: Boolean(snapshot.mode),
+    });
+    return { mode: effectiveMode, status: response.status };
   }
 
   const resolved = resolveXmlDelivery({
-    format: settings.xmlFormat,
+    format: effectiveXmlFormat,
     invoice,
     originalBase64: document.originalBase64,
     originalMimeType: document.mimeType,
@@ -149,8 +163,28 @@ export async function deliverInvoiceDocument(documentId: number) {
   });
   if (result.error) throw new Error(`XML email delivery failed: ${result.error.message}`);
   await markSourceInvoice(documentId, true);
-  await audit(documentId, "structured_delivery_success", { mode: settings.mode, xmlFormat: resolved.format, to: company.recipientEmail });
-  return { mode: settings.mode, xmlFormat: resolved.format };
+  await audit(documentId, "structured_delivery_success", {
+    mode: effectiveMode,
+    xmlFormat: resolved.format,
+    to: company.recipientEmail,
+    modeSnapshotted: Boolean(snapshot.mode),
+  });
+  return { mode: effectiveMode, xmlFormat: resolved.format };
+}
+
+export function parseDeliverySnapshot(value: string | null): DeliverySnapshot {
+  if (!value) return { mode: null, xmlFormat: null };
+  try {
+    const parsed = JSON.parse(value) as Record<string, unknown>;
+    const mode = parsed.deliveryModeAtUpload;
+    const xmlFormat = parsed.xmlFormatAtUpload;
+    return {
+      mode: mode === "email_ocr" || mode === "api_json" || mode === "xml_email" ? mode : null,
+      xmlFormat: xmlFormat === "ubl_2_1" || xmlFormat === "eslog_2_0_original" ? xmlFormat : null,
+    };
+  } catch {
+    return { mode: null, xmlFormat: null };
+  }
 }
 
 async function markSourceInvoice(documentId: number, success: boolean, error?: string) {
