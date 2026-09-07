@@ -7,6 +7,8 @@ import { FREE_MONTHLY_LIMIT, getStatus } from "@/lib/subscription";
 import { eq, and } from "drizzle-orm";
 import { z } from "zod";
 import { enqueueInvoiceDocument } from "@/lib/invoice-intelligence/queue";
+import { getCompanyDeliverySettings } from "@/lib/invoice-intelligence/delivery-settings";
+import type { DeliveryMode } from "@/lib/invoice-intelligence/delivery-format";
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
 const ALLOWED_MIME = new Set([
@@ -63,12 +65,14 @@ export async function POST(req: NextRequest) {
 
     const db = getDb();
     let recipientEmail: string | null | undefined;
+    let deliveryMode: DeliveryMode = "email_ocr";
 
     if (data.companyId) {
       const [company] = await db.select().from(companies)
         .where(and(eq(companies.id, data.companyId), eq(companies.clerkUserId, userId)))
         .limit(1);
       recipientEmail = company?.recipientEmail;
+      if (company) deliveryMode = (await getCompanyDeliverySettings(company.id, userId)).mode;
     } else {
       const [settings] = await db.select().from(userSettings).where(eq(userSettings.clerkUserId, userId)).limit(1);
       recipientEmail = settings?.recipientEmail;
@@ -94,6 +98,7 @@ export async function POST(req: NextRequest) {
     }).returning({ id: invoices.id });
 
     let processingDocumentId: number | null = null;
+    let queueErrorMessage: string | null = null;
     try {
       processingDocumentId = await enqueueInvoiceDocument({
         clerkUserId: userId,
@@ -104,9 +109,22 @@ export async function POST(req: NextRequest) {
         base64: data.imageBase64,
       });
     } catch (queueError) {
-      // Reading is intentionally decoupled from the existing send flow. A queue
-      // failure must never prevent a valid invoice from reaching accounting.
-      console.error("invoice_reader_enqueue_failed", queueError instanceof Error ? queueError.message : "unknown");
+      queueErrorMessage = queueError instanceof Error ? queueError.message : "unknown";
+      console.error("invoice_reader_enqueue_failed", queueErrorMessage);
+    }
+
+    if (deliveryMode !== "email_ocr") {
+      if (!processingDocumentId) {
+        await db.update(invoices).set({ status: "failed", errorMessage: `Structured delivery could not be queued: ${queueErrorMessage || "unknown error"}` }).where(eq(invoices.id, result.id));
+        return NextResponse.json({ success: false, error: "Structured invoice processing could not be queued.", deliveryMode }, { status: 500 });
+      }
+      return NextResponse.json({
+        success: true,
+        id: result.id,
+        processingDocumentId,
+        deliveryMode,
+        queuedForStructuredDelivery: true,
+      });
     }
 
     try {
@@ -119,11 +137,11 @@ export async function POST(req: NextRequest) {
         messageBody: data.messageBody,
       });
       await db.update(invoices).set({ status: "sent", sentAt: new Date() }).where(eq(invoices.id, result.id));
-      return NextResponse.json({ success: true, id: result.id, processingDocumentId });
+      return NextResponse.json({ success: true, id: result.id, processingDocumentId, deliveryMode });
     } catch (emailErr) {
       const msg = emailErr instanceof Error ? emailErr.message : String(emailErr);
       await db.update(invoices).set({ status: "failed", errorMessage: msg }).where(eq(invoices.id, result.id));
-      return NextResponse.json({ success: false, error: msg, processingDocumentId }, { status: 500 });
+      return NextResponse.json({ success: false, error: msg, processingDocumentId, deliveryMode }, { status: 500 });
     }
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Napaka";
