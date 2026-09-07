@@ -1,6 +1,8 @@
 import type { NormalizedInvoice, ValidationResult } from "./types";
 
 const DEFAULT_TOLERANCE = process.env.INVOICE_MONETARY_TOLERANCE ?? "0.02";
+const SCALE = 6;
+const SCALE_FACTOR = 10n ** BigInt(SCALE);
 
 function normalizeDecimal(value: string | null | undefined): string | null {
   if (value == null) return null;
@@ -14,7 +16,7 @@ function normalizeDecimal(value: string | null | undefined): string | null {
   return v;
 }
 
-function toScaled(value: string | null | undefined, scale = 6): bigint | null {
+function toScaled(value: string | null | undefined, scale = SCALE): bigint | null {
   const normalized = normalizeDecimal(value);
   if (!normalized) return null;
   const negative = normalized.startsWith("-");
@@ -39,7 +41,7 @@ function withinTolerance(delta: bigint | null, tolerance = DEFAULT_TOLERANCE) {
   return abs(delta) <= abs(tol);
 }
 
-function scaledToString(v: bigint | null, scale = 6) {
+function scaledToString(v: bigint | null, scale = SCALE) {
   if (v == null) return "n/a";
   const sign = v < 0n ? "-" : "";
   const n = abs(v);
@@ -165,30 +167,74 @@ export function validateInvoice(invoice: NormalizedInvoice): ValidationResult {
   if (invoice.lineItems.length) {
     const lineNet = sum(invoice.lineItems.map((x) => x.netAmount));
     const lineVat = sum(invoice.lineItems.map((x) => x.vatAmount));
+    const lineGross = sum(invoice.lineItems.map((x) => x.grossAmount));
     const netDelta = diff(lineNet, invoice.totals.netAmount);
     const vatDelta = diff(lineVat, invoice.totals.vatAmount);
+    const lineGrossDelta = diff(lineGross, invoice.totals.grossAmount);
     if (!withinTolerance(netDelta)) { warnings.push("Line item net sum differs from invoice net total"); differences.lineNetVsTotal = scaledToString(netDelta); }
     if (!withinTolerance(vatDelta)) { warnings.push("Line item VAT sum differs from invoice VAT total"); differences.lineVatVsTotal = scaledToString(vatDelta); }
+    if (lineGross != null && !withinTolerance(lineGrossDelta)) { warnings.push("Line item gross sum differs from invoice gross total"); differences.lineGrossVsTotal = scaledToString(lineGrossDelta); }
+
+    invoice.lineItems.forEach((item, index) => {
+      const quantity = toScaled(item.quantity);
+      const unitPrice = toScaled(item.unitPriceNet);
+      const statedNet = toScaled(item.netAmount);
+      const statedDiscount = toScaled(item.discountAmount);
+      const discountPercent = toScaled(item.discountPercent);
+      const statedVat = toScaled(item.vatAmount);
+      const statedGross = toScaled(item.grossAmount);
+      if (quantity != null && unitPrice != null && statedNet != null) {
+        const base = multiplyScaled(quantity, unitPrice);
+        let expectedDiscount = statedDiscount;
+        if (expectedDiscount == null && discountPercent != null) expectedDiscount = divideScaled(multiplyScaled(base, discountPercent), toScaled("100")!);
+        const expectedNet = base - (expectedDiscount ?? 0n);
+        const delta = expectedNet - statedNet;
+        if (!withinTolerance(delta)) {
+          warnings.push(`Line item ${index + 1} net amount does not match quantity × unit price minus discount`);
+          differences[`line${index + 1}DiscountMath`] = scaledToString(delta);
+        }
+        if (statedDiscount != null && discountPercent != null) {
+          const expectedFromPercent = divideScaled(multiplyScaled(base, discountPercent), toScaled("100")!);
+          const discountDelta = expectedFromPercent - statedDiscount;
+          if (!withinTolerance(discountDelta)) {
+            warnings.push(`Line item ${index + 1} discount amount does not match discount percent`);
+            differences[`line${index + 1}DiscountPercent`] = scaledToString(discountDelta);
+          }
+        }
+      }
+      if (statedNet != null && statedVat != null && statedGross != null) {
+        const delta = statedNet + statedVat - statedGross;
+        if (!withinTolerance(delta)) {
+          warnings.push(`Line item ${index + 1} net + VAT does not equal gross amount`);
+          differences[`line${index + 1}GrossMath`] = scaledToString(delta);
+        }
+      }
+    });
   }
 
   if (invoice.vatBreakdown.length) {
     const vatNet = sum(invoice.vatBreakdown.map((x) => x.taxableAmount));
     const vatTax = sum(invoice.vatBreakdown.map((x) => x.vatAmount));
+    const vatGross = sum(invoice.vatBreakdown.map((x) => x.grossAmount));
     const netDelta = diff(vatNet, invoice.totals.netAmount);
     const vatDelta = diff(vatTax, invoice.totals.vatAmount);
+    const vatGrossDelta = diff(vatGross, invoice.totals.grossAmount);
     if (!withinTolerance(netDelta)) { errors.push("VAT breakdown taxable total differs from invoice net total"); differences.vatBreakdownNet = scaledToString(netDelta); }
     if (!withinTolerance(vatDelta)) { errors.push("VAT breakdown VAT total differs from invoice VAT total"); differences.vatBreakdownVat = scaledToString(vatDelta); }
+    if (vatGross != null && !withinTolerance(vatGrossDelta)) { warnings.push("VAT breakdown gross total differs from invoice gross total"); differences.vatBreakdownGross = scaledToString(vatGrossDelta); }
   }
 
   if (invoice.issueDate && invoice.dueDate && invoice.dueDate < invoice.issueDate) errors.push("Due date is before issue date");
-  if (invoice.serviceDate && invoice.issueDate && invoice.serviceDate > invoice.dueDate! && invoice.dueDate) warnings.push("Service date is after due date");
+  if (invoice.serviceDate && invoice.dueDate && invoice.serviceDate > invoice.dueDate) warnings.push("Service date is after due date");
 
   const due = toScaled(invoice.totals.amountDue);
   const gross = toScaled(invoice.totals.grossAmount);
   const paid = toScaled(invoice.totals.amountPaid);
   if (due != null && gross != null && paid != null && !withinTolerance(due - (gross - paid))) warnings.push("Amount due does not equal gross amount minus amount paid");
+  if (due != null && gross != null && paid == null && abs(due) > abs(gross) && invoice.documentType !== "credit_note") warnings.push("Amount due exceeds gross amount");
 
   if (invoice.supplier.vatNumber && invoice.buyer.vatNumber && invoice.supplier.vatNumber === invoice.buyer.vatNumber) warnings.push("Supplier and buyer VAT numbers are identical; parties may be reversed");
+  if (invoice.supplier.name && invoice.buyer.name && invoice.supplier.name.trim().toLowerCase() === invoice.buyer.name.trim().toLowerCase()) warnings.push("Supplier and buyer names are identical; parties may be reversed");
 
   if (invoice.documentType === "credit_note" && gross != null && gross > 0n) warnings.push("Credit note gross amount is positive; verify sign convention");
 
@@ -214,6 +260,15 @@ function sum(values: Array<string | null | undefined>): string | null {
     if (n != null) { found = true; total += n; }
   }
   return found ? scaledToString(total) : null;
+}
+
+function multiplyScaled(a: bigint, b: bigint) {
+  return (a * b) / SCALE_FACTOR;
+}
+
+function divideScaled(a: bigint, b: bigint) {
+  if (b === 0n) return 0n;
+  return (a * SCALE_FACTOR) / b;
 }
 
 function unique(values: string[]) { return [...new Set(values.filter(Boolean))]; }
