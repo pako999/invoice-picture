@@ -2,6 +2,19 @@ import { z } from "zod";
 
 const nullableText = z.string().nullable();
 const nullableDecimal = z.string().nullable();
+const nullableStringJsonSchema = { type: ["string", "null"] } as const;
+
+function partyJsonSchema(supplier: boolean) {
+  const fields = supplier
+    ? ["name", "address", "postalCode", "city", "countryCode", "vatNumber", "registrationNumber", "email", "phone", "iban", "bic"]
+    : ["name", "address", "postalCode", "city", "countryCode", "vatNumber", "registrationNumber"];
+  return {
+    type: "object",
+    additionalProperties: false,
+    required: fields,
+    properties: Object.fromEntries(fields.map((key) => [key, nullableStringJsonSchema])),
+  } as const;
+}
 
 export const invoiceLineItemSchema = z.object({
   description: nullableText,
@@ -163,7 +176,7 @@ export const invoiceJsonSchema = {
   ],
   properties: {
     documentType: { type: "string", enum: ["invoice", "credit_note", "receipt", "proforma", "unknown"] },
-    documentLanguage: { type: ["string", "null"] },
+    documentLanguage: nullableStringJsonSchema,
     supplier: partyJsonSchema(true),
     buyer: partyJsonSchema(false),
     invoiceNumber: nullableStringJsonSchema,
@@ -181,8 +194,8 @@ export const invoiceJsonSchema = {
         additionalProperties: false,
         required: ["description", "quantity", "unit", "unitPriceNet", "discountPercent", "discountAmount", "vatRate", "netAmount", "vatAmount", "grossAmount"],
         properties: Object.fromEntries([
-          "description", "quantity", "unit", "unitPriceNet", "discountPercent",
-          "discountAmount", "vatRate", "netAmount", "vatAmount", "grossAmount",
+          "description", "quantity", "unit", "unitPriceNet", "discountPercent", "discountAmount",
+          "vatRate", "netAmount", "vatAmount", "grossAmount",
         ].map((key) => [key, nullableStringJsonSchema])),
       },
     },
@@ -218,17 +231,3 @@ export const invoiceJsonSchema = {
     validationStatus: { type: "string", enum: ["pending", "valid", "needs_review", "failed"] },
   },
 } as const;
-
-const nullableStringJsonSchema = { type: ["string", "null"] } as const;
-
-function partyJsonSchema(supplier: boolean) {
-  const fields = supplier
-    ? ["name", "address", "postalCode", "city", "countryCode", "vatNumber", "registrationNumber", "email", "phone", "iban", "bic"]
-    : ["name", "address", "postalCode", "city", "countryCode", "vatNumber", "registrationNumber"];
-  return {
-    type: "object",
-    additionalProperties: false,
-    required: fields,
-    properties: Object.fromEntries(fields.map((key) => [key, nullableStringJsonSchema])),
-  } as const;
-}
