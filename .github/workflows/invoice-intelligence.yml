@@ -5,12 +5,17 @@ on:
     branches:
       - feature/invoice-intelligence
       - feature/ocr-safety-limits
+      - feature/invoice-delivery-modes
   pull_request:
     paths:
       - "lib/invoice-intelligence/**"
       - "app/api/invoice-reader/**"
       - "app/api/cron/process-invoices/**"
+      - "app/api/companies/**"
       - "app/invoice-review/**"
+      - "app/settings/**"
+      - "app/en/settings/**"
+      - "components/company-delivery-settings.tsx"
       - "tests/invoice-*.test.ts"
       - "scripts/evaluate-invoice-extraction.ts"
       - "lib/schema.ts"
