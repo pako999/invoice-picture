@@ -35,16 +35,11 @@ test("Slovenian invoice with 22% VAT passes deterministic math validation", () =
 
 test("invoice with several VAT rates reconciles to totals", () => {
   const invoice = baseInvoice();
-  invoice.totals.netAmount = "150.00";
-  invoice.totals.vatAmount = "31.50";
-  invoice.totals.grossAmount = "181.50";
-  invoice.totals.amountDue = "181.50";
   invoice.vatBreakdown = [
     { vatRate: "22", taxableAmount: "100", vatAmount: "22", grossAmount: "122" },
     { vatRate: "9.5", taxableAmount: "50", vatAmount: "4.75", grossAmount: "54.75" },
     { vatRate: "9.5", taxableAmount: "50", vatAmount: "4.75", grossAmount: "54.75" },
   ];
-  // Adjust net to match all three rows.
   invoice.totals.netAmount = "200.00";
   invoice.totals.vatAmount = "31.50";
   invoice.totals.grossAmount = "231.50";
@@ -95,10 +90,10 @@ test("missing VAT number does not reject an otherwise valid invoice", () => {
 });
 
 test("invalid IBAN fails MOD-97", () => {
-  assert.equal(validateIban("SI56191000000123458"), true);
-  assert.equal(validateIban("SI56191000000123459"), false);
+  assert.equal(validateIban("SI7719100000012345"), true);
+  assert.equal(validateIban("SI7719100000012346"), false);
   const invoice = baseInvoice();
-  invoice.supplier.iban = "SI56191000000123459";
+  invoice.supplier.iban = "SI7719100000012346";
   assert.match(validateInvoice(invoice).errors.join(" "), /IBAN/i);
 });
 
