@@ -3,6 +3,7 @@ import { runQueuedInvoiceJobs } from "@/lib/invoice-intelligence/processor";
 import { purgeExpiredInvoiceDocuments } from "@/lib/invoice-intelligence/retention";
 import { queuePreviouslyUploadedDocuments } from "@/lib/invoice-intelligence/bootstrap-queue";
 import { queuePendingApprovedDeliveries, runQueuedDeliveryJobs } from "@/lib/invoice-intelligence/delivery";
+import { runQueuedEslogBatches } from "@/lib/invoice-intelligence/eslog-batch";
 
 export const maxDuration = 300;
 export const dynamic = "force-dynamic";
@@ -21,6 +22,10 @@ export async function GET(req: Request) {
   const results = await runQueuedInvoiceJobs(limit);
   const newlyQueuedDeliveries = await queuePendingApprovedDeliveries(100);
   const deliveryResults = await runQueuedDeliveryJobs(deliveryLimit);
+  // At most one eSLOG source chunk (<=8 paid OCR pages) is processed per cron
+  // invocation. This keeps the batch converter inside the existing runaway-cost
+  // circuit breakers while still allowing large multi-invoice PDFs over time.
+  const eslogBatch = await runQueuedEslogBatches();
   const retentionDeleted = await purgeExpiredInvoiceDocuments(50);
   return NextResponse.json({
     newlyQueued,
@@ -31,6 +36,7 @@ export async function GET(req: Request) {
     deliveriesProcessed: deliveryResults.length,
     deliveriesSucceeded: deliveryResults.filter((r) => r.ok).length,
     deliveriesFailed: deliveryResults.filter((r) => !r.ok).length,
+    eslogBatch,
     retentionDeleted,
     durationMs: Date.now() - startedAt,
     results,
