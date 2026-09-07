@@ -53,6 +53,10 @@ function CompanyRow({
         <p className="font-semibold text-sm text-gray-900 dark:text-white truncate">{company.name}</p>
         <p className="text-xs text-gray-500 dark:text-slate-400 truncate">{company.recipientEmail}</p>
       </div>
+      <a href={`/settings/company/${company.id}`} title="Način pošiljanja"
+        className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 text-gray-400 hover:text-blue-600 transition-colors text-sm">
+        ⚙️
+      </a>
       <button onClick={() => setEditing(true)}
         className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-400 hover:text-blue-500 transition-colors text-sm">
         ✏️
@@ -69,14 +73,12 @@ function SettingsContent() {
   const params = useSearchParams();
   const isWelcome = params.get("welcome") === "1";
 
-  // Single email (legacy / simple mode)
   const [email, setEmail] = useState("");
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  // Companies
   const [companyList, setCompanyList] = useState<Company[]>([]);
   const [showAdd, setShowAdd] = useState(false);
   const [newName, setNewName] = useState("");
@@ -162,7 +164,7 @@ function SettingsContent() {
   return (
     <div className="max-w-xl mx-auto px-4 py-10">
       <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white mb-2">Nastavitve</h1>
-      <p className="text-gray-500 dark:text-slate-400 mb-8">Nastavite emails za posredovanje računov.</p>
+      <p className="text-gray-500 dark:text-slate-400 mb-8">Nastavite podjetja, e-maile in način prenosa računov v računovodski sistem.</p>
 
       {isWelcome && (
         <div className="mb-6 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 px-4 py-3 rounded-xl text-sm font-medium">
@@ -170,7 +172,6 @@ function SettingsContent() {
         </div>
       )}
 
-      {/* ── COMPANIES ── */}
       <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-2xl p-6 mb-5">
         <div className="flex items-center justify-between mb-1">
           <div className="flex items-center gap-3">
@@ -182,7 +183,7 @@ function SettingsContent() {
           </span>
         </div>
         <p className="text-xs text-gray-500 dark:text-slate-400 mb-5 ml-9">
-          Dodajte podjetja s svojimi OCR email naslovi. Pri skeniranju izberete za katero podjetje pošiljate.
+          Dodajte podjetja. Z ikono ⚙️ pri vsakem podjetju izberete OCR e-mail, API JSON ali XML pošiljanje.
         </p>
 
         {loading ? (
@@ -196,13 +197,12 @@ function SettingsContent() {
             ))}
 
             {!isPro && companyList.length >= 1 ? (
-              // PRO upsell hidden — was creating noise on free/basic
               null
             ) : showAdd ? (
               <div className="bg-gray-50 dark:bg-slate-800 border border-dashed border-gray-300 dark:border-slate-600 rounded-xl p-4 space-y-2">
                 <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="Ime podjetja (npr. ABC d.o.o.)"
                   className="w-full border border-gray-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                <input value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="OCR email (npr. uvoz@minimax.si)" type="email"
+                <input value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="OCR / XML email (npr. uvoz@minimax.si)" type="email"
                   className="w-full border border-gray-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
                 {addError && <p className="text-xs text-red-500">{addError}</p>}
                 <div className="flex gap-2">
@@ -226,7 +226,6 @@ function SettingsContent() {
         )}
       </div>
 
-      {/* ── DEFAULT EMAIL (simple / fallback) ── */}
       <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-2xl p-6 mb-5">
         <div className="flex items-center gap-3 mb-1">
           <span className="text-2xl">📧</span>
@@ -239,9 +238,6 @@ function SettingsContent() {
         {loading ? (
           <div className="h-12 bg-gray-100 dark:bg-slate-800 rounded-xl animate-pulse" />
         ) : (
-          /* Wrapping in a form so iOS keyboard "Go" / Enter submits and
-           * the button's click no longer competes with the input's blur
-           * (which is what caused the previous "needs two taps" bug). */
           <form onSubmit={(e) => { e.preventDefault(); saveEmail(); }} className="space-y-3">
             {error && (
               <div className="flex items-start gap-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-xl text-sm">
@@ -265,11 +261,10 @@ function SettingsContent() {
       <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-2xl p-5">
         <p className="text-sm text-amber-800 dark:text-amber-300 leading-relaxed">
           <strong>Kje dobim OCR email?</strong><br />
-          V računovodskem programu (Minimax, Birokrat, Pantheon…) poiščite nastavitve za uvoz računov po emailu. Program dodeli poseben email naslov za vsako podjetje.
+          V računovodskem programu (Minimax, Birokrat, Pantheon…) poiščite nastavitve za uvoz računov po emailu. Za API integracije uporabite HTTPS endpoint, ki ga zagotovi vaš računovodski sistem.
         </p>
       </div>
 
-      {/* ── CURRENT PLAN ── */}
       {planInfo && (
         <div className="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-2xl p-6 mt-5">
           <div className="flex items-center gap-3 mb-3">
