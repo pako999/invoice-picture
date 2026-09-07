@@ -229,6 +229,21 @@ export const invoiceAuditLogs = pgTable("invoiceAuditLogs", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, (t) => ({ ownerIdx: index("invoiceAuditLogs_owner_idx").on(t.clerkUserId, t.createdAt) }));
 
+/** Persistent fail-closed OCR usage buckets. Provider pages are reserved before
+ * any paid API call so concurrent cron runs cannot overspend the configured caps. */
+export const invoiceOcrUsageBuckets = pgTable("invoiceOcrUsageBuckets", {
+  id: serial("id").primaryKey(),
+  scopeKey: varchar("scopeKey", { length: 320 }).notNull(),
+  bucketType: varchar("bucketType", { length: 16 }).notNull(),
+  bucketStart: timestamp("bucketStart").notNull(),
+  reservedPages: integer("reservedPages").default(0).notNull(),
+  estimatedCostMicros: integer("estimatedCostMicros").default(0).notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+}, (t) => ({
+  bucketUnique: uniqueIndex("invoiceOcrUsageBuckets_unique").on(t.scopeKey, t.bucketType, t.bucketStart),
+  bucketIdx: index("invoiceOcrUsageBuckets_bucket_idx").on(t.bucketType, t.bucketStart),
+}));
+
 export type UserSettings = typeof userSettings.$inferSelect;
 export type Invoice = typeof invoices.$inferSelect;
 export type Company = typeof companies.$inferSelect;
