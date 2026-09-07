@@ -13,6 +13,18 @@ import {
   supplierMappings,
 } from "@/lib/schema";
 import { azureConfigured, criticalCount, readDeterministically, readWithAzure, readWithMistral } from "./providers";
+import {
+  azureAllowedForInput,
+  createOcrRunBudget,
+  estimateSourcePages,
+  getOcrSafetyConfig,
+  isPdfInput,
+  OcrRunBudgetError,
+  OcrSafetyQuotaError,
+  providerReservationPages,
+  reserveOcrProviderBudget,
+  type OcrRunBudget,
+} from "./safety";
 import { normalizedInvoiceSchema, type NormalizedInvoice, type ReaderResult, type ValidationResult } from "./types";
 import { normalizeInvoiceValues, validateInvoice } from "./validation";
 
@@ -27,7 +39,7 @@ const CRITICAL_FIELDS = [
   "totals.grossAmount",
 ] as const;
 
-export async function processInvoiceDocument(documentId: number) {
+export async function processInvoiceDocument(documentId: number, runBudget?: OcrRunBudget) {
   const db = getDb();
   const [document] = await db.select().from(invoiceDocuments).where(eq(invoiceDocuments.id, documentId)).limit(1);
   if (!document) throw new Error("Invoice document not found");
@@ -35,6 +47,9 @@ export async function processInvoiceDocument(documentId: number) {
   await db.update(invoiceDocuments).set({ status: "processing", processingStartedAt: new Date(), updatedAt: new Date() }).where(eq(invoiceDocuments.id, documentId));
 
   const input = { base64: document.originalBase64, mimeType: document.mimeType, filename: document.filename };
+  const safety = getOcrSafetyConfig();
+  const estimatedPages = estimateSourcePages(input);
+  const reservedProviderPages = providerReservationPages(input);
   let result: ReaderResult | null = null;
   let validation: ValidationResult | null = null;
   let mistralError: unknown = null;
@@ -43,25 +58,37 @@ export async function processInvoiceDocument(documentId: number) {
   if (deterministic) {
     deterministic.invoice = await applySupplierMappings(document.clerkUserId, deterministic.invoice);
     validation = validateInvoice(deterministic.invoice);
-    if (deterministic.model === "xml-parser-v1" && validation.status === "valid") result = deterministic;
+    if ((deterministic.model === "xml-parser-v1" || deterministic.model === "hybrid-pdf-xml-v1") && validation.status === "valid") result = deterministic;
   }
 
   if (!result) {
     try {
+      await reserveOcrProviderBudget({ clerkUserId: document.clerkUserId, provider: "mistral", pages: reservedProviderPages, runBudget });
       result = await recordAttempt(documentId, "mistral", process.env.MISTRAL_OCR_MODEL || "mistral-ocr-latest", async () => readWithMistral(input));
       if (result) {
         result.invoice = await applySupplierMappings(document.clerkUserId, result.invoice);
         validation = validateInvoice(result.invoice);
+        const wasHardCapped = isPdfInput(input) && (
+          (estimatedPages != null && estimatedPages > safety.maxPagesPerDocument) ||
+          (estimatedPages == null && result.pagesProcessed >= safety.maxPagesPerDocument)
+        );
+        if (wasHardCapped) {
+          const warning = `OCR was hard-capped to the first ${safety.maxPagesPerDocument} pages for cost safety. Verify the complete document manually.`;
+          result.invoice.warnings.push(warning);
+          validation = { ...validation, status: "needs_review", warnings: [...validation.warnings, warning] };
+        }
       }
     } catch (error) {
+      if (isSafetyDeferral(error)) throw error;
       mistralError = error;
     }
   }
 
   const mistralLow = result?.provider === "mistral" && !criticalConfidencePasses(result);
   const mistralInvalid = validation?.status === "failed";
-  if (azureConfigured() && (!result || mistralLow || mistralInvalid)) {
+  if (azureConfigured() && azureAllowedForInput(input) && (!result || mistralLow || mistralInvalid)) {
     try {
+      await reserveOcrProviderBudget({ clerkUserId: document.clerkUserId, provider: "azure", pages: reservedProviderPages, runBudget });
       const azure = await recordAttempt(documentId, "azure", process.env.AZURE_DOCUMENT_INTELLIGENCE_MODEL || "prebuilt-invoice", async () => readWithAzure(input));
       if (azure) {
         azure.invoice = await applySupplierMappings(document.clerkUserId, azure.invoice);
@@ -80,6 +107,7 @@ export async function processInvoiceDocument(documentId: number) {
         }
       }
     } catch (error) {
+      if (isSafetyDeferral(error)) throw error;
       if (!result && mistralError) throw new Error(`Mistral failed: ${messageOf(mistralError)}; Azure failed: ${messageOf(error)}`);
     }
   }
@@ -122,7 +150,7 @@ export async function processInvoiceDocument(documentId: number) {
     documentId,
     clerkUserId: document.clerkUserId,
     action: autoApprove ? "auto_approved" : "sent_to_review",
-    metadataJson: JSON.stringify({ provider: result.provider, model: result.model, duplicates: duplicates.length }),
+    metadataJson: JSON.stringify({ provider: result.provider, model: result.model, duplicates: duplicates.length, estimatedPages, safetyPageCap: safety.maxPagesPerDocument }),
   });
 
   return { status: finalStatus, provider: result.provider, validation, duplicates };
@@ -131,12 +159,15 @@ export async function processInvoiceDocument(documentId: number) {
 export async function runQueuedInvoiceJobs(limit = 3) {
   const db = getDb();
   const now = new Date();
+  const safety = getOcrSafetyConfig();
+  const safeDocumentLimit = Math.max(1, Math.min(limit, safety.maxDocumentsPerCron));
+  const runBudget = createOcrRunBudget();
   const jobs = await db.select().from(invoiceProcessingJobs)
     .where(and(inArray(invoiceProcessingJobs.status, ["queued", "failed"]), lte(invoiceProcessingJobs.availableAt, now)))
     .orderBy(asc(invoiceProcessingJobs.availableAt))
-    .limit(limit);
+    .limit(safeDocumentLimit);
 
-  const results: Array<{ jobId: number; documentId: number; ok: boolean; error?: string }> = [];
+  const results: Array<{ jobId: number; documentId: number; ok: boolean; error?: string; deferred?: boolean }> = [];
   for (const job of jobs) {
     if (job.attempts >= job.maxAttempts) continue;
     const [locked] = await db.update(invoiceProcessingJobs).set({
@@ -148,10 +179,32 @@ export async function runQueuedInvoiceJobs(limit = 3) {
     if (!locked) continue;
 
     try {
-      await processInvoiceDocument(job.documentId);
+      await processInvoiceDocument(job.documentId, runBudget);
       await db.update(invoiceProcessingJobs).set({ status: "completed", lastError: null, lockedAt: null, updatedAt: new Date() }).where(eq(invoiceProcessingJobs.id, job.id));
       results.push({ jobId: job.id, documentId: job.documentId, ok: true });
     } catch (error) {
+      if (isSafetyDeferral(error)) {
+        const delayMinutes = error instanceof OcrRunBudgetError ? 2 : 60;
+        await db.update(invoiceProcessingJobs).set({
+          status: "queued",
+          attempts: job.attempts,
+          lastError: messageOf(error).slice(0, 2000),
+          lockedAt: null,
+          availableAt: new Date(Date.now() + delayMinutes * 60_000),
+          updatedAt: new Date(),
+        }).where(eq(invoiceProcessingJobs.id, job.id));
+        await db.update(invoiceDocuments).set({
+          status: "queued",
+          validationStatus: "pending",
+          warningsJson: JSON.stringify([messageOf(error)]),
+          updatedAt: new Date(),
+        }).where(eq(invoiceDocuments.id, job.documentId));
+        results.push({ jobId: job.id, documentId: job.documentId, ok: false, deferred: true, error: messageOf(error) });
+        // Run/global budget has hit a circuit breaker. Stop this cron invocation
+        // instead of repeatedly touching more jobs.
+        break;
+      }
+
       const attempt = job.attempts + 1;
       const delayMinutes = Math.min(60, 2 ** Math.min(attempt, 6));
       await db.update(invoiceProcessingJobs).set({
@@ -244,7 +297,7 @@ function requiredFieldsPresent(invoice: NormalizedInvoice) {
 }
 
 function criticalConfidencePasses(result: ReaderResult) {
-  if (result.provider === "deterministic" && result.model === "xml-parser-v1") return true;
+  if (result.provider === "deterministic" && (result.model === "xml-parser-v1" || result.model === "hybrid-pdf-xml-v1")) return true;
   const threshold = Number(process.env.INVOICE_CONFIDENCE_THRESHOLD ?? 0.92);
   const evidence = new Map(result.evidence.map((e) => [e.fieldPath, e.confidence]));
   return CRITICAL_FIELDS.every((path) => {
@@ -290,6 +343,10 @@ function setPath(obj: Record<string, unknown>, path: string, value: unknown) {
     current = current[keys[i]] as Record<string, unknown>;
   }
   current[keys[keys.length - 1]] = value;
+}
+
+function isSafetyDeferral(error: unknown): error is OcrRunBudgetError | OcrSafetyQuotaError {
+  return error instanceof OcrRunBudgetError || error instanceof OcrSafetyQuotaError;
 }
 
 function messageOf(error: unknown) { return error instanceof Error ? error.message : String(error); }

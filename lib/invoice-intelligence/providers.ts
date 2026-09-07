@@ -8,6 +8,7 @@ import {
   type ReaderResult,
 } from "./types";
 import { normalizeInvoiceValues } from "./validation";
+import { mistralPagesForInput } from "./safety";
 
 const MISTRAL_ENDPOINT = "https://api.mistral.ai/v1/ocr";
 const AZURE_API_VERSION = process.env.AZURE_DOCUMENT_INTELLIGENCE_API_VERSION ?? "2024-11-30";
@@ -81,6 +82,7 @@ export async function readWithMistral(input: { base64: string; mimeType: string;
   const document = input.mimeType.startsWith("image/")
     ? { type: "image_url", image_url: dataUrl }
     : { type: "document_url", document_url: dataUrl };
+  const pages = mistralPagesForInput(input);
 
   const response = await fetch(MISTRAL_ENDPOINT, {
     method: "POST",
@@ -88,6 +90,7 @@ export async function readWithMistral(input: { base64: string; mimeType: string;
     body: JSON.stringify({
       model,
       document,
+      ...(pages ? { pages } : {}),
       include_blocks: true,
       confidence_scores_granularity: "block",
       table_format: "html",
@@ -112,10 +115,10 @@ export async function readWithMistral(input: { base64: string; mimeType: string;
   const annotationRaw = raw.document_annotation;
   const annotation = typeof annotationRaw === "string" ? JSON.parse(annotationRaw) : annotationRaw;
   const invoice = normalizeInvoiceValues(normalizedInvoiceSchema.parse(annotation));
-  const pages = Array.isArray(raw.pages) ? raw.pages : [];
-  const rawText = pages.map((p: Record<string, unknown>) => typeof p.markdown === "string" ? p.markdown : "").join("\n\n");
-  const evidence = buildEvidence(invoice, pages);
-  const pageCount = Number(raw.usage_info?.pages_processed ?? pages.length ?? 1);
+  const responsePages = Array.isArray(raw.pages) ? raw.pages : [];
+  const rawText = responsePages.map((p: Record<string, unknown>) => typeof p.markdown === "string" ? p.markdown : "").join("\n\n");
+  const evidence = buildEvidence(invoice, responsePages);
+  const pageCount = Number(raw.usage_info?.pages_processed ?? responsePages.length ?? 1);
   const costPerAnnotatedPageMicros = Number(process.env.MISTRAL_ANNOTATED_PAGE_COST_MICROS ?? 5000);
 
   return {
@@ -158,8 +161,8 @@ export async function readWithAzure(input: { base64: string; mimeType: string; f
   }
   if (raw.status !== "succeeded") throw new Error("Azure processing timed out");
 
-  const document = raw.analyzeResult?.documents?.[0] ?? {};
-  const fields = document.fields ?? {};
+  const documentResult = raw.analyzeResult?.documents?.[0] ?? {};
+  const fields = documentResult.fields ?? {};
   const invoice = normalizeInvoiceValues(mapAzureInvoice(fields));
   const evidence = azureEvidence(fields);
   const pagesProcessed = Number(raw.analyzeResult?.pages?.length ?? 1);
