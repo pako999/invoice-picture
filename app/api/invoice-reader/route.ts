@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, gte, sql } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "@/lib/db";
 import { invoiceAuditLogs, invoiceDocuments, type InvoiceDocument } from "@/lib/schema";
@@ -85,7 +85,21 @@ export async function POST(req: NextRequest) {
     if (!allowedMime.has(data.mimeType)) return NextResponse.json({ error: "Unsupported file type" }, { status: 415 });
     const bytes = Buffer.from(data.base64, "base64");
     if (!bytes.length || bytes.length > 10 * 1024 * 1024) return NextResponse.json({ error: "Invalid file size" }, { status: 400 });
-    if (data.mimeType === "application/pdf" && bytes.subarray(0, 4).toString() !== "%PDF") return NextResponse.json({ error: "Invalid PDF" }, { status: 400 });
+    if (data.mimeType === "application/pdf") {
+      if (bytes.subarray(0, 4).toString() !== "%PDF") return NextResponse.json({ error: "Invalid PDF" }, { status: 400 });
+      const sample = bytes.subarray(0, Math.min(bytes.length, 2_000_000)).toString("latin1");
+      if (/\/(JavaScript|JS|Launch)\b/i.test(sample)) return NextResponse.json({ error: "PDF contains active content and cannot be processed" }, { status: 400 });
+    }
+
+    const db = getDb();
+    const limit = Math.max(10, Number(process.env.INVOICE_UPLOADS_PER_MINUTE ?? 300));
+    const since = new Date(Date.now() - 60_000);
+    const [usage] = await db.select({ count: sql<number>`count(*)` }).from(invoiceDocuments)
+      .where(and(eq(invoiceDocuments.clerkUserId, userId), gte(invoiceDocuments.createdAt, since)));
+    if (Number(usage?.count ?? 0) >= limit) {
+      return NextResponse.json({ error: "Upload rate limit exceeded. Please retry in a minute." }, { status: 429, headers: { "Retry-After": "60" } });
+    }
+
     const documentId = await enqueueInvoiceDocument({
       clerkUserId: userId,
       companyId: data.companyId ?? null,
@@ -95,7 +109,7 @@ export async function POST(req: NextRequest) {
       base64: data.base64,
     });
     if (!documentId) throw new Error("Could not create invoice document");
-    await getDb().insert(invoiceAuditLogs).values({ documentId, clerkUserId: userId, action: "uploaded_for_processing" });
+    await db.insert(invoiceAuditLogs).values({ documentId, clerkUserId: userId, action: "uploaded_for_processing" });
     return NextResponse.json({ success: true, documentId }, { status: 201 });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Invalid request" }, { status: 400 });
