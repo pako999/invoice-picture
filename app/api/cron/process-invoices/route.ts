@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { runQueuedInvoiceJobs } from "@/lib/invoice-intelligence/processor";
 import { purgeExpiredInvoiceDocuments } from "@/lib/invoice-intelligence/retention";
+import { queuePreviouslyUploadedDocuments } from "@/lib/invoice-intelligence/bootstrap-queue";
 
 export const maxDuration = 300;
 export const dynamic = "force-dynamic";
@@ -14,9 +15,11 @@ export async function GET(req: Request) {
 
   const limit = Math.max(1, Math.min(10, Number(process.env.INVOICE_CRON_BATCH_SIZE ?? 3)));
   const startedAt = Date.now();
+  const newlyQueued = await queuePreviouslyUploadedDocuments(100);
   const results = await runQueuedInvoiceJobs(limit);
   const retentionDeleted = await purgeExpiredInvoiceDocuments(50);
   return NextResponse.json({
+    newlyQueued,
     processed: results.length,
     succeeded: results.filter((r) => r.ok).length,
     failed: results.filter((r) => !r.ok).length,
