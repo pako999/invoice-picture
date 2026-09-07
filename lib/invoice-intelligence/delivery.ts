@@ -8,6 +8,26 @@ import { normalizedInvoiceSchema } from "./types";
 import { buildInvoiceApiPayload, resolveXmlDelivery } from "./delivery-format";
 import { getCompanyDeliverySettings, getDeliverySecret } from "./delivery-settings";
 
+export async function queuePendingApprovedDeliveries(limit = 100) {
+  const sql = rawDb();
+  const rows = await sql`
+    INSERT INTO "invoiceDeliveryJobs" ("documentId", "status", "attempts", "availableAt", "createdAt", "updatedAt")
+    SELECT d."id", 'queued', 0, now(), now(), now()
+    FROM "invoiceDocuments" d
+    JOIN "companyDeliverySettings" s ON s."companyId" = d."companyId" AND s."clerkUserId" = d."clerkUserId"
+    LEFT JOIN "invoiceDeliveryJobs" j ON j."documentId" = d."id"
+    WHERE d."status" = 'approved'
+      AND d."approvedJson" IS NOT NULL
+      AND s."mode" IN ('api_json', 'xml_email')
+      AND j."id" IS NULL
+    ORDER BY d."approvedAt" ASC NULLS LAST, d."id" ASC
+    LIMIT ${Math.max(1, Math.min(500, limit))}
+    ON CONFLICT ("documentId") DO NOTHING
+    RETURNING "documentId"
+  `;
+  return rows.length;
+}
+
 export async function queueInvoiceDelivery(documentId: number) {
   const sql = rawDb();
   await sql`
