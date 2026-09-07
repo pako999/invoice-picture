@@ -43,12 +43,20 @@ test("does not fake eSLOG for OCR-derived data", () => {
     originalBase64: Buffer.from("not xml").toString("base64"),
     originalMimeType: "application/pdf",
     originalFilename: "invoice.pdf",
-  }), /requires an original eSLOG XML/);
+  }), /requires an original eSLOG 2\.0 XML/);
 });
 
-test("forwards a likely original eSLOG XML unchanged", () => {
+test("does not misclassify CII or generic INVOIC XML as eSLOG", () => {
+  assert.equal(isLikelyEslog20Xml(`<?xml version="1.0"?><CrossIndustryInvoice><INVOIC>123</INVOIC></CrossIndustryInvoice>`), false);
+  assert.equal(isLikelyEslog20Xml(`<?xml version="1.0"?><Invoice><INVOIC>123</INVOIC></Invoice>`), false);
+});
+
+test("forwards an original eSLOG 2.0 XML unchanged", () => {
   const invoice = emptyInvoice();
-  const original = `<?xml version="1.0"?><eSLOG><Invoice><INVOIC>123</INVOIC></Invoice></eSLOG>`;
+  const original = `<?xml version="1.0" encoding="UTF-8"?>
+<Invoice xmlns="urn:eslog:2.00" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="eSLOG20_INVOIC_v200.xsd">
+  <M_INVOIC Id="data"><S_UNH><D_0065>INVOIC</D_0065></S_UNH></M_INVOIC>
+</Invoice>`;
   assert.equal(isLikelyEslog20Xml(original), true);
   const result = resolveXmlDelivery({
     format: "eslog_2_0_original",
