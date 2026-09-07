@@ -2,6 +2,10 @@
   "framework": "nextjs",
   "crons": [
     {
+      "path": "/api/cron/process-invoices",
+      "schedule": "* * * * *"
+    },
+    {
       "path": "/api/cron/refresh-google-play",
       "schedule": "0 3 * * *"
     }
