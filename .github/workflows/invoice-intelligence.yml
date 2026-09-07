@@ -4,15 +4,17 @@ on:
   push:
     branches:
       - feature/invoice-intelligence
+      - feature/ocr-safety-limits
   pull_request:
     paths:
       - "lib/invoice-intelligence/**"
       - "app/api/invoice-reader/**"
       - "app/api/cron/process-invoices/**"
       - "app/invoice-review/**"
-      - "tests/invoice-intelligence.test.ts"
+      - "tests/invoice-*.test.ts"
       - "scripts/evaluate-invoice-extraction.ts"
       - "lib/schema.ts"
+      - "drizzle/**"
       - "package.json"
       - "tsconfig.json"
 
