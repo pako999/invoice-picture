@@ -9,6 +9,7 @@ import { z } from "zod";
 import { enqueueInvoiceDocument } from "@/lib/invoice-intelligence/queue";
 import { getCompanyDeliverySettings } from "@/lib/invoice-intelligence/delivery-settings";
 import type { DeliveryMode, XmlDeliveryFormat } from "@/lib/invoice-intelligence/delivery-format";
+import { appendEslogBatchSource } from "@/lib/invoice-intelligence/eslog-batch";
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
 const ALLOWED_MIME = new Set([
@@ -102,6 +103,39 @@ export async function POST(req: NextRequest) {
       status: "pending",
     }).returning({ id: invoices.id });
 
+    // XML/eSLOG is a batch workflow. Files uploaded within the same scan action are
+    // collected into one batch, invoices are separated by page boundaries, then a
+    // single ZIP containing one eSLOG 2.0 XML per detected invoice is emailed.
+    if (deliveryMode === "xml_email") {
+      if (!data.companyId) {
+        await db.update(invoices).set({ status: "failed", errorMessage: "eSLOG batch export requires a selected company" }).where(eq(invoices.id, result.id));
+        return NextResponse.json({ success: false, error: "Select a company for eSLOG batch export." }, { status: 422 });
+      }
+      try {
+        const batch = await appendEslogBatchSource({
+          clerkUserId: userId,
+          companyId: data.companyId,
+          recipientEmail,
+          sourceInvoiceId: result.id,
+          filename,
+          mimeType: data.mime,
+          base64: data.imageBase64,
+        });
+        return NextResponse.json({
+          success: true,
+          id: result.id,
+          deliveryMode,
+          queuedForEslogBatch: true,
+          eslogBatchKey: batch.batchKey,
+          eslogBatchSourceOrder: batch.sourceOrder,
+        });
+      } catch (batchError) {
+        const msg = batchError instanceof Error ? batchError.message : String(batchError);
+        await db.update(invoices).set({ status: "failed", errorMessage: msg }).where(eq(invoices.id, result.id));
+        return NextResponse.json({ success: false, error: msg, deliveryMode }, { status: 500 });
+      }
+    }
+
     let processingDocumentId: number | null = null;
     let queueErrorMessage: string | null = null;
     try {
@@ -122,18 +156,12 @@ export async function POST(req: NextRequest) {
       console.error("invoice_reader_enqueue_failed", queueErrorMessage);
     }
 
-    if (deliveryMode !== "email_ocr") {
+    if (deliveryMode === "api_json") {
       if (!processingDocumentId) {
         await db.update(invoices).set({ status: "failed", errorMessage: `Structured delivery could not be queued: ${queueErrorMessage || "unknown error"}` }).where(eq(invoices.id, result.id));
         return NextResponse.json({ success: false, error: "Structured invoice processing could not be queued.", deliveryMode }, { status: 500 });
       }
-      return NextResponse.json({
-        success: true,
-        id: result.id,
-        processingDocumentId,
-        deliveryMode,
-        queuedForStructuredDelivery: true,
-      });
+      return NextResponse.json({ success: true, id: result.id, processingDocumentId, deliveryMode, queuedForStructuredDelivery: true });
     }
 
     try {
