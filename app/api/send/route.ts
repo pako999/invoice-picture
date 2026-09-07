@@ -6,15 +6,26 @@ import { sendInvoiceEmail } from "@/lib/resend";
 import { FREE_MONTHLY_LIMIT, getStatus } from "@/lib/subscription";
 import { eq, and } from "drizzle-orm";
 import { z } from "zod";
+import { enqueueInvoiceDocument } from "@/lib/invoice-intelligence/queue";
+
+const MAX_FILE_BYTES = 10 * 1024 * 1024;
+const ALLOWED_MIME = new Set([
+  "application/pdf",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/heic",
+  "image/heif",
+  "application/xml",
+  "text/xml",
+]);
 
 const schema = z.object({
-  subject: z.string().min(1).default("Račun"),
-  imageBase64: z.string().min(1),
-  filename: z.string().min(1),
-  mime: z.string().default("image/jpeg"),
-  companyId: z.number().optional(),
-  // Optional free-text note from the user. Rendered above the invoice image
-  // in the outgoing email. Capped to keep transactional email small.
+  subject: z.string().min(1).max(255).default("Račun"),
+  imageBase64: z.string().min(1).max(14 * 1024 * 1024),
+  filename: z.string().min(1).max(255),
+  mime: z.string().max(96).default("image/jpeg"),
+  companyId: z.number().int().positive().optional(),
   messageBody: z.string().max(2000).optional(),
 });
 
@@ -24,34 +35,33 @@ export async function POST(req: NextRequest) {
 
   const status = await getStatus(userId);
   if (!status.canSend) {
-    // Client matches on `code` and shows a localized message. `error` is a
-    // sensible fallback for older clients that only read the string.
     return NextResponse.json(
-      {
-        success: false,
-        error: "Trial expired — upgrade to keep sending invoices.",
-        code: "subscription_required",
-        plan: status.plan,
-      },
+      { success: false, error: "Trial expired — upgrade to keep sending invoices.", code: "subscription_required", plan: status.plan },
       { status: 402 },
     );
   }
 
   if (status.isFree && status.monthlyUsage >= FREE_MONTHLY_LIMIT) {
     return NextResponse.json(
-      {
-        success: false,
-        error: "Monthly limit of 3 invoices reached on the Free plan.",
-        code: "free_limit_reached",
-      },
+      { success: false, error: "Monthly limit of 3 invoices reached on the Free plan.", code: "free_limit_reached" },
       { status: 403 },
     );
   }
 
   try {
     const data = schema.parse(await req.json());
-    const db = getDb();
+    const bytes = Buffer.from(data.imageBase64, "base64");
+    if (bytes.length === 0 || bytes.length > MAX_FILE_BYTES) {
+      return NextResponse.json({ success: false, error: "Invalid file or file is larger than 10 MB." }, { status: 400 });
+    }
+    if (!ALLOWED_MIME.has(data.mime)) {
+      return NextResponse.json({ success: false, error: "Unsupported file type." }, { status: 415 });
+    }
+    if (data.mime === "application/pdf" && bytes.subarray(0, 4).toString() !== "%PDF") {
+      return NextResponse.json({ success: false, error: "Invalid PDF file." }, { status: 400 });
+    }
 
+    const db = getDb();
     let recipientEmail: string | null | undefined;
 
     if (data.companyId) {
@@ -66,42 +76,62 @@ export async function POST(req: NextRequest) {
 
     if (!recipientEmail) {
       return NextResponse.json(
-        {
-          success: false,
-          error: "Set a recipient email in Settings.",
-          code: "no_recipient",
-        },
+        { success: false, error: "Set a recipient email in Settings.", code: "no_recipient" },
         { status: 422 },
       );
     }
 
+    const filename = sanitizeFilename(data.filename);
     const [result] = await db.insert(invoices).values({
       clerkUserId: userId,
       recipientEmail,
-      // Persist the company link so we can build per-company archives.
-      // Falls through as null when the user sends via their default email.
       companyId: data.companyId ?? null,
       subject: data.subject,
-      // Keep the original document so the archive can show a real preview.
-      // The list endpoint excludes PDF data and fetches it lazily by id, so
-      // large batches do not make /api/invoices responses enormous.
       imageData: data.imageBase64,
       imageMime: data.mime,
-      filename: data.filename,
+      filename,
       status: "pending",
     }).returning({ id: invoices.id });
 
+    let processingDocumentId: number | null = null;
     try {
-      await sendInvoiceEmail({ to: recipientEmail, subject: data.subject, imageBase64: data.imageBase64, filename: data.filename, mime: data.mime, messageBody: data.messageBody });
+      processingDocumentId = await enqueueInvoiceDocument({
+        clerkUserId: userId,
+        companyId: data.companyId ?? null,
+        sourceInvoiceId: result.id,
+        filename,
+        mimeType: data.mime,
+        base64: data.imageBase64,
+      });
+    } catch (queueError) {
+      // Reading is intentionally decoupled from the existing send flow. A queue
+      // failure must never prevent a valid invoice from reaching accounting.
+      console.error("invoice_reader_enqueue_failed", queueError instanceof Error ? queueError.message : "unknown");
+    }
+
+    try {
+      await sendInvoiceEmail({
+        to: recipientEmail,
+        subject: data.subject,
+        imageBase64: data.imageBase64,
+        filename,
+        mime: data.mime,
+        messageBody: data.messageBody,
+      });
       await db.update(invoices).set({ status: "sent", sentAt: new Date() }).where(eq(invoices.id, result.id));
-      return NextResponse.json({ success: true, id: result.id });
+      return NextResponse.json({ success: true, id: result.id, processingDocumentId });
     } catch (emailErr) {
       const msg = emailErr instanceof Error ? emailErr.message : String(emailErr);
       await db.update(invoices).set({ status: "failed", errorMessage: msg }).where(eq(invoices.id, result.id));
-      return NextResponse.json({ success: false, error: msg }, { status: 500 });
+      return NextResponse.json({ success: false, error: msg, processingDocumentId }, { status: 500 });
     }
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Napaka";
     return NextResponse.json({ success: false, error: msg }, { status: 400 });
   }
+}
+
+function sanitizeFilename(filename: string) {
+  const base = filename.split(/[\\/]/).pop() || "invoice";
+  return base.replace(/[\u0000-\u001f\u007f]/g, "").replace(/[^a-zA-Z0-9._()\- čšžćđČŠŽĆĐ]/g, "_").slice(0, 255);
 }
