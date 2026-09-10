@@ -33,17 +33,31 @@ test("blocks unsafe/private API endpoints", () => {
   assert.equal(validatePublicHttpsUrl("https://accounting.example.com/api"), "https://accounting.example.com/api");
 });
 
-test("does not fake eSLOG for OCR-derived data", () => {
+test("selected eSLOG for PDF/image falls back to UBL 2.1 instead of failing delivery", () => {
   const invoice = emptyInvoice();
-  invoice.invoiceNumber = "1";
+  invoice.invoiceNumber = "R-2026-002";
   invoice.currency = "EUR";
-  assert.throws(() => resolveXmlDelivery({
+  invoice.supplier.name = "Dobavitelj d.o.o.";
+  invoice.buyer.name = "Kupec d.o.o.";
+  invoice.totals.netAmount = "100.00";
+  invoice.totals.vatAmount = "22.00";
+  invoice.totals.grossAmount = "122.00";
+  invoice.totals.amountDue = "122.00";
+
+  const result = resolveXmlDelivery({
     format: "eslog_2_0_original",
     invoice,
-    originalBase64: Buffer.from("not xml").toString("base64"),
+    originalBase64: Buffer.from("%PDF-1.7 fake invoice").toString("base64"),
     originalMimeType: "application/pdf",
     originalFilename: "invoice.pdf",
-  }), /requires an original eSLOG 2\.0 XML/);
+  });
+
+  assert.equal(result.format, "ubl_2_1");
+  assert.equal(result.fallback, true);
+  assert.equal(result.requestedFormat, "eslog_2_0_original");
+  assert.match(result.filename, /\.ubl\.xml$/);
+  assert.match(result.xml, /UBLVersionID>2\.1/);
+  assert.match(result.warning || "", /eSLOG 2\.0/i);
 });
 
 test("does not misclassify CII or generic INVOIC XML as eSLOG", () => {
@@ -67,4 +81,5 @@ test("forwards an original eSLOG 2.0 XML unchanged", () => {
   });
   assert.equal(result.xml, original);
   assert.equal(result.format, "eslog_2_0");
+  assert.equal(result.fallback, false);
 });

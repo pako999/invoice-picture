@@ -10,6 +10,25 @@ import { getCompanyDeliverySettings, getDeliverySecret } from "./delivery-settin
 
 export async function queuePendingApprovedDeliveries(limit = 100) {
   const sql = rawDb();
+
+  // Self-heal jobs that exhausted retries because older code rejected eSLOG
+  // selection for PDF/image sources. After the fallback fix these deliveries
+  // are safe to retry and will either forward a real eSLOG or send UBL 2.1.
+  await sql`
+    UPDATE "invoiceDeliveryJobs" j
+    SET "status" = 'queued', "attempts" = 0, "availableAt" = now(),
+        "lockedAt" = NULL, "lastError" = NULL, "updatedAt" = now()
+    FROM "invoiceDocuments" d
+    JOIN "companyDeliverySettings" s
+      ON s."companyId" = d."companyId" AND s."clerkUserId" = d."clerkUserId"
+    WHERE j."documentId" = d."id"
+      AND d."status" = 'approved'
+      AND s."mode" = 'xml_email'
+      AND s."xmlFormat" = 'eslog_2_0_original'
+      AND j."status" = 'failed'
+      AND j."lastError" LIKE 'eSLOG 2.0 delivery requires%'
+  `;
+
   const rows = await sql`
     INSERT INTO "invoiceDeliveryJobs" ("documentId", "status", "attempts", "availableAt", "createdAt", "updatedAt")
     SELECT d."id", 'queued', 0, now(), now(), now()
@@ -78,6 +97,7 @@ export async function runQueuedDeliveryJobs(limit = 5) {
       `;
       await markSourceInvoice(documentId, false, message);
       await audit(documentId, "structured_delivery_failed", { error: message, attempt });
+      console.error("structured_delivery_failed", { documentId, attempt, error: message });
       results.push({ jobId, documentId, ok: false, error: message });
     }
   }
@@ -134,6 +154,12 @@ export async function deliverInvoiceDocument(documentId: number) {
     originalMimeType: document.mimeType,
     originalFilename: document.filename,
   });
+
+  const formatLabel = resolved.format === "ubl_2_1" ? "UBL 2.1" : "eSLOG 2.0";
+  const fallbackNotice = resolved.fallback
+    ? "Izbran je bil eSLOG 2.0, vendar vhodni dokument ni bil originalni eSLOG XML. Da pošiljanje ne bi odpovedalo, je bil iz potrjenih podatkov varno ustvarjen UBL 2.1 XML."
+    : "XML je bil pripravljen iz potrjenih podatkov računa. Originalni dokument ostane shranjen v Slikaj Račun.";
+
   const result = await getResend().emails.send({
     from: process.env.RESEND_FROM ?? "onboarding@resend.dev",
     to: company.recipientEmail,
@@ -142,15 +168,21 @@ export async function deliverInvoiceDocument(documentId: number) {
       preheader: "Strukturiran XML račun",
       eyebrow: "Slikaj Račun · XML",
       title: "Strukturiran račun za uvoz",
-      introHtml: `<p style="margin:0">V priponki je <strong>${resolved.format === "ubl_2_1" ? "UBL 2.1" : "eSLOG 2.0"}</strong> XML za uvoz v računovodski sistem.</p>`,
-      noticeHtml: "XML je bil pripravljen iz potrjenih podatkov računa. Originalni dokument ostane shranjen v Slikaj Račun.",
+      introHtml: `<p style="margin:0">V priponki je <strong>${formatLabel}</strong> XML za uvoz v računovodski sistem.</p>`,
+      noticeHtml: fallbackNotice,
     }),
     attachments: [{ filename: resolved.filename, content: Buffer.from(resolved.xml, "utf8").toString("base64"), contentType: "application/xml" }],
   });
   if (result.error) throw new Error(`XML email delivery failed: ${result.error.message}`);
   await markSourceInvoice(documentId, true);
-  await audit(documentId, "structured_delivery_success", { mode: settings.mode, xmlFormat: resolved.format, to: company.recipientEmail });
-  return { mode: settings.mode, xmlFormat: resolved.format };
+  await audit(documentId, "structured_delivery_success", {
+    mode: settings.mode,
+    requestedXmlFormat: settings.xmlFormat,
+    xmlFormat: resolved.format,
+    fallback: resolved.fallback,
+    to: company.recipientEmail,
+  });
+  return { mode: settings.mode, xmlFormat: resolved.format, fallback: resolved.fallback };
 }
 
 async function markSourceInvoice(documentId: number, success: boolean, error?: string) {
