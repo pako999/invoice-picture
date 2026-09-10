@@ -94,15 +94,37 @@ export function resolveXmlDelivery(args: {
   if (args.format === "eslog_2_0_original") {
     const isXml = /xml/i.test(args.originalMimeType) || /\.xml$/i.test(args.originalFilename);
     const original = isXml ? Buffer.from(args.originalBase64, "base64").toString("utf8") : "";
-    if (!isLikelyEslog20Xml(original)) {
-      throw new Error("eSLOG 2.0 delivery requires an original eSLOG 2.0 XML document. OCR-derived invoices are exported as UBL 2.1 instead.");
+    if (isLikelyEslog20Xml(original)) {
+      return {
+        xml: original,
+        filename: replaceExt(args.originalFilename, ".xml"),
+        format: "eslog_2_0" as const,
+        requestedFormat: args.format,
+        fallback: false as const,
+        warning: null,
+      };
     }
-    return { xml: original, filename: replaceExt(args.originalFilename, ".xml"), format: "eslog_2_0" as const };
+
+    // Do not fail the delivery when a user selected eSLOG for a PDF/image.
+    // We must not fabricate/mislabel OCR-derived XML as eSLOG 2.0, therefore
+    // safely fall back to generated UBL 2.1 and still deliver the invoice.
+    return {
+      xml: generateUbl21Xml(args.invoice),
+      filename: `${safeBase(args.invoice.invoiceNumber || args.originalFilename || "invoice")}.ubl.xml`,
+      format: "ubl_2_1" as const,
+      requestedFormat: args.format,
+      fallback: true as const,
+      warning: "Selected eSLOG 2.0 requires an original eSLOG XML document; generated UBL 2.1 was sent instead.",
+    };
   }
+
   return {
     xml: generateUbl21Xml(args.invoice),
     filename: `${safeBase(args.invoice.invoiceNumber || args.originalFilename || "invoice")}.ubl.xml`,
     format: "ubl_2_1" as const,
+    requestedFormat: args.format,
+    fallback: false as const,
+    warning: null,
   };
 }
 
