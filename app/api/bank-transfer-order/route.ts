@@ -3,9 +3,10 @@ import { auth } from "@clerk/nextjs/server";
 import { z } from "zod";
 import { getResend } from "@/lib/resend";
 import { brandedEmail } from "@/lib/email-template";
+import { PLAN_CONFIGS, formatEur, planLabel, type PaidPlan } from "@/lib/plans";
 
 const orderSchema = z.object({
-  tier: z.enum(["basic", "pro"]),
+  tier: z.enum(["basic", "pro", "accounting_pro", "accounting_max"]),
   billing: z.enum(["monthly", "yearly"]),
   customerType: z.enum(["private", "company"]),
   fullName: z.string().trim().min(2).max(120),
@@ -27,11 +28,6 @@ const orderSchema = z.object({
   if (!data.taxNumber) ctx.addIssue({ code: "custom", path: ["taxNumber"], message: "Tax number is required" });
 });
 
-const prices = {
-  basic: { monthly: "6,99 € / mesec", yearly: "66,90 € / leto" },
-  pro: { monthly: "17,99 € / mesec", yearly: "171,99 € / leto" },
-} as const;
-
 function escapeHtml(value: string) {
   return value
     .replace(/&/g, "&amp;")
@@ -46,15 +42,19 @@ export async function POST(req: NextRequest) {
     const data = orderSchema.parse(await req.json());
     const { userId } = await auth();
     const from = process.env.RESEND_FROM ?? "onboarding@resend.dev";
-    const price = prices[data.tier][data.billing];
-    const plan = data.tier === "basic" ? "Osnovni" : "PRO";
+    const tier = data.tier as PaidPlan;
+    const cfg = PLAN_CONFIGS[tier];
+    const rawPrice = data.billing === "monthly" ? cfg.monthlyPrice! : cfg.yearlyPrice!;
+    const price = `${formatEur(rawPrice)} / ${data.billing === "monthly" ? "mesec" : "leto"}`;
+    const plan = planLabel(tier);
     const customer = data.customerType === "company" ? "Podjetje" : "Fizična oseba";
-    const activationUrl = `https://www.posljiracun.si/admin/subscriptions?email=${encodeURIComponent(data.email)}&plan=${data.tier}&billing=${data.billing}`;
+    const activationUrl = `https://www.posljiracun.si/admin/subscriptions?email=${encodeURIComponent(data.email)}&plan=${tier}&billing=${data.billing}`;
 
     const row = (label: string, value: string) => `
       <tr><td style="padding:8px 12px;color:#64748b;border-bottom:1px solid #e2e8f0">${label}</td><td style="padding:8px 12px;font-weight:600;border-bottom:1px solid #e2e8f0">${escapeHtml(value)}</td></tr>`;
     const orderDetailRows = `
         ${row("Paket", `${plan} – ${price}`)}
+        ${row("AI OCR", `${cfg.ocrDocumentsMonthly} dokumentov / ${cfg.ocrPagesMonthly} strani mesečno`)}
         ${row("Tip stranke", customer)}
         ${row("Ime in priimek", data.fullName)}
         ${row("E-pošta", data.email)}
@@ -94,7 +94,7 @@ export async function POST(req: NextRequest) {
         preheader: "We received your pro forma invoice request",
         eyebrow: "Order confirmation",
         title: "Thank you for your order",
-        introHtml: `<p style="margin:0">We received your request for the <strong>${plan} – ${price}</strong> plan. We will prepare and email your pro forma invoice shortly.</p>`,
+        introHtml: `<p style="margin:0">We received your request for the <strong>${planLabel(tier, "en")} – ${price}</strong> plan. We will prepare and email your pro forma invoice shortly.</p>`,
         contentHtml: `<h2 style="font-size:18px;margin:26px 0 0">Your order details</h2>${orderDetails}`,
         noticeHtml: "<strong>What happens next?</strong><br>As soon as payment is received, we will activate your plan and email you an activation confirmation.",
       } : {
