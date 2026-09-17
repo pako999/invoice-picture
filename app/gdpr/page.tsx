@@ -45,7 +45,7 @@ export default function Gdpr() {
               <li><strong>Kontaktni podatki podjetij:</strong> imena podjetij in OCR email naslovi računovodskih programov</li>
               <li><strong>Vsebina dokumentov:</strong> fotografije in PDF-ji računov, ki jih naložite</li>
               <li><strong>Tehnični podatki:</strong> IP naslov, vrsta naprave, brskalnik, časovni žigi dostopa</li>
-              <li><strong>Plačilni podatki:</strong> obdelava preko Apple In-App Purchase ali Paddle (mi sami številk kartic ne shranjujemo)</li>
+              <li><strong>Plačilni podatki:</strong> obdelava preko Apple In-App Purchase ali Stripe (mi sami številk kartic ne shranjujemo)</li>
               <li><strong>Statistični podatki:</strong> število poslanih računov, status pošiljanja, mesečna poraba</li>
             </ul>
           </section>
@@ -105,7 +105,7 @@ export default function Gdpr() {
               <li><strong>Vercel Inc. (ZDA / EU):</strong> gostovanje aplikacije, CDN</li>
               <li><strong>Resend Inc. (ZDA):</strong> pošiljanje emailov (računi, sistemski emaili)</li>
               <li><strong>Apple Inc. (ZDA):</strong> obdelava plačil v iOS aplikaciji (In-App Purchase)</li>
-              <li><strong>Paddle.com Market Ltd (UK):</strong> obdelava plačil na spletni strani</li>
+              <li><strong>Stripe Payments Europe, Ltd. (Irska):</strong> obdelava plačil na spletni strani</li>
               <li><strong>Vaš računovodski program:</strong> sliko računa posredujemo na email naslov, ki ste ga sami nastavili (npr. uvoz@minimax.si)</li>
             </ul>
             <p className="text-slate-700 mt-3">

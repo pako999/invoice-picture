@@ -44,7 +44,7 @@ export default function Gdpr() {
               <li><strong>Company contact data:</strong> company names and OCR email addresses of accounting programs</li>
               <li><strong>Document content:</strong> photos and PDFs of invoices you upload</li>
               <li><strong>Technical data:</strong> IP address, device type, browser, access timestamps</li>
-              <li><strong>Payment data:</strong> processed via Apple In-App Purchase or Paddle (we never store card numbers ourselves)</li>
+              <li><strong>Payment data:</strong> processed via Apple In-App Purchase or Stripe (we never store card numbers ourselves)</li>
               <li><strong>Statistical data:</strong> number of sent invoices, delivery status, monthly usage</li>
             </ul>
           </section>
@@ -104,7 +104,7 @@ export default function Gdpr() {
               <li><strong>Vercel Inc. (USA / EU):</strong> application hosting, CDN</li>
               <li><strong>Resend Inc. (USA):</strong> email delivery (invoices, system emails)</li>
               <li><strong>Apple Inc. (USA):</strong> payment processing in the iOS app (In-App Purchase)</li>
-              <li><strong>Paddle.com Market Ltd (UK):</strong> payment processing on the website</li>
+              <li><strong>Stripe Payments Europe, Ltd. (Ireland):</strong> payment processing on the website</li>
               <li><strong>Your accounting program:</strong> we forward the invoice image to the email address you configured (e.g. <code>import@minimax.si</code>)</li>
             </ul>
             <p className="text-slate-700 mt-3">

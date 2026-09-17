@@ -109,11 +109,15 @@ export default function ScanPage() {
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    Promise.all([
+    const sessionId = new URLSearchParams(window.location.search).get("session_id");
+    const confirmation = sessionId
+      ? fetch("/api/stripe/confirm", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sessionId }) }).catch(() => null)
+      : Promise.resolve(null);
+    confirmation.then(() => Promise.all([
       fetch("/api/settings").then(r => r.json()).catch(() => ({})),
       fetch("/api/companies").then(r => r.json()).catch(() => []),
       fetch("/api/subscription").then(r => r.ok ? r.json() : null).catch(() => null),
-    ]).then(([settings, comps, sub]) => {
+    ])).then(([settings, comps, sub]) => {
       setRecipientEmail(settings.recipientEmail || null);
       const list: Company[] = Array.isArray(comps) ? comps : [];
       setCompanies(list);

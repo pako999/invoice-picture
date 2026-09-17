@@ -1,8 +1,9 @@
-node_modules/
+node_modules
 .next/
 .env
 .env.local
 dist/
+*.tsbuildinfo
 *.orig
 .DS_Store
 
@@ -10,3 +11,4 @@ dist/
 /.clerk/
 .vercel
 .env.production.local
+/pnpm-workspace.yaml

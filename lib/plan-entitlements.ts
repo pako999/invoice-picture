@@ -25,7 +25,7 @@ export async function getCommercialPlanCode(clerkUserId: string): Promise<Commer
   return "free";
 }
 
-export async function setCommercialPlanEntitlement(args: { clerkUserId: string; plan: PaidPlan; billing?: BillingPeriod | null; source: "paddle" | "admin" | "bank_transfer" | "system" }) {
+export async function setCommercialPlanEntitlement(args: { clerkUserId: string; plan: PaidPlan; billing?: BillingPeriod | null; source: "stripe" | "admin" | "bank_transfer" | "system" }) {
   const sql = sqlClient();
   await sql`INSERT INTO "subscriptionPlanEntitlements" ("clerkUserId","planCode","billing","source","createdAt","updatedAt") VALUES (${args.clerkUserId},${args.plan},${args.billing ?? null},${args.source},now(),now()) ON CONFLICT ("clerkUserId") DO UPDATE SET "planCode"=EXCLUDED."planCode","billing"=EXCLUDED."billing","source"=EXCLUDED."source","updatedAt"=now()`;
 }

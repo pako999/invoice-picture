@@ -3,7 +3,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { PaddleCheckoutButton } from "@/components/paddle-checkout";
+import { CommercialPlanCheckout } from "@/components/commercial-plan-checkout";
 import { CommercialPricingGrid } from "@/components/commercial-pricing-grid";
 import {
   Check,
@@ -507,13 +507,13 @@ export default function HomeEn() {
                 )}
               </CardHeader>
               <CardContent>
-                <PaddleCheckoutButton
+                <CommercialPlanCheckout
                   tier="basic"
                   billing={isYearly ? "yearly" : "monthly"}
                   className="w-full mb-6 bg-blue-600 hover:bg-blue-700 text-white"
                 >
                   Start 7-day trial →
-                </PaddleCheckoutButton>
+                </CommercialPlanCheckout>
                 <ul className="space-y-3">
                   {[
                     "Unlimited invoice sending",
@@ -556,13 +556,13 @@ export default function HomeEn() {
                 )}
               </CardHeader>
               <CardContent>
-                <PaddleCheckoutButton
+                <CommercialPlanCheckout
                   tier="pro"
                   billing={isYearly ? "yearly" : "monthly"}
                   className="w-full mb-6 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
                 >
                   Start 7-day trial →
-                </PaddleCheckoutButton>
+                </CommercialPlanCheckout>
                 <ul className="space-y-3">
                   {[
                     "Everything in Basic",

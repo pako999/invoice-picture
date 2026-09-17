@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useClerk, useUser } from "@clerk/nextjs";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -11,58 +11,6 @@ import {
   type BillingPeriod,
   type PaidPlan,
 } from "@/lib/plans";
-
-const PADDLE_TOKEN = process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN ?? "";
-const PADDLE_ENV = (process.env.NEXT_PUBLIC_PADDLE_ENV ?? "sandbox") as "sandbox" | "production";
-
-const PRICE_IDS: Record<PaidPlan, Record<BillingPeriod, string | undefined>> = {
-  basic: {
-    monthly: process.env.NEXT_PUBLIC_PADDLE_V2_BASIC_MONTHLY_PRICE_ID,
-    yearly: process.env.NEXT_PUBLIC_PADDLE_V2_BASIC_YEARLY_PRICE_ID,
-  },
-  pro: {
-    monthly: process.env.NEXT_PUBLIC_PADDLE_V2_PRO_MONTHLY_PRICE_ID,
-    yearly: process.env.NEXT_PUBLIC_PADDLE_V2_PRO_YEARLY_PRICE_ID,
-  },
-  accounting_pro: {
-    monthly: process.env.NEXT_PUBLIC_PADDLE_V2_ACCOUNTING_PRO_MONTHLY_PRICE_ID,
-    yearly: process.env.NEXT_PUBLIC_PADDLE_V2_ACCOUNTING_PRO_YEARLY_PRICE_ID,
-  },
-  accounting_max: {
-    monthly: process.env.NEXT_PUBLIC_PADDLE_V2_ACCOUNTING_MAX_MONTHLY_PRICE_ID,
-    yearly: process.env.NEXT_PUBLIC_PADDLE_V2_ACCOUNTING_MAX_YEARLY_PRICE_ID,
-  },
-};
-
-let paddleLoaded = false;
-let paddleLoading: Promise<void> | null = null;
-
-function loadPaddle() {
-  if (typeof window === "undefined" || paddleLoaded) return Promise.resolve();
-  if (paddleLoading) return paddleLoading;
-
-  paddleLoading = new Promise<void>((resolve, reject) => {
-    const initialize = () => {
-      if (!window.Paddle) return reject(new Error("Paddle ni na voljo"));
-      if (!paddleLoaded) {
-        window.Paddle.Environment.set(PADDLE_ENV);
-        window.Paddle.Initialize({ token: PADDLE_TOKEN });
-        paddleLoaded = true;
-      }
-      resolve();
-    };
-
-    if (window.Paddle) return initialize();
-    const script = document.createElement("script");
-    script.src = "https://cdn.paddle.com/paddle/v2/paddle.js";
-    script.async = true;
-    script.onload = initialize;
-    script.onerror = () => reject(new Error("Paddle se ni naložil"));
-    document.head.appendChild(script);
-  });
-
-  return paddleLoading;
-}
 
 export function CommercialPlanCheckout({
   tier,
@@ -86,13 +34,6 @@ export function CommercialPlanCheckout({
   const [error, setError] = useState("");
 
   const config = PLAN_CONFIGS[tier];
-  const priceId = PRICE_IDS[tier][billing];
-  const cardConfigured = Boolean(PADDLE_TOKEN && priceId);
-
-  useEffect(() => {
-    if (cardConfigured) void loadPaddle().catch(() => undefined);
-  }, [cardConfigured]);
-
   async function start() {
     if (!isSignedIn) {
       const destination = `${isEn ? "/en" : ""}/upgrade?plan=${tier}&billing=${billing}`;
@@ -109,36 +50,19 @@ export function CommercialPlanCheckout({
   }
 
   async function payByCard() {
-    if (!cardConfigured) {
-      setError(isEn
-        ? "Card payment for the new price is not configured yet. Choose bank transfer."
-        : "Kartično plačilo za novo ceno še ni nastavljeno. Izberi plačilo po predračunu.");
-      return;
-    }
-
     setBusy(true);
+    setError("");
     try {
-      await loadPaddle();
-      if (!window.Paddle || !priceId) throw new Error("Paddle ni na voljo");
-      window.Paddle.Checkout.open({
-        items: [{ priceId, quantity: 1 }],
-        customer: user?.primaryEmailAddress?.emailAddress
-          ? { email: user.primaryEmailAddress.emailAddress }
-          : undefined,
-        customData: {
-          clerkUserId: user?.id,
-          customerEmail: user?.primaryEmailAddress?.emailAddress,
-          tier,
-          billing,
-        },
-        settings: {
-          locale: isEn ? "en" : "sl",
-          successUrl: `${window.location.origin}${isEn ? "/en" : ""}/scan?upgraded=1`,
-        },
+      const response = await fetch("/api/stripe/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tier, billing, locale: isEn ? "en" : "sl" }),
       });
-      setOpen(false);
+      const body = await response.json().catch(() => ({})) as { url?: string; error?: string };
+      if (!response.ok || !body.url) throw new Error(body.error ?? (isEn ? "Card payment could not be started" : "Kartičnega plačila ni bilo mogoče začeti"));
+      window.location.assign(body.url);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Paddle error");
+      setError(cause instanceof Error ? cause.message : (isEn ? "Stripe error" : "Napaka pri plačilu Stripe"));
     } finally {
       setBusy(false);
     }
@@ -220,7 +144,7 @@ export function CommercialPlanCheckout({
                   <span className="text-3xl">💳</span>
                   <strong className="mt-2 block">{isEn ? "Card" : "Kartica"}</strong>
                   <span className="text-xs text-slate-500">
-                    {cardConfigured ? (isEn ? "Pay now" : "Plačaj takoj") : (isEn ? "New Paddle price ID required" : "Potreben je novi Paddle Price ID")}
+                    {isEn ? "Secure Stripe Checkout" : "Varno plačilo prek Stripe"}
                   </span>
                 </button>
                 <button type="button" onClick={() => setMode("bank")} className="rounded-2xl border-2 p-5 text-left hover:border-blue-500">
