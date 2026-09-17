@@ -1,4 +1,7 @@
 import type { NormalizedInvoice } from "./types";
+import { generateEslog20Xml } from "./eslog-format";
+
+export { generateEslog20Xml } from "./eslog-format";
 
 export type DeliveryMode = "email_ocr" | "api_json" | "xml_email";
 export type XmlDeliveryFormat = "ubl_2_1" | "eslog_2_0_original";
@@ -105,16 +108,14 @@ export function resolveXmlDelivery(args: {
       };
     }
 
-    // Do not fail the delivery when a user selected eSLOG for a PDF/image.
-    // We must not fabricate/mislabel OCR-derived XML as eSLOG 2.0, therefore
-    // safely fall back to generated UBL 2.1 and still deliver the invoice.
+    const generated = generateEslog20Xml(args.invoice);
     return {
-      xml: generateUbl21Xml(args.invoice),
-      filename: `${safeBase(args.invoice.invoiceNumber || args.originalFilename || "invoice")}.ubl.xml`,
-      format: "ubl_2_1" as const,
+      xml: generated,
+      filename: `${safeBase(args.invoice.invoiceNumber || args.originalFilename || "invoice")}.eslog.xml`,
+      format: "eslog_2_0" as const,
       requestedFormat: args.format,
-      fallback: true as const,
-      warning: "Selected eSLOG 2.0 requires an original eSLOG XML document; generated UBL 2.1 was sent instead.",
+      fallback: false as const,
+      warning: null,
     };
   }
 

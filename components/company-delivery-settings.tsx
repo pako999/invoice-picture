@@ -90,7 +90,7 @@ export function CompanyDeliverySettings({ companyId, locale }: { companyId: numb
     <section className="mt-6 space-y-3">
       <ModeCard active={mode === "email_ocr"} onClick={() => setMode("email_ocr")} title={en ? "OCR email · original document" : "OCR e-mail · originalni dokument"} description={en ? "Sends the original PDF/image immediately to the configured OCR email. Best for Minimax, Birokrat, Pantheon and similar email-import workflows." : "Originalni PDF/sliko takoj pošlje na nastavljen OCR e-mail. Primerno za Minimax, Birokrat, Pantheon in podobne email uvoze."} icon="📧" />
       <ModeCard active={mode === "api_json"} onClick={() => setMode("api_json")} title={en ? "API JSON · structured data" : "API JSON · strukturirani podatki"} description={en ? "After OCR and approval, POSTs normalized JSON plus the original document as Base64 to your HTTPS endpoint." : "Po OCR obdelavi in potrditvi pošlje normaliziran JSON ter originalni dokument kot Base64 na vaš HTTPS endpoint."} icon="{ }" />
-      <ModeCard active={mode === "xml_email"} onClick={() => setMode("xml_email")} title={en ? "XML email · UBL/eSLOG" : "XML e-mail · UBL/eSLOG"} description={en ? "After approval, sends structured XML by email. OCR-derived documents can be generated as UBL 2.1; original eSLOG 2.0 XML can be forwarded unchanged." : "Po potrditvi pošlje strukturiran XML po e-mailu. Iz OCR podatkov ustvarimo UBL 2.1; originalni eSLOG 2.0 XML lahko posredujemo nespremenjen."} icon="</>" />
+      <ModeCard active={mode === "xml_email"} onClick={() => setMode("xml_email")} title={en ? "XML email · UBL/eSLOG" : "XML e-mail · UBL/eSLOG"} description={en ? "After approval, sends structured UBL 2.1 or eSLOG 2.0 XML by email. Original eSLOG files are forwarded unchanged." : "Po potrditvi pošlje strukturiran UBL 2.1 ali eSLOG 2.0 XML po e-mailu. Originalni eSLOG posredujemo nespremenjen."} icon="</>" />
     </section>
 
     {mode === "api_json" && <section className="mt-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -109,10 +109,10 @@ export function CompanyDeliverySettings({ companyId, locale }: { companyId: numb
       <label className="text-sm font-bold text-slate-900">{en ? "XML format" : "XML format"}</label>
       <select value={xmlFormat} onChange={(e) => setXmlFormat(e.target.value as XmlFormat)} className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-500">
         <option value="ubl_2_1">UBL 2.1 · {en ? "generated from approved data" : "ustvarjen iz potrjenih podatkov"}</option>
-        <option value="eslog_2_0_original">eSLOG 2.0 · {en ? "forward original eSLOG XML only" : "posreduj samo originalni eSLOG XML"}</option>
+        <option value="eslog_2_0_original">eSLOG 2.0 · {en ? "generate from approved data" : "ustvari iz potrjenih podatkov"}</option>
       </select>
       <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs leading-relaxed text-amber-800">
-        {en ? "We do not label OCR-generated XML as eSLOG 2.0 unless it is a real original eSLOG document. This prevents sending a structurally invalid eSLOG file to accounting software." : "XML, ustvarjen iz OCR podatkov, ne označimo kot eSLOG 2.0, če ni pravi originalni eSLOG dokument. Tako ne pošljemo računovodskemu programu strukturno neveljavnega eSLOG-a."}
+        {en ? "For PDF and image invoices, a real eSLOG 2.0 file is generated from the approved data. An original eSLOG XML is forwarded unchanged." : "Za PDF in slikovne račune se iz potrjenih podatkov ustvari pravi eSLOG 2.0. Originalni eSLOG XML se posreduje nespremenjen."}
       </div>
       <p className="mt-3 text-xs text-slate-500">{en ? "XML is sent to the company's configured email:" : "XML se pošlje na nastavljen e-mail podjetja:"} <strong>{data?.company.recipientEmail}</strong></p>
     </section>}

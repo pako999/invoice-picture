@@ -125,7 +125,7 @@ export async function reserveOcrProviderBudget(args: {
       global_day AS (
         INSERT INTO "invoiceOcrUsageBuckets" ("scopeKey", "bucketType", "bucketStart", "reservedPages", "estimatedCostMicros", "updatedAt")
         SELECT 'global', 'day', ${dayStart}, ${pages}, ${estimatedCost}, now()
-        WHERE ${pages} <= ${config.globalDailyPages}
+        WHERE ${pages}::int <= ${config.globalDailyPages}::int
         ON CONFLICT ("scopeKey", "bucketType", "bucketStart") DO UPDATE SET
           "reservedPages" = "invoiceOcrUsageBuckets"."reservedPages" + EXCLUDED."reservedPages",
           "estimatedCostMicros" = "invoiceOcrUsageBuckets"."estimatedCostMicros" + EXCLUDED."estimatedCostMicros",
@@ -136,7 +136,7 @@ export async function reserveOcrProviderBudget(args: {
       global_month AS (
         INSERT INTO "invoiceOcrUsageBuckets" ("scopeKey", "bucketType", "bucketStart", "reservedPages", "estimatedCostMicros", "updatedAt")
         SELECT 'global', 'month', ${monthStart}, ${pages}, ${estimatedCost}, now()
-        WHERE ${pages} <= ${config.globalMonthlyPages}
+        WHERE ${pages}::int <= ${config.globalMonthlyPages}::int
         ON CONFLICT ("scopeKey", "bucketType", "bucketStart") DO UPDATE SET
           "reservedPages" = "invoiceOcrUsageBuckets"."reservedPages" + EXCLUDED."reservedPages",
           "estimatedCostMicros" = "invoiceOcrUsageBuckets"."estimatedCostMicros" + EXCLUDED."estimatedCostMicros",
@@ -147,7 +147,7 @@ export async function reserveOcrProviderBudget(args: {
       user_day AS (
         INSERT INTO "invoiceOcrUsageBuckets" ("scopeKey", "bucketType", "bucketStart", "reservedPages", "estimatedCostMicros", "updatedAt")
         SELECT ${userScope}, 'day', ${dayStart}, ${pages}, ${estimatedCost}, now()
-        WHERE ${pages} <= ${config.userDailyPages}
+        WHERE ${pages}::int <= ${config.userDailyPages}::int
         ON CONFLICT ("scopeKey", "bucketType", "bucketStart") DO UPDATE SET
           "reservedPages" = "invoiceOcrUsageBuckets"."reservedPages" + EXCLUDED."reservedPages",
           "estimatedCostMicros" = "invoiceOcrUsageBuckets"."estimatedCostMicros" + EXCLUDED."estimatedCostMicros",
@@ -158,7 +158,7 @@ export async function reserveOcrProviderBudget(args: {
       user_month AS (
         INSERT INTO "invoiceOcrUsageBuckets" ("scopeKey", "bucketType", "bucketStart", "reservedPages", "estimatedCostMicros", "updatedAt")
         SELECT ${userScope}, 'month', ${monthStart}, ${pages}, ${estimatedCost}, now()
-        WHERE ${pages} <= ${config.userMonthlyPages}
+        WHERE ${pages}::int <= ${config.userMonthlyPages}::int
         ON CONFLICT ("scopeKey", "bucketType", "bucketStart") DO UPDATE SET
           "reservedPages" = "invoiceOcrUsageBuckets"."reservedPages" + EXCLUDED."reservedPages",
           "estimatedCostMicros" = "invoiceOcrUsageBuckets"."estimatedCostMicros" + EXCLUDED."estimatedCostMicros",
@@ -177,11 +177,17 @@ export async function reserveOcrProviderBudget(args: {
     `;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    if (/division by zero|quota/i.test(message)) {
+    if (/division by zero/i.test(message)) {
       throw new OcrSafetyQuotaError(
         `OCR safety quota reached. Limits: user ${config.userDailyPages}/day, ${config.userMonthlyPages}/month; global ${config.globalDailyPages}/day, ${config.globalMonthlyPages}/month.`,
       );
     }
+    console.error("[invoice-ocr] Failed to reserve OCR safety budget", {
+      error: message,
+      clerkUserId: args.clerkUserId,
+      provider: args.provider,
+      pages,
+    });
     throw error;
   }
 }

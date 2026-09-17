@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { emptyInvoice } from "../lib/invoice-intelligence/types";
-import { generateUbl21Xml, isLikelyEslog20Xml, resolveXmlDelivery, validatePublicHttpsUrl } from "../lib/invoice-intelligence/delivery-format";
+import { generateEslog20Xml, generateUbl21Xml, isLikelyEslog20Xml, resolveXmlDelivery, validatePublicHttpsUrl } from "../lib/invoice-intelligence/delivery-format";
 
 test("generates UBL 2.1 invoice XML from approved data", () => {
   const invoice = emptyInvoice();
@@ -33,9 +33,11 @@ test("blocks unsafe/private API endpoints", () => {
   assert.equal(validatePublicHttpsUrl("https://accounting.example.com/api"), "https://accounting.example.com/api");
 });
 
-test("selected eSLOG for PDF/image falls back to UBL 2.1 instead of failing delivery", () => {
+test("generates eSLOG 2.0 from approved PDF/image data", () => {
   const invoice = emptyInvoice();
   invoice.invoiceNumber = "R-2026-002";
+  invoice.issueDate = "2026-09-07";
+  invoice.dueDate = "2026-09-21";
   invoice.currency = "EUR";
   invoice.supplier.name = "Dobavitelj d.o.o.";
   invoice.buyer.name = "Kupec d.o.o.";
@@ -43,6 +45,8 @@ test("selected eSLOG for PDF/image falls back to UBL 2.1 instead of failing deli
   invoice.totals.vatAmount = "22.00";
   invoice.totals.grossAmount = "122.00";
   invoice.totals.amountDue = "122.00";
+  invoice.lineItems = [{ description: "Storitev", quantity: "1", unit: null, unitPriceNet: "100.00", discountPercent: null, discountAmount: null, vatRate: "22", netAmount: "100.00", vatAmount: "22.00", grossAmount: "122.00" }];
+  invoice.vatBreakdown = [{ vatRate: "22", taxableAmount: "100.00", vatAmount: "22.00", grossAmount: "122.00" }];
 
   const result = resolveXmlDelivery({
     format: "eslog_2_0_original",
@@ -52,12 +56,40 @@ test("selected eSLOG for PDF/image falls back to UBL 2.1 instead of failing deli
     originalFilename: "invoice.pdf",
   });
 
-  assert.equal(result.format, "ubl_2_1");
-  assert.equal(result.fallback, true);
+  assert.equal(result.format, "eslog_2_0");
+  assert.equal(result.fallback, false);
   assert.equal(result.requestedFormat, "eslog_2_0_original");
-  assert.match(result.filename, /\.ubl\.xml$/);
-  assert.match(result.xml, /UBLVersionID>2\.1/);
-  assert.match(result.warning || "", /eSLOG 2\.0/i);
+  assert.match(result.filename, /\.eslog\.xml$/);
+  assert.match(result.xml, /xmlns="urn:eslog:2\.00"/);
+  assert.match(result.xml, /<D_1004>R-2026-002<\/D_1004>/);
+  assert.match(result.xml, /<D_0062>R-2026-002<\/D_0062>/);
+  assert.equal(result.warning, null);
+});
+
+test("generated eSLOG escapes values and includes accounting totals", () => {
+  const invoice = emptyInvoice();
+  invoice.invoiceNumber = "491091473";
+  invoice.issueDate = "2025-09-03";
+  invoice.dueDate = "2025-09-10";
+  invoice.currency = "EUR";
+  invoice.supplier.name = "GENERAL & LOGISTICS d.o.o.";
+  invoice.supplier.vatNumber = "SI74531891";
+  invoice.supplier.iban = "SI56101000052763339";
+  invoice.supplier.bic = "BAKOSI2X";
+  invoice.buyer.name = "SPORT GROUP d.o.o.";
+  invoice.buyer.vatNumber = "SI72133449";
+  invoice.totals.netAmount = "464.80";
+  invoice.totals.vatAmount = "102.26";
+  invoice.totals.grossAmount = "567.06";
+  invoice.totals.amountDue = "567.06";
+  invoice.lineItems = [{ description: "Domači paket", quantity: "3", unit: null, unitPriceNet: "4.03", discountPercent: null, discountAmount: null, vatRate: "22", netAmount: "12.09", vatAmount: "2.66", grossAmount: "14.75" }];
+  invoice.vatBreakdown = [{ vatRate: "22", taxableAmount: "464.80", vatAmount: "102.26", grossAmount: "567.06" }];
+
+  const xml = generateEslog20Xml(invoice);
+  assert.match(xml, /<D_1004>491091473<\/D_1004>/);
+  assert.match(xml, /GENERAL &amp; LOGISTICS/);
+  assert.match(xml, /<D_5025>9<\/D_5025><D_5004>567\.06<\/D_5004>/);
+  assert.equal(isLikelyEslog20Xml(xml), true);
 });
 
 test("does not misclassify CII or generic INVOIC XML as eSLOG", () => {

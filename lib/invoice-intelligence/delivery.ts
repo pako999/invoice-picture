@@ -156,9 +156,9 @@ export async function deliverInvoiceDocument(documentId: number) {
   });
 
   const formatLabel = resolved.format === "ubl_2_1" ? "UBL 2.1" : "eSLOG 2.0";
-  const fallbackNotice = resolved.fallback
-    ? "Izbran je bil eSLOG 2.0, vendar vhodni dokument ni bil originalni eSLOG XML. Da pošiljanje ne bi odpovedalo, je bil iz potrjenih podatkov varno ustvarjen UBL 2.1 XML."
-    : "XML je bil pripravljen iz potrjenih podatkov računa. Originalni dokument ostane shranjen v Slikaj Račun.";
+  const fallbackNotice = resolved.format === "eslog_2_0"
+    ? "eSLOG 2.0 XML je bil pripravljen iz potrjenih podatkov računa oziroma je bil originalni eSLOG posredovan nespremenjen."
+    : "UBL 2.1 XML je bil pripravljen iz potrjenih podatkov računa. Originalni dokument ostane shranjen v Slikaj Račun.";
 
   const result = await getResend().emails.send({
     from: process.env.RESEND_FROM ?? "onboarding@resend.dev",
