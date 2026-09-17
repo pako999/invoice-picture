@@ -1,11 +1,1 @@
-import type { ReactNode } from "react";
-import { InvoiceReviewShortcut } from "@/components/invoice-review-shortcut";
-
-export default function ScanLayout({ children }: { children: ReactNode }) {
-  return (
-    <>
-      <InvoiceReviewShortcut locale="en" />
-      {children}
-    </>
-  );
-}
+import type{ReactNode}from"react";import{InvoiceReviewShortcut}from"@/components/invoice-review-shortcut";import{OcrUsagePanel}from"@/components/ocr-usage-panel";export default function ScanLayout({children}:{children:ReactNode}){return <><InvoiceReviewShortcut locale="en"/><OcrUsagePanel locale="en"/>{children}</>}

@@ -1,11 +1,1 @@
-import type { ReactNode } from "react";
-import { InvoiceReviewShortcut } from "@/components/invoice-review-shortcut";
-
-export default function InvoicesLayout({ children }: { children: ReactNode }) {
-  return (
-    <>
-      <InvoiceReviewShortcut locale="sl" />
-      {children}
-    </>
-  );
-}
+import type{ReactNode}from"react";import{InvoiceReviewShortcut}from"@/components/invoice-review-shortcut";import{OcrUsagePanel}from"@/components/ocr-usage-panel";export default function InvoicesLayout({children}:{children:ReactNode}){return <><InvoiceReviewShortcut locale="sl"/><OcrUsagePanel locale="sl"/>{children}</>}
