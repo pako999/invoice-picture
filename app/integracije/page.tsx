@@ -14,7 +14,7 @@ const integrations = [
   { name: "Minimax", logo: "/logos/minimax.svg", short: "Email uvoz in računovodski workflow", href: "https://www.minimax.si" },
   { name: "Birokrat", logo: "/logos/birokrat.png", short: "Uvoz dokumentov in računovodski workflow", href: "https://www.birokrat.si" },
   { name: "Pantheon", logo: "/logos/pantheon.png", short: "Dokumentni in OCR workflow", href: "https://www.datalab.si/pantheon" },
-  { name: "SAOP", logo: "/logos/saop.png", short: "Digitalni dokumentni procesi", href: "https://www.saop.si" },
+  { name: "SAOP", logo: null, short: "Digitalni dokumentni procesi", href: "https://www.saop.si" },
   { name: "E-računi", logo: "/logos/eracuni.png", short: "Spletno računovodstvo in uvoz dokumentov", href: "https://www.eracuni.com" },
   { name: "Metakocka", logo: "/logos/metakocka.png", short: "ERP in digitalni uvoz dokumentov", href: "https://www.metakocka.si" },
 ];
@@ -63,8 +63,7 @@ export default function Integracije() {
               <Card className="h-full border-slate-200 transition-shadow hover:shadow-lg">
                 <CardHeader>
                   <div className="mb-3 flex items-center justify-between">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={p.logo} alt={`${p.name} računovodski program`} className="h-10 object-contain" />
+                    {p.logo ? <img src={p.logo} alt={`${p.name} računovodski program`} className="h-10 object-contain" /> : <div className="flex h-10 items-center rounded-lg bg-slate-100 px-3 text-sm font-black text-slate-700">SAOP</div>}
                     <ExternalLink className="h-4 w-4 text-slate-400" />
                   </div>
                   <CardTitle className="flex items-center justify-between text-xl">{p.name}<Check className="h-5 w-5 text-green-600" /></CardTitle>
