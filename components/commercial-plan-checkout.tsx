@@ -12,20 +12,6 @@ import {
   type PaidPlan,
 } from "@/lib/plans";
 
-interface PaddleEvent {
-  name?: string;
-}
-
-declare global {
-  interface Window {
-    Paddle?: {
-      Environment: { set: (env: "sandbox" | "production") => void };
-      Initialize: (options: { token: string; eventCallback?: (event: PaddleEvent) => void }) => void;
-      Checkout: { open: (options: Record<string, unknown>) => void };
-    };
-  }
-}
-
 const PADDLE_TOKEN = process.env.NEXT_PUBLIC_PADDLE_CLIENT_TOKEN ?? "";
 const PADDLE_ENV = (process.env.NEXT_PUBLIC_PADDLE_ENV ?? "sandbox") as "sandbox" | "production";
 
