@@ -54,7 +54,7 @@ export async function readDeterministically(input: { base64: string; mimeType: s
     }
 
     const pdfText = extractSimplePdfText(bytes);
-    if (pdfText.length >= 250 && /(invoice|račun|racun|rechnung|fattura|račun broj|ddv|vat)/i.test(pdfText)) {
+    if (pdfText.length >= 250 && /(invoice|račun|racun|rechnung|fattura|račun broj|ddv|vat|sales\s+quote|quotation|quote|offer|estimate|ponudba|predračun|predracun|proforma)/i.test(pdfText)) {
       const invoice = parseTextLayer(pdfText);
       if (criticalCount(invoice) >= 5) {
         return {
@@ -95,11 +95,15 @@ export async function readWithMistral(input: { base64: string; mimeType: string;
       confidence_scores_granularity: "block",
       table_format: "html",
       document_annotation_prompt: [
-        "Extract invoice data only from document evidence.",
-        "Return null for missing or unreadable values. Never invent values.",
+        "Extract structured accounting data from invoices, credit notes, receipts, proforma invoices, quotations, sales quotes, offers and estimates.",
+        "A quotation, sales quote, offer or estimate is still a readable accounting document: set documentType to proforma and extract every shared field that is visible.",
+        "For a quotation or offer, place its quote/offer number in invoiceNumber because the schema has no separate quote-number field.",
+        "Do not leave fields null merely because the document is a quotation or proforma. Return null only when the value is genuinely missing or unreadable. Never invent values.",
+        "Extract supplier, buyer, document number, dates, payment reference and terms, currency, all line items, discounts, VAT breakdown, totals, IBAN and BIC whenever visible.",
         "Normalize dates to YYYY-MM-DD, currencies to ISO 4217, countries to ISO alpha-2.",
         "Return monetary values as decimal strings without currency symbols and keep credit-note signs correct.",
         "Supplier means the issuer/seller; buyer means the customer/recipient.",
+        "If the document is a quotation, offer, estimate or proforma, add a warning that it requires manual review before delivery.",
         "Set validationStatus to pending; deterministic validation runs after extraction.",
       ].join(" "),
       document_annotation_format: {
@@ -117,6 +121,17 @@ export async function readWithMistral(input: { base64: string; mimeType: string;
   const invoice = normalizeInvoiceValues(normalizedInvoiceSchema.parse(annotation));
   const responsePages = Array.isArray(raw.pages) ? raw.pages : [];
   const rawText = responsePages.map((p: Record<string, unknown>) => typeof p.markdown === "string" ? p.markdown : "").join("\n\n");
+
+  if (criticalCount(invoice) < 5 && rawText.trim()) {
+    const fallback = normalizeInvoiceValues(parseTextLayer(rawText));
+    const recovered = mergeMissingInvoiceFields(invoice, fallback);
+    if (recovered > 0) invoice.warnings.push(`Recovered ${recovered} missing field${recovered === 1 ? "" : "s"} from OCR text fallback.`);
+  }
+
+  if (invoice.documentType === "proforma" && !invoice.warnings.some((w) => /manual review before delivery/i.test(w))) {
+    invoice.warnings.push("Quotation/proforma document requires manual review before delivery.");
+  }
+
   const evidence = buildEvidence(invoice, responsePages);
   const pageCount = Number(raw.usage_info?.pages_processed ?? responsePages.length ?? 1);
   const costPerAnnotatedPageMicros = Number(process.env.MISTRAL_ANNOTATED_PAGE_COST_MICROS ?? 5000);
@@ -228,20 +243,80 @@ function parseStructuredXml(xml: string): NormalizedInvoice | null {
 function parseTextLayer(text: string): NormalizedInvoice {
   const invoice = emptyInvoice();
   const lines = text.split(/\r?\n/).map((x) => x.trim()).filter(Boolean);
-  invoice.documentType = /credit note|dobropis|gutschrift/i.test(text) ? "credit_note" : "invoice";
-  invoice.invoiceNumber = match(text, /(?:invoice|račun|racun|rechnung|fattura)(?:\s*(?:no\.?|nr\.?|št\.?|st\.?|number))?\s*[:#]?\s*([A-Z0-9][A-Z0-9\-_/]{2,})/i);
-  invoice.issueDate = match(text, /(?:issue date|datum izdaje|datum računa|rechnungsdatum|data fattura)\s*[:]?\s*(\d{1,4}[./-]\d{1,2}[./-]\d{1,4})/i);
+  const isQuote = /sales\s+quote|quotation|\bquote\b|\boffer\b|estimate|ponudba|predračun|predracun|proforma/i.test(text);
+  invoice.documentType = /credit note|dobropis|gutschrift/i.test(text) ? "credit_note" : isQuote ? "proforma" : "invoice";
+  invoice.invoiceNumber = match(text, /(?:sales\s+quote|quotation|quote|offer|estimate|ponudba|predračun|predracun|proforma|invoice|račun|racun|rechnung|fattura)(?:\s*(?:no\.?|nr\.?|št\.?|st\.?|number))?\s*[:#]?\s*([A-Z0-9][A-Z0-9\-_/]{2,})/i);
+  invoice.purchaseOrderNumber = match(text, /(?:purchase\s+order|order\s+no\.?|naročilnica|narocilnica|ref\.?\s*sales\s*order)\s*[:#]?\s*([A-Z0-9][A-Z0-9\-_/]{1,})/i);
+  invoice.issueDate = match(text, /(?:issue date|document date|quote date|datum izdaje|datum računa|datum racuna|datum dokumenta|rechnungsdatum|data fattura|city,\s*document date)\s*[:]?\s*(\d{1,4}[./-]\d{1,2}[./-]\d{1,4})/i);
+  invoice.serviceDate = match(text, /(?:service date|delivery\/performance date|performance date|delivery date|datum storitve|datum dobave)\s*[:]?\s*(\d{1,4}[./-]\d{1,2}[./-]\d{1,4})/i);
   invoice.dueDate = match(text, /(?:due date|rok plačila|rok placila|fällig|scadenza)\s*[:]?\s*(\d{1,4}[./-]\d{1,2}[./-]\d{1,4})/i);
-  invoice.currency = match(text, /\b(EUR|USD|GBP|CHF|HRK|CZK|PLN|HUF|SEK|NOK|DKK|RON|BGN)\b/i)?.toUpperCase() ?? null;
-  invoice.supplier.vatNumber = match(text, /\b((?:SI|HR|DE|ATU|IT|FR)[A-Z0-9]{7,13})\b/i)?.toUpperCase() ?? null;
+  invoice.currency = match(text, /\b(EUR|USD|GBP|CHF|HRK|CZK|PLN|HUF|SEK|NOK|DKK|RON|BGN|RSD|BAM|CAD|AUD|JPY)\b/i)?.toUpperCase() ?? null;
+  invoice.supplier.vatNumber = match(text, /(?:VAT\s*ID|VAT\s*No\.?|ID\s*za\s*DDV|Davčna\s*številka|Davcna\s*stevilka)\s*[:#]?\s*((?:SI|HR|DE|ATU|IT|FR)?[A-Z0-9]{7,14})/i)
+    ?? match(text, /\b((?:SI|HR|DE|ATU|IT|FR)[A-Z0-9]{7,13})\b/i)?.toUpperCase()
+    ?? null;
   invoice.supplier.iban = match(text, /\b([A-Z]{2}\d{2}(?:\s?[A-Z0-9]){11,30})\b/i)?.replace(/\s/g, "") ?? null;
-  invoice.totals.grossAmount = match(text, /(?:total|skupaj|za plačilo|za placilo|gesamt|totale)[^\d\-]{0,20}(-?[\d.,]+)\s*(?:EUR|€)?/i);
-  invoice.totals.vatAmount = match(text, /(?:VAT|DDV|MwSt|IVA)[^\d\-]{0,20}(-?[\d.,]+)/i);
-  invoice.totals.netAmount = match(text, /(?:net total|osnova|neto|netto|imponibile)[^\d\-]{0,20}(-?[\d.,]+)/i);
-  invoice.supplier.name = lines.find((line) => line.length >= 3 && line.length <= 100 && !/invoice|račun|racun|rechnung|fattura/i.test(line)) ?? null;
+  invoice.supplier.bic = match(text, /(?:SWIFT\/BIC|BIC)\s*[:#]?\s*([A-Z0-9]{8,11})/i)?.toUpperCase() ?? null;
+  invoice.paymentReference = match(text, /(?:payment ref(?:erence)?|sklic)\s*[:#]?\s*([A-Z0-9][A-Z0-9\s\-_/]{2,})/i);
+  invoice.paymentTerms = match(text, /(?:method of payment|payment terms|način plačila|nacin placila)\s*[:#]?\s*([^\n|]{3,80})/i);
+  invoice.totals.grossAmount = match(text, /(?:total amount(?:\s+EUR)?|total\s+amount\s+due|total|skupaj|za plačilo|za placilo|gesamt|totale)[^\d\-]{0,30}(-?[\d.,]+)\s*(?:EUR|€)?/i);
+  invoice.totals.vatAmount = match(text, /(?:VAT(?:\s+amount)?|DDV|MwSt|IVA)[^\d\-]{0,25}(-?[\d.,]+)/i);
+  invoice.totals.netAmount = match(text, /(?:net amount|net total|osnova|neto|netto|imponibile)[^\d\-]{0,25}(-?[\d.,]+)/i);
+  invoice.totals.discountAmount = match(text, /(?:discount|popust)[^\d\-]{0,25}(-?[\d.,]+)/i);
+  invoice.totals.amountDue = invoice.totals.grossAmount;
+  invoice.supplier.name = match(text, /(?:company|seller|supplier|dobavitelj)\s*[:#]?\s*([^\n|]{3,120})/i)
+    ?? lines.find((line) => /\b(d\.?o\.?o\.?|s\.?p\.?)\b/i.test(line) && line.length <= 120)
+    ?? lines.find((line) => line.length >= 3 && line.length <= 100 && !/invoice|račun|racun|rechnung|fattura|quote|quotation|offer|ponudba|predračun|predracun/i.test(line))
+    ?? null;
+  invoice.buyer.name = match(text, /(?:buyer|customer|recipient|kupec|prejemnik)\s*[:#]?\s*([^\n|]{3,120})/i);
+  if (isQuote) invoice.warnings.push("Quotation/proforma document requires manual review before delivery.");
   invoice.confidence = { overall: 0.72, fields: {} };
   invoice.validationStatus = "pending";
   return invoice;
+}
+
+function mergeMissingInvoiceFields(target: NormalizedInvoice, fallback: NormalizedInvoice) {
+  let recovered = 0;
+  const assign = <K extends keyof NormalizedInvoice>(key: K) => {
+    if ((target[key] == null || target[key] === "") && fallback[key] != null && fallback[key] !== "") {
+      (target[key] as NormalizedInvoice[K]) = fallback[key];
+      recovered += 1;
+    }
+  };
+
+  for (const key of ["invoiceNumber", "purchaseOrderNumber", "issueDate", "serviceDate", "dueDate", "paymentReference", "paymentTerms", "currency"] as const) assign(key);
+  if (target.documentType === "unknown" && fallback.documentType !== "unknown") {
+    target.documentType = fallback.documentType;
+    recovered += 1;
+  }
+
+  for (const key of ["name", "address", "postalCode", "city", "countryCode", "vatNumber", "registrationNumber", "email", "phone", "iban", "bic"] as const) {
+    if ((target.supplier[key] == null || target.supplier[key] === "") && fallback.supplier[key]) {
+      target.supplier[key] = fallback.supplier[key];
+      recovered += 1;
+    }
+  }
+  for (const key of ["name", "address", "postalCode", "city", "countryCode", "vatNumber", "registrationNumber"] as const) {
+    if ((target.buyer[key] == null || target.buyer[key] === "") && fallback.buyer[key]) {
+      target.buyer[key] = fallback.buyer[key];
+      recovered += 1;
+    }
+  }
+  for (const key of ["netAmount", "discountAmount", "vatAmount", "grossAmount", "amountPaid", "amountDue"] as const) {
+    if ((target.totals[key] == null || target.totals[key] === "") && fallback.totals[key]) {
+      target.totals[key] = fallback.totals[key];
+      recovered += 1;
+    }
+  }
+  if (!target.lineItems.length && fallback.lineItems.length) {
+    target.lineItems = fallback.lineItems;
+    recovered += fallback.lineItems.length;
+  }
+  if (!target.vatBreakdown.length && fallback.vatBreakdown.length) {
+    target.vatBreakdown = fallback.vatBreakdown;
+    recovered += fallback.vatBreakdown.length;
+  }
+  for (const warning of fallback.warnings) if (!target.warnings.includes(warning)) target.warnings.push(warning);
+  return recovered;
 }
 
 function mapAzureInvoice(fields: Record<string, any>): NormalizedInvoice {
