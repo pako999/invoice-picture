@@ -139,7 +139,7 @@ export default function Home() {
                 <div className="flex gap-3">
                   <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
                   <div className="text-sm text-amber-900">
-                    <strong>Pogoj za uporabo:</strong> V vašem računovodskem programu mora biti vklopljeno sprejemanje računov po emailu z OCR obdelavo. Preverite nastavitve pri Minimax, Birokrat, Pantheon ali vašem programu.
+                    <strong>Kako poteka obdelava:</strong> Če uporabljate brezplačni paket brez OCR, mora OCR obdelavo omogočati vaš računovodski program. Pri plačljivih OCR paketih račun prebere Slikaj Račun, vi pa podatke samo preverite in izvozite.
                   </div>
                 </div>
               </div>

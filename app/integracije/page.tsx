@@ -50,7 +50,7 @@ export default function Integracije() {
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-left max-w-3xl mx-auto">
             <div className="flex gap-3">
               <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-amber-900"><strong>Pogoj za uporabo:</strong> računovodski program mora omogočati sprejem dokumentov po emailu oziroma ustrezen uvoz dokumentov.</p>
+              <p className="text-sm text-amber-900"><strong>Kako poteka obdelava:</strong> pri brezplačnem paketu brez OCR dokument obdela vaš računovodski program. Pri plačljivih OCR paketih račun prebere Slikaj Račun, nato pa preverjene podatke izvozite v računovodski program.</p>
             </div>
           </div>
         </div>

@@ -35,7 +35,7 @@ const globalIntegrations = [
 const faq = [
   ["What is an accounting software integration?", "It connects invoice capture with the accounting system where documents are processed. Slikaj Račun forwards the invoice image to the configured import address."],
   ["Does it require a direct API integration?", "Not necessarily. If your accounting software accepts invoice documents by email, Slikaj Račun can use that workflow without replacing your accounting system."],
-  ["Does Slikaj Račun perform the OCR itself?", "The accounting software performs the OCR in the standard workflow described on this page. Slikaj Račun focuses on fast capture and delivery of the document."],
+  ["Does Slikaj Račun perform the OCR itself?", "Yes, with a paid OCR plan. If you use the free plan without OCR, the accounting software performs the OCR after receiving the document."],
 ];
 
 export default function Integrations() {
@@ -53,12 +53,12 @@ export default function Integrations() {
           <Badge className="mb-4 bg-indigo-100 text-indigo-700 hover:bg-indigo-200 border-0">Accounting software integrations</Badge>
           <h1 className="text-4xl sm:text-5xl tracking-tight mb-6 font-bold">Accounting software integrations for OCR and email invoice import</h1>
           <p className="text-xl text-slate-600 max-w-3xl mx-auto mb-6">
-            Slikaj Račun forwards the invoice photo to your accounting software&rsquo;s configured import email. OCR processing is then handled by the accounting program, so you keep your existing accounting workflow.
+            With a paid OCR plan, Slikaj Račun reads the invoice and lets you review the extracted data before export. On the free plan without OCR, the original document is forwarded to your accounting software for processing.
           </p>
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-left max-w-3xl mx-auto">
             <div className="flex gap-3">
               <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-amber-900"><strong>Prerequisite:</strong> your accounting program must support a compatible document-import workflow such as email-based invoice import.</p>
+              <p className="text-sm text-amber-900"><strong>How processing works:</strong> on the free plan without OCR, your accounting software processes the document. With a paid OCR plan, Slikaj Račun reads the invoice and exports the reviewed data to your accounting workflow.</p>
             </div>
           </div>
         </div>

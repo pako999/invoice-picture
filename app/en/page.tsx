@@ -136,7 +136,7 @@ export default function HomeEn() {
                 <div className="flex gap-3">
                   <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
                   <div className="text-sm text-amber-900">
-                    <strong>Prerequisite:</strong> your accounting software must accept invoices via email with OCR processing enabled. Check the import settings in Minimax, Birokrat, Pantheon or your program of choice.
+                    <strong>How processing works:</strong> If you use the free plan without OCR, your accounting software must provide the OCR processing. With a paid OCR plan, Slikaj Račun reads the invoice for you, so you only need to review and export the data.
                   </div>
                 </div>
               </div>
