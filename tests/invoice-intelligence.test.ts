@@ -89,12 +89,15 @@ test("missing VAT number does not reject an otherwise valid invoice", () => {
   assert.equal(result.errors.length, 0);
 });
 
-test("invalid IBAN fails MOD-97", () => {
+test("invalid IBAN is reported as a non-blocking review warning", () => {
   assert.equal(validateIban("SI7719100000012345"), true);
   assert.equal(validateIban("SI7719100000012346"), false);
   const invoice = baseInvoice();
   invoice.supplier.iban = "SI7719100000012346";
-  assert.match(validateInvoice(invoice).errors.join(" "), /IBAN/i);
+  const result = validateInvoice(invoice);
+  assert.equal(result.errors.length, 0);
+  assert.equal(result.status, "needs_review");
+  assert.match(result.warnings.join(" "), /IBAN/i);
 });
 
 test("incorrect totals are detected", () => {

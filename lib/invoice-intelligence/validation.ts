@@ -153,7 +153,7 @@ export function validateInvoice(invoice: NormalizedInvoice): ValidationResult {
   for (const [name, value] of required) if (value == null || value === "") warnings.push(`Missing required accounting field: ${name}`);
 
   if (invoice.currency && !ISO_CURRENCIES.has(invoice.currency)) errors.push(`Invalid currency code: ${invoice.currency}`);
-  if (!validateIban(invoice.supplier.iban)) errors.push("Supplier IBAN failed MOD-97 validation");
+  if (!validateIban(invoice.supplier.iban)) warnings.push("Supplier IBAN failed MOD-97 validation");
   if (!validateVatFormat(invoice.supplier.vatNumber, invoice.supplier.countryCode)) warnings.push("Supplier VAT number format does not match country");
   if (!validateVatFormat(invoice.buyer.vatNumber, invoice.buyer.countryCode)) warnings.push("Buyer VAT number format does not match country");
 
