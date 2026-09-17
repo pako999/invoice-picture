@@ -7,6 +7,7 @@ import { FREE_MONTHLY_LIMIT, getStatus } from "@/lib/subscription";
 import { eq, and } from "drizzle-orm";
 import { z } from "zod";
 import { enqueueInvoiceDocument } from "@/lib/invoice-intelligence/queue";
+import { OcrCommercialQuotaError } from "@/lib/invoice-intelligence/quota";
 import { getCompanyDeliverySettings } from "@/lib/invoice-intelligence/delivery-settings";
 import type { DeliveryMode } from "@/lib/invoice-intelligence/delivery-format";
 
@@ -38,7 +39,7 @@ export async function POST(req: NextRequest) {
   const status = await getStatus(userId);
   if (!status.canSend) {
     return NextResponse.json(
-      { success: false, error: "Trial expired — upgrade to keep sending invoices.", code: "subscription_required", plan: status.plan },
+      { success: false, error: "Trial expired — upgrade to keep sending invoices.", code: "subscription_required", plan: status.commercialPlan },
       { status: 402 },
     );
   }
@@ -99,6 +100,7 @@ export async function POST(req: NextRequest) {
 
     let processingDocumentId: number | null = null;
     let queueErrorMessage: string | null = null;
+    let queueQuotaError: OcrCommercialQuotaError | null = null;
     try {
       processingDocumentId = await enqueueInvoiceDocument({
         clerkUserId: userId,
@@ -110,12 +112,24 @@ export async function POST(req: NextRequest) {
       });
     } catch (queueError) {
       queueErrorMessage = queueError instanceof Error ? queueError.message : "unknown";
+      if (queueError instanceof OcrCommercialQuotaError) queueQuotaError = queueError;
       console.error("invoice_reader_enqueue_failed", queueErrorMessage);
     }
 
     if (deliveryMode !== "email_ocr") {
       if (!processingDocumentId) {
         await db.update(invoices).set({ status: "failed", errorMessage: `Structured delivery could not be queued: ${queueErrorMessage || "unknown error"}` }).where(eq(invoices.id, result.id));
+        if (queueQuotaError) {
+          return NextResponse.json({
+            success: false,
+            error: queueQuotaError.message,
+            code: queueQuotaError.code,
+            quotaType: queueQuotaError.quotaType,
+            plan: queueQuotaError.plan,
+            deliveryMode,
+            upgradeUrl: "/cenik",
+          }, { status: 402 });
+        }
         return NextResponse.json({ success: false, error: "Structured invoice processing could not be queued.", deliveryMode }, { status: 500 });
       }
       return NextResponse.json({
@@ -137,7 +151,15 @@ export async function POST(req: NextRequest) {
         messageBody: data.messageBody,
       });
       await db.update(invoices).set({ status: "sent", sentAt: new Date() }).where(eq(invoices.id, result.id));
-      return NextResponse.json({ success: true, id: result.id, processingDocumentId, deliveryMode });
+      return NextResponse.json({
+        success: true,
+        id: result.id,
+        processingDocumentId,
+        deliveryMode,
+        ocrQueued: Boolean(processingDocumentId),
+        ocrLimitReached: Boolean(queueQuotaError),
+        ocrMessage: queueQuotaError?.message ?? null,
+      });
     } catch (emailErr) {
       const msg = emailErr instanceof Error ? emailErr.message : String(emailErr);
       await db.update(invoices).set({ status: "failed", errorMessage: msg }).where(eq(invoices.id, result.id));
