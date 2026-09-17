@@ -25,6 +25,7 @@ import {
   reserveOcrProviderBudget,
   type OcrRunBudget,
 } from "./safety";
+import { OcrCommercialQuotaError } from "./quota";
 import { normalizedInvoiceSchema, type NormalizedInvoice, type ReaderResult, type ValidationResult } from "./types";
 import { normalizeInvoiceValues, validateInvoice } from "./validation";
 
@@ -79,6 +80,7 @@ export async function processInvoiceDocument(documentId: number, runBudget?: Ocr
         }
       }
     } catch (error) {
+      if (error instanceof OcrCommercialQuotaError) throw error;
       if (isSafetyDeferral(error)) throw error;
       mistralError = error;
     }
@@ -107,6 +109,7 @@ export async function processInvoiceDocument(documentId: number, runBudget?: Ocr
         }
       }
     } catch (error) {
+      if (error instanceof OcrCommercialQuotaError) throw error;
       if (isSafetyDeferral(error)) throw error;
       if (!result && mistralError) throw new Error(`Mistral failed: ${messageOf(mistralError)}; Azure failed: ${messageOf(error)}`);
     }
@@ -183,6 +186,33 @@ export async function runQueuedInvoiceJobs(limit = 3) {
       await db.update(invoiceProcessingJobs).set({ status: "completed", lastError: null, lockedAt: null, updatedAt: new Date() }).where(eq(invoiceProcessingJobs.id, job.id));
       results.push({ jobId: job.id, documentId: job.documentId, ok: true });
     } catch (error) {
+      if (error instanceof OcrCommercialQuotaError) {
+        const message = messageOf(error).slice(0, 2000);
+        await db.update(invoiceProcessingJobs).set({
+          status: "failed",
+          attempts: job.maxAttempts,
+          lastError: message,
+          lockedAt: null,
+          availableAt: new Date(),
+          updatedAt: new Date(),
+        }).where(eq(invoiceProcessingJobs.id, job.id));
+        await db.update(invoiceDocuments).set({
+          status: "failed",
+          validationStatus: "failed",
+          warningsJson: JSON.stringify([message]),
+          processedAt: new Date(),
+          updatedAt: new Date(),
+        }).where(eq(invoiceDocuments.id, job.documentId));
+        await db.insert(invoiceAuditLogs).values({
+          documentId: job.documentId,
+          clerkUserId: (await db.select({ clerkUserId: invoiceDocuments.clerkUserId }).from(invoiceDocuments).where(eq(invoiceDocuments.id, job.documentId)).limit(1))[0]?.clerkUserId ?? "unknown",
+          action: "ocr_plan_limit_reached",
+          metadataJson: JSON.stringify({ quotaType: error.quotaType, limit: error.limit, plan: error.plan }),
+        });
+        results.push({ jobId: job.id, documentId: job.documentId, ok: false, error: message });
+        continue;
+      }
+
       if (isSafetyDeferral(error)) {
         const delayMinutes = error instanceof OcrRunBudgetError ? 2 : 60;
         await db.update(invoiceProcessingJobs).set({
@@ -200,8 +230,6 @@ export async function runQueuedInvoiceJobs(limit = 3) {
           updatedAt: new Date(),
         }).where(eq(invoiceDocuments.id, job.documentId));
         results.push({ jobId: job.id, documentId: job.documentId, ok: false, deferred: true, error: messageOf(error) });
-        // Run/global budget has hit a circuit breaker. Stop this cron invocation
-        // instead of repeatedly touching more jobs.
         break;
       }
 
