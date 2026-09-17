@@ -97,17 +97,9 @@ const websiteJsonLd = {
   url: SITE_URL,
   inLanguage: ["sl-SI", "en"],
   publisher: { "@id": `${SITE_URL}#organization` },
-  potentialAction: {
-    "@type": "SearchAction",
-    target: `${SITE_URL}/?q={search_term_string}`,
-    "query-input": "required name=search_term_string",
-  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  // Root layout: <html lang="sl"> by default. Nav/Footer auto-detect
-  // locale from the URL (/en/* → English) and re-render accordingly.
-  // The /en subtree's client-side layout flips <html lang> to "en".
   return (
     <ClerkProvider>
       <html lang="sl" className="light" style={{ colorScheme: "light" }}>

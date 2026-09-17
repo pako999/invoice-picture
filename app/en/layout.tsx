@@ -11,11 +11,21 @@ export const metadata: Metadata = {
     template: "%s — Slikaj Račun",
   },
   description: enDict.home.metaDescription,
+  keywords: [
+    "invoice OCR Slovenia",
+    "invoice scanner app Slovenia",
+    "invoice data extraction",
+    "accounting software Slovenia",
+    "invoice automation",
+    "UBL invoices",
+    "eSLOG",
+    "accounting integrations Slovenia",
+  ],
   alternates: {
     canonical: "/en",
     languages: {
       "sl-SI": "/",
-      "en":    "/en",
+      "en": "/en",
       "x-default": "/",
     },
   },
