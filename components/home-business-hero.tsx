@@ -9,7 +9,8 @@ import {
   FileText,
   Files,
   Loader2,
-  Send,
+  ScanText,
+  ShieldCheck,
   UploadCloud,
 } from "lucide-react";
 
@@ -37,35 +38,35 @@ export function HomeBusinessHero() {
         <div className="max-w-xl">
           <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700 shadow-sm">
             <Building2 className="h-4 w-4" />
-            Za podjetja in računovodske servise
+            AI OCR za podjetja in računovodske servise
           </div>
 
           <h1 className="text-5xl font-extrabold tracking-tight text-slate-950 sm:text-6xl lg:text-[4.2rem] lg:leading-[1.02]">
-            Upravljajte več podjetij <span className="text-blue-600">z enim računom</span>
+            AI prebere račune <span className="text-blue-600">namesto vas</span>
           </h1>
 
           <p className="mt-7 max-w-lg text-xl leading-relaxed text-slate-600">
-            Naložite <strong className="text-slate-900">100+ računov naenkrat</strong>. Vsak dokument se ločeno pošlje na pravi e-mail izbranega podjetja za OCR obdelavo.
+            Naložite PDF-je ali slike za eno ali več podjetij. <strong className="text-slate-900">AI OCR samodejno prebere dobavitelja, številko računa, datume, zneske, DDV in IBAN</strong> — vi podatke samo preverite in pošljete v računovodski program.
           </p>
 
           <div className="mt-8 space-y-5">
             <div className="flex items-start gap-4">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-700"><Building2 className="h-5 w-5" /></div>
-              <div><div className="font-bold text-slate-950">Več podjetij</div><div className="text-sm text-slate-500">Ena prijava za vsa vaša podjetja</div></div>
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-700"><ScanText className="h-5 w-5" /></div>
+              <div><div className="font-bold text-slate-950">Samodejni AI OCR zajem podatkov</div><div className="text-sm text-slate-500">Brez ročnega prepisovanja računov</div></div>
             </div>
             <div className="flex items-start gap-4">
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-700"><Files className="h-5 w-5" /></div>
-              <div><div className="font-bold text-slate-950">100+ računov naenkrat</div><div className="text-sm text-slate-500">Hitra množična obdelava dokumentov</div></div>
+              <div><div className="font-bold text-slate-950">Do 500 dokumentov naenkrat</div><div className="text-sm text-slate-500">Vsak račun se obdela in preveri ločeno</div></div>
             </div>
             <div className="flex items-start gap-4">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-700"><Send className="h-5 w-5" /></div>
-              <div><div className="font-bold text-slate-950">Ločeno pošiljanje za OCR</div><div className="text-sm text-slate-500">Vsak dokument na pravi e-mail</div></div>
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-blue-100 text-blue-700"><ShieldCheck className="h-5 w-5" /></div>
+              <div><div className="font-bold text-slate-950">Pripravljeno za računovodstvo</div><div className="text-sm text-slate-500">UBL/eSLOG XML, JSON API ali originalni dokument</div></div>
             </div>
           </div>
 
           <div className="mt-9 flex flex-col gap-3 sm:flex-row">
             <Link href="/sign-up" className="inline-flex h-12 items-center justify-center gap-2 rounded-xl bg-blue-600 px-6 font-semibold text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700">
-              Preizkusi za podjetja <ArrowRight className="h-4 w-4" />
+              Preizkusi AI OCR <ArrowRight className="h-4 w-4" />
             </Link>
             <Link href="/kako-deluje" className="inline-flex h-12 items-center justify-center rounded-xl border border-slate-300 bg-white px-6 font-semibold text-slate-800 transition hover:bg-slate-50">
               Poglej, kako deluje
@@ -75,8 +76,8 @@ export function HomeBusinessHero() {
 
         <div className="relative mx-auto min-h-[650px] w-full max-w-[760px] lg:min-h-[690px]">
           <div className="absolute left-0 top-8 z-20 w-[62%] rounded-[26px] border border-slate-200 bg-white p-4 shadow-2xl shadow-slate-300/40 sm:p-5">
-            <div className="mb-1 text-xl font-extrabold text-slate-950">Pošlji račun</div>
-            <div className="mb-4 text-xs text-slate-500">Fotografirajte ali naložite račun in ga pošljite z enim klikom.</div>
+            <div className="mb-1 text-xl font-extrabold text-slate-950">AI OCR obdelava računov</div>
+            <div className="mb-4 text-xs text-slate-500">Naložite račune, preverite prebrane podatke in jih pošljite v računovodstvo.</div>
             <div className="rounded-2xl border border-slate-200">
               <div className="flex items-center justify-between border-b border-slate-100 px-4 py-2 text-[11px] font-bold uppercase tracking-wider text-slate-500"><span>Podjetje</span><span className="text-blue-600">Uredi →</span></div>
               <div className="p-2">
@@ -106,7 +107,7 @@ export function HomeBusinessHero() {
           </div>
 
           <div className="absolute right-0 top-[205px] z-30 w-[48%] rounded-2xl border border-slate-200 bg-white p-4 shadow-xl">
-            <div className="mb-2 flex items-center gap-2 text-xs font-bold text-slate-900"><span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-white">2</span> Pregled in priprava</div>
+            <div className="mb-2 flex items-center gap-2 text-xs font-bold text-slate-900"><span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-white">2</span> OCR obdelava in pregled</div>
             <div className="mb-2 flex items-center justify-between text-[9px]"><span className="font-semibold text-slate-600">Izbranih dokumentov: 32/500</span><span className="text-red-500">Odstrani vse</span></div>
             <div className="space-y-1.5">
               {docs.map((d) => <div key={d} className="flex items-center gap-2 rounded-lg border border-slate-200 px-2 py-2"><FileText className="h-4 w-4 shrink-0 text-red-400" /><span className="min-w-0 flex-1 truncate text-[8px] font-semibold">{d}</span><span className="text-slate-400">×</span></div>)}
@@ -115,17 +116,17 @@ export function HomeBusinessHero() {
           </div>
 
           <div className="absolute bottom-[112px] right-5 z-30 w-[42%] rounded-2xl border border-slate-200 bg-white p-4 shadow-xl">
-            <div className="mb-3 flex items-center gap-2 text-xs font-bold"><span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-white">3</span> Pošiljanje</div>
-            <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-5 text-center"><Loader2 className="mx-auto mb-2 h-5 w-5 animate-spin text-blue-600" /><div className="text-xs font-bold text-blue-700">Pošiljam 5/32…</div><div className="mt-1 text-[9px] text-slate-500">Vsak dokument se pošlje posebej.</div></div>
+            <div className="mb-3 flex items-center gap-2 text-xs font-bold"><span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-white">3</span> AI bere račune</div>
+            <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-5 text-center"><Loader2 className="mx-auto mb-2 h-5 w-5 animate-spin text-blue-600" /><div className="text-xs font-bold text-blue-700">Obdelujem 5/32…</div><div className="mt-1 text-[9px] text-slate-500">Vsak dokument se obdela posebej.</div></div>
           </div>
 
           <div className="absolute bottom-0 left-[31%] z-30 w-[38%] rounded-2xl border border-slate-200 bg-white p-4 shadow-xl">
             <div className="mb-2 flex items-center gap-2 text-xs font-bold"><span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-white">4</span> Uspešno</div>
-            <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-center"><span className="mx-auto mb-2 flex h-8 w-8 items-center justify-center rounded-full bg-emerald-600 text-white"><Check className="h-5 w-5" /></span><div className="text-[10px] font-bold text-emerald-800">Vsi dokumenti so bili poslani!</div><div className="mt-1 text-[8px] text-emerald-700">32 dokumentov poslanih za OCR obdelavo.</div></div>
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-center"><span className="mx-auto mb-2 flex h-8 w-8 items-center justify-center rounded-full bg-emerald-600 text-white"><Check className="h-5 w-5" /></span><div className="text-[10px] font-bold text-emerald-800">Podatki so pripravljeni!</div><div className="mt-1 text-[8px] text-emerald-700">32 računov uspešno prebranih z AI OCR.</div></div>
           </div>
 
           <div className="absolute bottom-0 left-0 z-20 w-[31%] rounded-2xl border border-slate-200 bg-white p-3 shadow-xl">
-            <div className="mb-2 flex items-center gap-2 text-[10px] font-bold"><span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-white">5</span> Poslani računi</div>
+            <div className="mb-2 flex items-center gap-2 text-[10px] font-bold"><span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-white">5</span> Obdelani računi</div>
             <div className="mb-2 flex gap-1"><span className="rounded-full bg-slate-900 px-2 py-1 text-[7px] text-white">Vsa podjetja</span><span className="rounded-full border px-2 py-1 text-[7px]">Podjetje 1</span></div>
             <div className="grid grid-cols-3 gap-1 text-center"><div className="rounded-lg bg-slate-50 p-2"><div className="font-bold">40</div><div className="text-[6px]">SKUPAJ</div></div><div className="rounded-lg bg-emerald-50 p-2 text-emerald-700"><div className="font-bold">40</div><div className="text-[6px]">POSLANO</div></div><div className="rounded-lg bg-red-50 p-2 text-red-600"><div className="font-bold">0</div><div className="text-[6px]">NAPAKE</div></div></div>
           </div>
