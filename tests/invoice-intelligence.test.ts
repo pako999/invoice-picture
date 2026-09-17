@@ -4,6 +4,7 @@ import { emptyInvoice, normalizedInvoiceSchema } from "../lib/invoice-intelligen
 import { normalizeInvoiceValues, validateIban, validateInvoice } from "../lib/invoice-intelligence/validation";
 import { readDeterministically, readWithMistral } from "../lib/invoice-intelligence/providers";
 import { createDocumentSignature, verifyDocumentSignature } from "../lib/invoice-intelligence/signing";
+import { resolveManualApprovalReason } from "../lib/invoice-intelligence/manual-approval";
 
 function baseInvoice() {
   const invoice = emptyInvoice();
@@ -95,6 +96,15 @@ test("invalid IBAN fails MOD-97", () => {
   const invoice = baseInvoice();
   invoice.supplier.iban = "SI7719100000012346";
   assert.match(validateInvoice(invoice).errors.join(" "), /IBAN/i);
+});
+
+test("manual approval with validation errors does not require a typed reason", () => {
+  assert.equal(
+    resolveManualApprovalReason(undefined, true),
+    "Ročno potrjeno kljub validacijskim napakam.",
+  );
+  assert.equal(resolveManualApprovalReason("  Preverjeno z originalom.  ", true), "Preverjeno z originalom.");
+  assert.equal(resolveManualApprovalReason(undefined, false), null);
 });
 
 test("incorrect totals are detected", () => {

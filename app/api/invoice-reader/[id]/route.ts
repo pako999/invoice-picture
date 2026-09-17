@@ -14,6 +14,7 @@ import {
   supplierMappings,
 } from "@/lib/schema";
 import { createDocumentSignature } from "@/lib/invoice-intelligence/signing";
+import { resolveManualApprovalReason } from "@/lib/invoice-intelligence/manual-approval";
 import { normalizedInvoiceSchema, type NormalizedInvoice } from "@/lib/invoice-intelligence/types";
 import { normalizeInvoiceValues, validateInvoice } from "@/lib/invoice-intelligence/validation";
 
@@ -136,11 +137,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     differencesJson: JSON.stringify(validation.differences),
   });
 
-  if (data.action === "approve" && validation.errors.length && !data.reason?.trim()) {
-    return NextResponse.json({ error: "A reason is required to manually approve an invoice with validation errors", validation }, { status: 422 });
-  }
-
   const approved = data.action === "approve";
+  const approvalReason = approved
+    ? resolveManualApprovalReason(data.reason, validation.errors.length > 0)
+    : data.reason?.trim() || null;
   await db.update(invoiceDocuments).set({
     normalizedJson: JSON.stringify(next),
     approvedJson: approved ? JSON.stringify(next) : document.approvedJson,
@@ -150,8 +150,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     approvedAt: approved ? new Date() : document.approvedAt,
     updatedAt: new Date(),
   }).where(eq(invoiceDocuments.id, documentId));
-  await db.insert(invoiceAuditLogs).values({ documentId, clerkUserId: userId, action: approved ? "approve" : "edit", metadataJson: JSON.stringify({ reason: data.reason ?? null, changedFields: Object.keys(data.changes ?? {}) }) });
-  return NextResponse.json({ success: true, status: approved ? "approved" : "needs_review", invoice: next, validation });
+  await db.insert(invoiceAuditLogs).values({ documentId, clerkUserId: userId, action: approved ? "approve" : "edit", metadataJson: JSON.stringify({ reason: approvalReason, changedFields: Object.keys(data.changes ?? {}) }) });
+  return NextResponse.json({
+    success: true,
+    status: approved ? "approved" : "needs_review",
+    invoice: next,
+    validation,
+    manualOverride: approved && validation.errors.length > 0,
+  });
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {

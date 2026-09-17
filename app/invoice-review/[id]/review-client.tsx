@@ -79,7 +79,7 @@ export function InvoiceReviewClient({ documentId }: { documentId: number }) {
     const json = await res.json();
     setBusy(null);
     if (!res.ok) { setMessage(json.error ?? "Napaka"); return; }
-    setMessage(action === "approve" ? "Račun je potrjen." : action === "reject" ? "Račun je zavrnjen." : action === "reprocess" ? "Račun je ponovno v čakalni vrsti." : "Spremembe so shranjene.");
+    setMessage(action === "approve" ? (json.manualOverride ? "Račun je ročno potrjen kljub opozorilom." : "Račun je potrjen.") : action === "reject" ? "Račun je zavrnjen." : action === "reprocess" ? "Račun je ponovno v čakalni vrsti." : "Spremembe so shranjene.");
     await load();
     if (action === "approve" || action === "reject") setTimeout(() => goRelative(1), 250);
   }, [documentId, form, initial, reason, load]);
@@ -148,7 +148,7 @@ export function InvoiceReviewClient({ documentId }: { documentId: number }) {
 
           {detail.corrections.length > 0 && <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900"><h2 className="font-bold">Revizijska sled popravkov</h2><div className="mt-3 max-h-48 space-y-2 overflow-auto text-xs text-slate-600">{detail.corrections.map((c) => <div key={c.id} className="rounded-lg bg-slate-50 p-2"><strong>{c.fieldPath}</strong>: {c.oldValue ?? "∅"} → {c.newValue ?? "∅"} · {new Date(c.createdAt).toLocaleString("sl-SI")}</div>)}</div></div>}
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900"><label className="text-sm font-bold">Razlog / opomba (obvezno pri potrditvi z napakami)</label><textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={2} className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950" placeholder="Npr. preverjeno z originalom…" /></div>
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900"><label className="text-sm font-bold">Razlog / opomba (neobvezno)</label><textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={2} className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950" placeholder="Npr. preverjeno z originalom…" /></div>
         </section>
       </div>
 
