@@ -14,9 +14,25 @@ type ReviewPayload = {
   stats?: Record<string, number | null>;
 };
 
+type UsagePayload = {
+  planName: string;
+  monthDocuments: number;
+  monthlyDocumentLimit: number;
+  monthPages: number;
+  monthlyPageLimit: number;
+  dayPages: number;
+  dailyPageLimit: number;
+  usagePercent: number;
+  warningLevel: "ok" | "warning" | "critical" | "blocked";
+  adminOverride: boolean;
+  noticeSl: string | null;
+  noticeEn: string | null;
+};
+
 export function InvoiceReviewShortcut({ locale = "sl" }: { locale?: "sl" | "en" }) {
   const en = locale === "en";
   const [payload, setPayload] = useState<ReviewPayload | null>(null);
+  const [usage, setUsage] = useState<UsagePayload | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -24,17 +40,25 @@ export function InvoiceReviewShortcut({ locale = "sl" }: { locale?: "sl" | "en" 
 
     async function load() {
       try {
-        const res = await fetch("/api/invoice-reader", { cache: "no-store" });
-        if (!res.ok) return;
-        const json = await res.json() as ReviewPayload;
-        if (mounted) setPayload(json);
+        const [reviewRes, usageRes] = await Promise.all([
+          fetch("/api/invoice-reader", { cache: "no-store" }),
+          fetch("/api/ocr-usage", { cache: "no-store" }),
+        ]);
+        if (reviewRes.ok) {
+          const json = await reviewRes.json() as ReviewPayload;
+          if (mounted) setPayload(json);
+        }
+        if (usageRes.ok) {
+          const json = await usageRes.json() as UsagePayload;
+          if (mounted) setUsage(json);
+        }
       } catch {
-        // The legacy invoice screen must continue working even if OCR status cannot load.
+        // Core scan/send screens must remain usable even when status cannot load.
       }
     }
 
     void load();
-    timer = setInterval(() => { void load(); }, 5000);
+    timer = setInterval(() => { void load(); }, 10_000);
     return () => {
       mounted = false;
       if (timer) clearInterval(timer);
@@ -49,6 +73,41 @@ export function InvoiceReviewShortcut({ locale = "sl" }: { locale?: "sl" | "en" 
     const approved = docs.filter((d) => d.status === "approved");
     return { needs, working, failed, approved };
   }, [payload]);
+
+  if (usage && usage.warningLevel !== "ok") {
+    const blocked = usage.warningLevel === "blocked";
+    const critical = usage.warningLevel === "critical";
+    const border = blocked || critical ? "border-red-300 dark:border-red-800" : "border-amber-300 dark:border-amber-700";
+    const bg = blocked || critical ? "bg-red-50 dark:bg-red-950" : "bg-amber-50 dark:bg-amber-950";
+    const text = blocked || critical ? "text-red-950 dark:text-red-100" : "text-amber-950 dark:text-amber-100";
+    const muted = blocked || critical ? "text-red-800 dark:text-red-300" : "text-amber-800 dark:text-amber-300";
+    return (
+      <aside className={`fixed right-4 top-20 z-[80] w-[min(420px,calc(100vw-2rem))] rounded-2xl border p-4 shadow-2xl ${border} ${bg}`}>
+        <div className="flex items-start gap-3">
+          <span className="text-2xl">{blocked ? "⛔" : critical ? "🔴" : "⚠️"}</span>
+          <div className="min-w-0 flex-1">
+            <p className={`font-extrabold ${text}`}>
+              {blocked ? (en ? "OCR limit reached" : "OCR limit dosežen") : (en ? `OCR usage: ${usage.usagePercent}%` : `OCR poraba: ${usage.usagePercent}%`)}
+            </p>
+            <p className={`mt-1 text-xs ${muted}`}>{en ? usage.noticeEn : usage.noticeSl}</p>
+            <div className={`mt-2 grid grid-cols-2 gap-2 text-xs ${muted}`}>
+              <span>{en ? "Documents" : "Dokumenti"}: <strong>{usage.monthDocuments}/{usage.monthlyDocumentLimit}</strong></span>
+              <span>{en ? "Pages" : "Strani"}: <strong>{usage.monthPages}/{usage.monthlyPageLimit}</strong></span>
+              {usage.adminOverride && <span className="col-span-2">{en ? "Admin today" : "Admin danes"}: <strong>{usage.dayPages}/{usage.dailyPageLimit}</strong></span>}
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Link href={en ? "/en/pricing" : "/cenik"} className="inline-flex items-center rounded-xl bg-slate-950 px-4 py-2 text-xs font-bold text-white hover:bg-slate-800 dark:bg-white dark:text-slate-950">
+                {en ? "Upgrade plan →" : "Nadgradi paket →"}
+              </Link>
+              <Link href="/invoice-review" className={`inline-flex items-center px-2 py-2 text-xs font-bold underline ${muted}`}>
+                {en ? "OCR status" : "OCR status"}
+              </Link>
+            </div>
+          </div>
+        </div>
+      </aside>
+    );
+  }
 
   if (!payload) return null;
 
