@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PaddleCheckoutButton } from "@/components/paddle-checkout";
+import { CommercialPricingGrid } from "@/components/commercial-pricing-grid";
 import {
   Check,
   X,
@@ -33,10 +34,10 @@ export default function Home() {
 
   // Prices match the App Store / Play Store tiers; yearly is set
   // explicitly (not computed) so it lines up with the chosen store tier.
-  const basicMonthly = 6.99;
-  const basicYearly  = 66.90;  // explicit store tier
-  const proMonthly   = 17.99;
-  const proYearly    = 171.99; // explicit store tier
+  const basicMonthly = 9.90;
+  const basicYearly  = 99;
+  const proMonthly   = 29.90;
+  const proYearly    = 299;
 
   const basicPrice = (isYearly ? basicYearly : basicMonthly).toFixed(2);
   const proPrice   = (isYearly ? proYearly   : proMonthly).toFixed(2);
@@ -365,8 +366,20 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Pricing Section */}
-      <section id="cenik" className="py-24 bg-gradient-to-b from-slate-50 to-white">
+      {/* Current commercial pricing */}
+      <section id="cenik" className="bg-gradient-to-b from-slate-50 to-white py-24">
+        <div className="mx-auto mb-10 max-w-7xl px-4 text-center sm:px-6 lg:px-8">
+          <Badge className="mb-4 border-0 bg-blue-100 text-blue-700 hover:bg-blue-200">Cenik</Badge>
+          <h2 className="mb-4 text-4xl font-bold tracking-tight sm:text-5xl">Izberite OCR kapaciteto, ki jo potrebujete</h2>
+          <p className="mx-auto max-w-3xl text-xl text-slate-600">
+            Neomejeno pošiljanje originalnih računov v vseh plačljivih paketih. AI OCR ima jasne mesečne omejitve dokumentov in strani.
+          </p>
+        </div>
+        <CommercialPricingGrid locale="sl" compact />
+      </section>
+
+      {/* Legacy pricing kept temporarily for backwards-compatible checkout code. */}
+      <section id="legacy-cenik" className="hidden" aria-hidden="true">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <Badge className="mb-4 bg-blue-100 text-blue-700 hover:bg-blue-200 border-0">Cenik</Badge>

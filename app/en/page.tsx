@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PaddleCheckoutButton } from "@/components/paddle-checkout";
+import { CommercialPricingGrid } from "@/components/commercial-pricing-grid";
 import {
   Check,
   X,
@@ -32,10 +33,10 @@ const integrations = [
 export default function HomeEn() {
   const [isYearly, setIsYearly] = useState(false);
 
-  const basicMonthly = 6.99;
-  const basicYearly  = 66.90;
-  const proMonthly   = 17.99;
-  const proYearly    = 171.99;
+  const basicMonthly = 9.90;
+  const basicYearly  = 99;
+  const proMonthly   = 29.90;
+  const proYearly    = 299;
 
   const basicPrice = (isYearly ? basicYearly : basicMonthly).toFixed(2);
   const proPrice   = (isYearly ? proYearly   : proMonthly).toFixed(2);
@@ -397,8 +398,20 @@ export default function HomeEn() {
         </div>
       </section>
 
-      {/* Pricing */}
-      <section id="cenik" className="py-24 bg-gradient-to-b from-slate-50 to-white">
+      {/* Current commercial pricing */}
+      <section id="cenik" className="bg-gradient-to-b from-slate-50 to-white py-24">
+        <div className="mx-auto mb-10 max-w-7xl px-4 text-center sm:px-6 lg:px-8">
+          <Badge className="mb-4 border-0 bg-blue-100 text-blue-700 hover:bg-blue-200">Pricing</Badge>
+          <h2 className="mb-4 text-4xl font-bold tracking-tight sm:text-5xl">Choose the OCR capacity you need</h2>
+          <p className="mx-auto max-w-3xl text-xl text-slate-600">
+            Unlimited original-invoice sending on every paid plan. AI OCR has clear monthly document and page allowances.
+          </p>
+        </div>
+        <CommercialPricingGrid locale="en" compact />
+      </section>
+
+      {/* Legacy pricing kept temporarily for backwards-compatible checkout code. */}
+      <section id="legacy-cenik" className="hidden" aria-hidden="true">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <Badge className="mb-4 bg-blue-100 text-blue-700 hover:bg-blue-200 border-0">Pricing</Badge>
