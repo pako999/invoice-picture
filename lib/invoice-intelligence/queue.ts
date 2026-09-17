@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { invoiceDocuments, invoiceProcessingJobs } from "@/lib/schema";
+import { assertOcrDocumentQuota } from "@/lib/invoice-intelligence/quota";
 
 export async function enqueueInvoiceDocument(input: {
   clerkUserId: string;
@@ -28,6 +29,11 @@ export async function enqueueInvoiceDocument(input: {
     .where(eq(invoiceDocuments.idempotencyKey, idempotencyKey))
     .limit(1);
   if (existing) return existing.id;
+
+  // Commercial OCR limits apply only to creation of a new AI-processing document.
+  // The legacy /api/send route catches this error and still sends the original file
+  // for email_ocr delivery, so paid users never lose ordinary document forwarding.
+  if (readerConfigured) await assertOcrDocumentQuota(input.clerkUserId);
 
   const [document] = await db.insert(invoiceDocuments).values({
     clerkUserId: input.clerkUserId,
