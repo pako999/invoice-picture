@@ -23,6 +23,10 @@ const bilingualRoutes: { slug: string; priority: number; changeFrequency: Metada
   { slug: "blog",                     priority: 0.8, changeFrequency: "weekly" },
 ];
 
+const pairedSeoRoutes = [
+  { sl: "/ocr-racunov", en: "/en/invoice-ocr-slovenia", priority: 0.98 },
+] as const;
+
 const slOnlySeoRoutes: { slug: string; priority: number }[] = [
   { slug: "programi-za-racune", priority: 0.95 },
   { slug: "program-za-racune", priority: 0.9 },
@@ -36,75 +40,30 @@ export default function sitemap(): MetadataRoute.Sitemap {
   for (const r of bilingualRoutes) {
     const slUrl = `${SITE_URL}${localeUrl("sl", r.slug)}`;
     const enUrl = `${SITE_URL}${localeUrl("en", r.slug)}`;
+    const alternates = { languages: { "sl-SI": slUrl, "en": enUrl, "x-default": slUrl } };
+    entries.push({ url: slUrl, lastModified: now, changeFrequency: r.changeFrequency, priority: r.priority, alternates });
+    entries.push({ url: enUrl, lastModified: now, changeFrequency: r.changeFrequency, priority: Math.max(0.1, r.priority - 0.1), alternates });
+  }
 
-    entries.push({
-      url: slUrl,
-      lastModified: now,
-      changeFrequency: r.changeFrequency,
-      priority: r.priority,
-      alternates: {
-        languages: {
-          "sl-SI": slUrl,
-          "en": enUrl,
-          "x-default": slUrl,
-        },
-      },
-    });
-
-    entries.push({
-      url: enUrl,
-      lastModified: now,
-      changeFrequency: r.changeFrequency,
-      priority: Math.max(0.1, r.priority - 0.1),
-      alternates: {
-        languages: {
-          "sl-SI": slUrl,
-          "en": enUrl,
-          "x-default": slUrl,
-        },
-      },
-    });
+  for (const r of pairedSeoRoutes) {
+    const slUrl = `${SITE_URL}${r.sl}`;
+    const enUrl = `${SITE_URL}${r.en}`;
+    const alternates = { languages: { "sl-SI": slUrl, "en": enUrl, "x-default": slUrl } };
+    entries.push({ url: slUrl, lastModified: now, changeFrequency: "monthly", priority: r.priority, alternates });
+    entries.push({ url: enUrl, lastModified: now, changeFrequency: "monthly", priority: r.priority - 0.08, alternates });
   }
 
   for (const r of slOnlySeoRoutes) {
-    entries.push({
-      url: `${SITE_URL}/${r.slug}`,
-      lastModified: now,
-      changeFrequency: "monthly",
-      priority: r.priority,
-      alternates: {
-        languages: {
-          "sl-SI": `${SITE_URL}/${r.slug}`,
-          "x-default": `${SITE_URL}/${r.slug}`,
-        },
-      },
-    });
+    const url = `${SITE_URL}/${r.slug}`;
+    entries.push({ url, lastModified: now, changeFrequency: "monthly", priority: r.priority, alternates: { languages: { "sl-SI": url, "x-default": url } } });
   }
 
   for (const p of posts) {
     const slUrl = `${SITE_URL}/blog/${p.slug}`;
     const enUrl = `${SITE_URL}/en/blog/${p.slugEn}`;
-    const alternates = {
-      languages: {
-        "sl-SI": slUrl,
-        "en": enUrl,
-        "x-default": slUrl,
-      },
-    };
-    entries.push({
-      url: slUrl,
-      lastModified: new Date(p.publishedAt),
-      changeFrequency: "monthly",
-      priority: 0.7,
-      alternates,
-    });
-    entries.push({
-      url: enUrl,
-      lastModified: new Date(p.publishedAt),
-      changeFrequency: "monthly",
-      priority: 0.6,
-      alternates,
-    });
+    const alternates = { languages: { "sl-SI": slUrl, "en": enUrl, "x-default": slUrl } };
+    entries.push({ url: slUrl, lastModified: new Date(p.publishedAt), changeFrequency: "monthly", priority: 0.7, alternates });
+    entries.push({ url: enUrl, lastModified: new Date(p.publishedAt), changeFrequency: "monthly", priority: 0.6, alternates });
   }
 
   return entries;

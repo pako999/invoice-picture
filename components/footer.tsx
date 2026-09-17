@@ -19,6 +19,7 @@ export function Footer() {
 
   const productLinks = [
     { label: t.productHowItWorks,   href: localeUrl(locale, "kako-deluje") },
+    { label: locale === "sl" ? "OCR računov" : "Invoice OCR Slovenia", href: locale === "sl" ? "/ocr-racunov" : "/en/invoice-ocr-slovenia" },
     { label: t.productIntegrations, href: localeUrl(locale, "integracije") },
     { label: t.productFeatures,     href: localeUrl(locale, "funkcionalnosti") },
     { label: t.productPricing,      href: localeUrl(locale, "cenik") },

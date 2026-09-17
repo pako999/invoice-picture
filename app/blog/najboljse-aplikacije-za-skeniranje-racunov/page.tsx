@@ -12,261 +12,119 @@ export const metadata = pageMetadata({
   altPaths: { sl: `/blog/${post.slug}`, en: `/en/blog/${post.slugEn}` },
 });
 
+const faq = [
+  ["Kaj je najbolj pomembno pri aplikaciji za skeniranje računov?", "Odvisno od cilja. Za arhiv je dovolj kakovosten PDF. Za avtomatizacijo računovodstva potrebujete OCR ekstrakcijo, validacijo podatkov in zanesljiv način dostave v računovodski sistem."],
+  ["Ali je scanner aplikacija isto kot OCR računov?", "Ne. Scanner ustvari sliko ali PDF. OCR računov iz dokumenta prebere strukturirane podatke, kot so številka računa, dobavitelj, DDV, IBAN, zneski in postavke."],
+  ["Ali Slikaj Račun podpira slovenske in angleške račune?", "Da. OCR workflow je namenjen slovenskim in angleškim računom ter pogostim mednarodnim oznakam na računih."],
+  ["Ali lahko račun po OCR pošljem v računovodski program?", "Da. Original lahko pošljete na uvozni email, potrjene podatke pa vključite v UBL 2.1, eSLOG 2.0 ali JSON API workflow, odvisno od nastavitev in paketa."],
+];
+
 const articleJsonLd = {
   "@context": "https://schema.org",
   "@type": "Article",
   headline: post.title,
   description: post.description,
   datePublished: post.publishedAt,
-  dateModified: post.publishedAt,
+  dateModified: "2026-09-17",
   inLanguage: "sl-SI",
   keywords: post.keyword,
   author: { "@type": "Organization", name: "Slikaj Račun" },
-  publisher: {
-    "@type": "Organization",
-    name: "Slikaj Račun",
-    logo: { "@type": "ImageObject", url: "https://www.posljiracun.si/logo-icon.svg" },
-  },
+  publisher: { "@type": "Organization", name: "Slikaj Račun", logo: { "@type": "ImageObject", url: "https://www.posljiracun.si/logo-icon.svg" } },
   mainEntityOfPage: `https://www.posljiracun.si/blog/${post.slug}`,
+};
+
+const faqJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: faq.map(([q, a]) => ({ "@type": "Question", name: q, acceptedAnswer: { "@type": "Answer", text: a } })),
 };
 
 export default function ComparisonBlog() {
   return (
-    <div className="bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 min-h-screen">
-      <script type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }} />
-      <BlogCover post={post} badge="Primerjava" badgeClassName="bg-orange-500/90 text-white border-0 hover:bg-orange-500/90" />
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
+      <BlogCover post={post} badge="Posodobljeno 2026" badgeClassName="bg-orange-500/90 text-white border-0 hover:bg-orange-500/90" />
 
-      <article className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <Link href="/blog" className="text-sm text-blue-600 hover:underline mb-8 inline-block">← Vsi članki</Link>
+      <article className="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
+        <Link href="/blog" className="mb-8 inline-block text-sm text-blue-600 hover:underline">← Vsi članki</Link>
 
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 sm:p-12 prose prose-slate prose-lg max-w-none prose-headings:scroll-mt-20 prose-headings:font-bold prose-h2:text-3xl prose-h2:mt-12 prose-h2:mb-4 prose-h3:text-xl prose-h3:mt-8 prose-h3:mb-3 prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline prose-strong:text-slate-900 prose-code:bg-slate-100 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:before:content-none prose-code:after:content-none prose-code:font-mono prose-code:text-sm prose-li:my-1 prose-ul:my-4 prose-ol:my-4 prose-table:rounded-xl prose-table:overflow-hidden prose-th:bg-slate-100 prose-th:p-3 prose-td:p-3 prose-td:border-slate-200 prose-th:border-slate-200">
-          <p className="lead">
-            Iščeš mobilno aplikacijo za skeniranje papirnatih računov, ki bi jih avtomatsko poslala v računovodski program? V Sloveniji je nekaj možnosti — vsaka s svojimi prednostmi in slabostmi. Tukaj je iskrena primerjava 6 aplikacij za leto 2026, vključno s ceno, podprtimi programi in kdaj uporabiti katero.
-          </p>
+        <div className="prose prose-slate prose-lg max-w-none rounded-2xl border border-slate-200 bg-white p-8 shadow-sm sm:p-12 prose-headings:font-bold prose-a:text-blue-600">
+          <p className="lead">Ko nekdo išče <strong>aplikacijo za skeniranje računov</strong>, lahko išče dve zelo različni stvari: aplikacijo, ki naredi lep PDF, ali sistem, ki račun tudi prebere in pripravi podatke za računovodstvo. To je ključna razlika med navadnim scannerjem in <strong>OCR računov</strong>.</p>
 
-          <h2>Kaj iskati pri aplikaciji za skeniranje računov</h2>
-          <p>
-            Pred primerjavo preglej teh 5 stvari — od njih je odvisno, ali ti bo aplikacija dejansko prihranila čas:
-          </p>
+          <h2>Scanner aplikacija ali OCR računov?</h2>
+          <table>
+            <thead><tr><th>Funkcija</th><th>Scanner</th><th>OCR računov</th></tr></thead>
+            <tbody>
+              <tr><td>Fotografija / PDF</td><td>Da</td><td>Da</td></tr>
+              <tr><td>Prebere številko računa in datume</td><td>Ne</td><td>Da</td></tr>
+              <tr><td>Prebere DDV, IBAN in zneske</td><td>Ne</td><td>Da</td></tr>
+              <tr><td>Prebere postavke</td><td>Ne</td><td>Da</td></tr>
+              <tr><td>Preveri matematične zneske</td><td>Ne</td><td>Da</td></tr>
+              <tr><td>Pripravi UBL/eSLOG/API podatke</td><td>Ne</td><td>Da</td></tr>
+            </tbody>
+          </table>
+
+          <h2>1. Slikaj Račun: skeniranje + OCR + računovodski workflow</h2>
+          <p>Slikaj Račun je narejen za prejete račune. Uporabnik naloži PDF, fotografijo ali več dokumentov, sistem pa lahko poleg arhiva in pošiljanja izvede tudi lastno OCR ekstrakcijo.</p>
+          <p>Med podatki, ki jih sistem prebere, so številka računa, datumi, dobavitelj, kupec, DDV številke, IBAN, neto znesek, DDV, bruto znesek, DDV razčlenitev in postavke. Podprti so slovenski in angleški računi.</p>
+          <ul>
+            <li>OCR ekstrakcija podatkov iz PDF-ja ali slike,</li>
+            <li>validacija zneskov, DDV in IBAN,</li>
+            <li>pregled dokumentov z nizko zanesljivostjo,</li>
+            <li>upravljanje več podjetij,</li>
+            <li>pošiljanje originala na računovodski email,</li>
+            <li>strukturirana dostava prek UBL, eSLOG ali JSON API.</li>
+          </ul>
+          <p>Podrobnosti so na strani <Link href="/ocr-racunov">OCR računov</Link>.</p>
+
+          <h2>2. Microsoft Lens: dober za PDF, ne za računovodski workflow</h2>
+          <p>Microsoft Lens je uporaben, ko potrebujete čist sken dokumenta. Omogoča crop, popravljanje perspektive in PDF. Vendar scanner sam po sebi ne pripravi računovodskih polj niti ne ve, kateremu podjetju ali računovodskemu procesu mora dokument pripadati.</p>
+
+          <h2>3. Adobe Scan: kakovostno skeniranje dokumentov</h2>
+          <p>Adobe Scan je močan splošni dokumentni scanner. Primeren je, kadar je glavni cilj izdelava kakovostnega PDF-ja. Za slovenski računovodski proces pa morate še vedno urediti, kam dokument poslati in kako podatke prenesti naprej.</p>
+
+          <h2>4. Mednarodne receipt-capture rešitve</h2>
+          <p>Rešitve za zajem računov, kot so Dext in podobna orodja, so usmerjene v ekstrakcijo podatkov in povezave z mednarodnimi računovodskimi sistemi. Pri izbiri preverite, ali podpirajo vaš računovodski program, jezik računov, zahtevane izvozne formate in način dela z več slovenskimi podjetji.</p>
+
+          <h2>5. Telefon + email</h2>
+          <p>Najbolj preprost postopek je še vedno fotografija in ročno pošiljanje po emailu. To lahko deluje pri majhnem številu računov, vendar hitro nastanejo težave: napačen prejemnik, ni strukturiranih podatkov, ni validacije in težje preverite, ali je bil račun že poslan.</p>
+
+          <h2>Kaj izbrati glede na vaš cilj?</h2>
+          <ul>
+            <li><strong>Samo lep PDF:</strong> klasična scanner aplikacija.</li>
+            <li><strong>Prebrani podatki računa:</strong> potrebujete OCR računov.</li>
+            <li><strong>Slovenski in angleški dobavitelji:</strong> preverite podporo obema jezikoma in računovodskim oznakam.</li>
+            <li><strong>Računovodski servis:</strong> pomembni so multi-company workflow, ločene destinacije in množični upload.</li>
+            <li><strong>Avtomatizacija:</strong> poleg OCR preverite še UBL, eSLOG ali API dostavo.</li>
+          </ul>
+
+          <h2>Kako poteka OCR pri Slikaj Račun?</h2>
           <ol>
-            <li><strong>Podpora tvojemu računovodskemu programu.</strong> Minimax, Birokrat, Pantheon, SAOP, E-računi, Metakocka — vsak ima svoj email naslov za uvoz. Aplikacija mora znati pošiljati na ta naslov.</li>
-            <li><strong>Hitrost zajema.</strong> Od trenutka, ko vzameš telefon iz žepa, do potrjenega pošiljanja: idealno 5–10 sekund.</li>
-            <li><strong>Optimizacija fotografije.</strong> Slika mora biti pripravljena za OCR — kompresirana, ostra, brez popačenja. Slabe aplikacije pošljejo 5 MB JPEG, ki ga OCR slabo prebere.</li>
-            <li><strong>Arhiv in iskanje.</strong> Včasih moraš preveriti, ali si že poslal nek račun. Brez arhiva to ne gre.</li>
-            <li><strong>Cena.</strong> Brezplačni paketi so omejeni — preveri, koliko računov mesečno dejansko pošlješ in primerjaj z naročnino.</li>
+            <li>Naložite PDF ali fotografijo.</li>
+            <li>Sistem prebere in normalizira podatke računa.</li>
+            <li>Preveri DDV, IBAN, zneske in možne duplikate.</li>
+            <li>Negotovi dokumenti gredo v ročni pregled.</li>
+            <li>Potrjen račun se pošlje v nastavljen računovodski workflow.</li>
           </ol>
+          <p>Za podjetja, ki že uporabljajo Minimax, Birokrat, Pantheon ali drug sistem, je posebej pomembna stran <Link href="/integracije">integracija z računovodskim programom</Link>.</p>
 
-          <h2>1. Slikaj Račun (priporočeno za Slovenijo)</h2>
-          <p>
-            <strong>Cena:</strong> brezplačno do 3 računov / mesec, 6,99 € / mesec za neomejeno, 17,99 € / mesec za PRO (več podjetij).
-          </p>
-          <p>
-            <strong>Podprti programi:</strong> Minimax, Birokrat, Pantheon, SAOP, E-računi, Metakocka — vsak računovodski program z email uvozom.
-          </p>
-          <p>
-            <strong>Prednosti:</strong>
-          </p>
-          <ul>
-            <li>Narejena v Sloveniji za slovenske računovodske programe — uporabniški vmesnik in podpora v slovenščini.</li>
-            <li>iOS in Android aplikacija, plus spletna stran za pošiljanje s računalnika.</li>
-            <li>PRO paket podpira upravljanje več podjetij z ločenimi OCR email naslovi (idealno za računovodske servise).</li>
-            <li>Arhiv s predogledom in iskanjem brez časovnih omejitev.</li>
-            <li>Avtomatska kompresija slik na velikost, ki jo OCR pravilno prebere.</li>
-          </ul>
-          <p>
-            <strong>Slabosti:</strong>
-          </p>
-          <ul>
-            <li>Mlada storitev (lansirana 2026) — manjša baza uporabnikov kot pri uveljavljenih tujih konkurentih.</li>
-            <li>Free paket je omejen na 3 račune mesečno.</li>
-          </ul>
+          <h2>Pogosta vprašanja</h2>
+          {faq.map(([q, a]) => <section key={q}><h3>{q}</h3><p>{a}</p></section>)}
 
-          <h2>2. Microsoft Lens + ročno pošiljanje</h2>
-          <p>
-            <strong>Cena:</strong> brezplačno.
-          </p>
-          <p>
-            <strong>Prednosti:</strong>
-          </p>
-          <ul>
-            <li>Brezplačno za vedno.</li>
-            <li>Odlična kvaliteta skena (auto-crop, perspective correction).</li>
-          </ul>
-          <p>
-            <strong>Slabosti:</strong>
-          </p>
-          <ul>
-            <li>Ne pošilja avtomatsko v računovodski program — sken moraš najprej shraniti, nato ročno priložiti v email klient in poslati.</li>
-            <li>Ni arhiva poslanih računov.</li>
-            <li>Ni podpore za več podjetij.</li>
-            <li>Ni slovenskega vmesnika.</li>
-          </ul>
-
-          <h2>3. Adobe Scan + email</h2>
-          <p>
-            <strong>Cena:</strong> brezplačno z Adobe računom, premium 9,99 € / mesec.
-          </p>
-          <p>
-            <strong>Prednosti:</strong>
-          </p>
-          <ul>
-            <li>Najboljši PDF generator iz fotografij na trgu.</li>
-            <li>OCR že v aplikaciji (premium).</li>
-          </ul>
-          <p>
-            <strong>Slabosti:</strong>
-          </p>
-          <ul>
-            <li>Tudi tu ročno pošiljanje — Adobe ne ve, kateri računovodski program imaš.</li>
-            <li>Optimiziran za pisarniško skeniranje, ne za hitre fotografije računov na poti.</li>
-            <li>Premium je drag, brezplačni pa omejen.</li>
-          </ul>
-
-          <h2>4. Dext (mednarodna konkurenca)</h2>
-          <p>
-            <strong>Cena:</strong> ~24 € / mesec (Pro paket).
-          </p>
-          <p>
-            <strong>Prednosti:</strong>
-          </p>
-          <ul>
-            <li>Lasten OCR motor v aplikaciji — neodvisen od računovodskega programa.</li>
-            <li>Integracije z QuickBooks, Xero, Sage.</li>
-          </ul>
-          <p>
-            <strong>Slabosti:</strong>
-          </p>
-          <ul>
-            <li>Ni slovenskega vmesnika ali podpore.</li>
-            <li>Ne integrira z Minimax, Birokrat ali Pantheon — namenjen tujim trgom.</li>
-            <li>Cena je 3× višja kot Slikaj Račun.</li>
-          </ul>
-
-          <h2>5. ReceiptBank / Hubdoc</h2>
-          <p>
-            <strong>Cena:</strong> Hubdoc je vključen v Xero naročnino.
-          </p>
-          <p>
-            <strong>Prednosti / slabosti:</strong> Praktično irelevantno za slovenski trg, saj večina uporablja Minimax / Birokrat / Pantheon, ne Xero.
-          </p>
-
-          <h2>6. Pošiljanje preko običajnega email klienta</h2>
-          <p>
-            <strong>Cena:</strong> brezplačno.
-          </p>
-          <p>
-            Tehnično lahko vsak telefon naredi: fotografiraš → odpri Mail / Gmail → priloži sliko → vneseš OCR email naslov → pošlješ.
-          </p>
-          <p>
-            <strong>Slabosti:</strong>
-          </p>
-          <ul>
-            <li>Vsako pošiljanje traja 30–60 sekund (ročno tipkanje email naslova!).</li>
-            <li>Slika ni stisnjena — OCR jo lahko zavrne (preveč MB).</li>
-            <li>Ni arhiva poslanih računov.</li>
-            <li>Pri večih podjetjih: zamenjaj naslov vsakič.</li>
-          </ul>
-
-          <h2>Tabela primerjave</h2>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm not-prose mb-8 border-collapse">
-              <thead className="bg-slate-100">
-                <tr>
-                  <th className="text-left p-3 border border-slate-200">Aplikacija</th>
-                  <th className="text-left p-3 border border-slate-200">Cena / mesec</th>
-                  <th className="text-left p-3 border border-slate-200">Avtomatsko pošiljanje</th>
-                  <th className="text-left p-3 border border-slate-200">Več podjetij</th>
-                  <th className="text-left p-3 border border-slate-200">Slovenski programi</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td className="p-3 border border-slate-200 font-semibold">Slikaj Račun</td>
-                  <td className="p-3 border border-slate-200">0–17,99 €</td>
-                  <td className="p-3 border border-slate-200">✅</td>
-                  <td className="p-3 border border-slate-200">✅ (PRO)</td>
-                  <td className="p-3 border border-slate-200">✅ vsi</td>
-                </tr>
-                <tr className="bg-slate-50">
-                  <td className="p-3 border border-slate-200">Microsoft Lens</td>
-                  <td className="p-3 border border-slate-200">0 €</td>
-                  <td className="p-3 border border-slate-200">❌ ročno</td>
-                  <td className="p-3 border border-slate-200">❌</td>
-                  <td className="p-3 border border-slate-200">⚠️ ročno</td>
-                </tr>
-                <tr>
-                  <td className="p-3 border border-slate-200">Adobe Scan</td>
-                  <td className="p-3 border border-slate-200">0–9,99 €</td>
-                  <td className="p-3 border border-slate-200">❌ ročno</td>
-                  <td className="p-3 border border-slate-200">❌</td>
-                  <td className="p-3 border border-slate-200">⚠️ ročno</td>
-                </tr>
-                <tr className="bg-slate-50">
-                  <td className="p-3 border border-slate-200">Dext</td>
-                  <td className="p-3 border border-slate-200">~24 €</td>
-                  <td className="p-3 border border-slate-200">✅</td>
-                  <td className="p-3 border border-slate-200">✅</td>
-                  <td className="p-3 border border-slate-200">❌</td>
-                </tr>
-                <tr>
-                  <td className="p-3 border border-slate-200">Hubdoc / ReceiptBank</td>
-                  <td className="p-3 border border-slate-200">~12 €</td>
-                  <td className="p-3 border border-slate-200">✅</td>
-                  <td className="p-3 border border-slate-200">✅</td>
-                  <td className="p-3 border border-slate-200">❌</td>
-                </tr>
-                <tr className="bg-slate-50">
-                  <td className="p-3 border border-slate-200">Email klient</td>
-                  <td className="p-3 border border-slate-200">0 €</td>
-                  <td className="p-3 border border-slate-200">❌ ročno</td>
-                  <td className="p-3 border border-slate-200">❌</td>
-                  <td className="p-3 border border-slate-200">⚠️ ročno</td>
-                </tr>
-              </tbody>
-            </table>
+          <div className="not-prose mt-10 rounded-2xl bg-slate-950 p-7 text-white">
+            <h2 className="text-2xl font-black">Preverite OCR na svojem računu</h2>
+            <p className="mt-2 text-slate-300">Namesto da primerjate samo scannerje, naložite pravi račun in preverite, katere podatke lahko sistem uporabi naprej.</p>
+            <Link href="/sign-up" className="mt-5 inline-flex rounded-xl bg-white px-5 py-3 font-bold text-slate-950">Preizkusi Slikaj Račun</Link>
           </div>
-
-          <h2>Katero aplikacijo izbrati?</h2>
-          <ul>
-            <li><strong>Če uporabljaš Minimax, Birokrat, Pantheon ali drug slovenski računovodski program:</strong> Slikaj Račun. Edina, ki je narejena za to.</li>
-            <li><strong>Če pošlješ pod 10 računov mesečno in nimaš proračuna:</strong> Slikaj Račun brezplačni paket (3 / mesec) ali kombinacija Microsoft Lens + email.</li>
-            <li><strong>Če uporabljaš Xero ali QuickBooks:</strong> Hubdoc (vključen v Xero) ali Dext.</li>
-            <li><strong>Računovodski servis z več strankami:</strong> Slikaj Račun PRO — ločen OCR email za vsako stranko, hitri preklop.</li>
-          </ul>
-
-          <h2>Naredi preizkusno pošiljanje</h2>
-          <p>
-            Najlažji način, da preveriš, ali aplikacija deluje s tvojim računovodskim programom — pošlji prvi račun zdaj. Pri Slikaj Račun aplikacija je brezplačna za prve 3 račune. Brez kreditne kartice, brez vezave.
-          </p>
-          <p>
-            <Link
-              href="/scan"
-              className="not-prose inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 !text-white text-base h-12 px-6 rounded-xl font-semibold transition-colors no-underline"
-            >
-              📷 Začni brezplačno
-            </Link>
-          </p>
         </div>
 
-        <aside className="mt-12 pt-8 border-t border-slate-200">
-          <h2 className="text-lg font-semibold mb-4">Sorodni članki</h2>
+        <aside className="mt-12 border-t border-slate-200 pt-8">
+          <h2 className="mb-4 text-lg font-semibold">Sorodne strani</h2>
           <ul className="space-y-2 text-sm">
-            <li>
-              <Link href="/blog/minimax-email-uvoz-racunov" className="text-blue-600 hover:underline">
-                Minimax email uvoz računov: kompletni vodnik 2026 →
-              </Link>
-            </li>
-            <li>
-              <Link href="/blog/birokrat-ocr-uvoz-racunov" className="text-blue-600 hover:underline">
-                Birokrat OCR: kako nastaviti uvoz računov po emailu →
-              </Link>
-            </li>
-            <li>
-              <Link href="/blog/pantheon-ebooks-ocr-vodnik" className="text-blue-600 hover:underline">
-                Pantheon eBooks OCR: vodnik za avtomatsko knjiženje →
-              </Link>
-            </li>
+            <li><Link href="/ocr-racunov" className="text-blue-600 hover:underline">OCR računov: avtomatsko branje in validacija →</Link></li>
+            <li><Link href="/programi-za-racune" className="text-blue-600 hover:underline">Programi za račune v Sloveniji →</Link></li>
+            <li><Link href="/blog/minimax-email-uvoz-racunov" className="text-blue-600 hover:underline">Minimax OCR in email uvoz računov →</Link></li>
           </ul>
         </aside>
       </article>
