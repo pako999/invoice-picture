@@ -99,13 +99,13 @@ export async function getOcrUsageSummary(clerkUserId: string): Promise<OcrUsageS
       SELECT count(*)::int AS "count"
       FROM "invoiceDocuments"
       WHERE "clerkUserId" = ${clerkUserId} AND "createdAt" >= ${monthStart}
-    ` as Promise<Array<{ count: number }>>,
+    `,
     sql`
       SELECT "bucketType", "bucketStart", "reservedPages", "estimatedCostMicros"
       FROM "invoiceOcrUsageBuckets"
       WHERE "scopeKey" = ${scope}
         AND (("bucketType" = 'day' AND "bucketStart" = ${dayStart}) OR ("bucketType" = 'month' AND "bucketStart" = ${monthStart}))
-    ` as Promise<Array<{ bucketType: string; bucketStart: Date; reservedPages: number; estimatedCostMicros: number }>>,
+    `,
   ]);
   const monthDocuments = Number(docRows[0]?.count ?? 0);
   const day = bucketRows.find((row) => row.bucketType === "day");
