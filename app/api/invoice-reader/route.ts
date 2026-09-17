@@ -5,6 +5,7 @@ import { z } from "zod";
 import { getDb } from "@/lib/db";
 import { invoiceAuditLogs, invoiceDocuments, type InvoiceDocument } from "@/lib/schema";
 import { enqueueInvoiceDocument } from "@/lib/invoice-intelligence/queue";
+import { OcrCommercialQuotaError } from "@/lib/invoice-intelligence/quota";
 
 const uploadSchema = z.object({
   filename: z.string().min(1).max(255),
@@ -112,6 +113,9 @@ export async function POST(req: NextRequest) {
     await db.insert(invoiceAuditLogs).values({ documentId, clerkUserId: userId, action: "uploaded_for_processing" });
     return NextResponse.json({ success: true, documentId }, { status: 201 });
   } catch (error) {
+    if (error instanceof OcrCommercialQuotaError) {
+      return NextResponse.json({ error: error.message, code: error.code, quotaType: error.quotaType, limit: error.limit, plan: error.plan, upgradeUrl: "/cenik" }, { status: 402 });
+    }
     return NextResponse.json({ error: error instanceof Error ? error.message : "Invalid request" }, { status: 400 });
   }
 }
