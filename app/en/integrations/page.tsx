@@ -1,41 +1,31 @@
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Check, ExternalLink, AlertCircle } from "lucide-react";
 import { pageMetadata } from "@/lib/seo";
 
 export const metadata = pageMetadata({
-  title: "Accounting Software Integrations: OCR & Email Invoice Import",
-  description: "Connect invoice scanning with accounting software that supports OCR or email import. Works with Minimax, Birokrat, Pantheon and compatible global accounting platforms.",
+  title: "Invoice OCR & Accounting Integrations in Slovenia",
+  description: "Connect invoice OCR with accounting workflows in Slovenia. Forward original PDFs or deliver approved data through UBL, eSLOG or JSON API for Minimax, Birokrat, Pantheon and other systems.",
   slug: "integracije",
   locale: "en",
 });
 
 const integrations = [
-  { name: "Minimax", logo: "/logos/minimax.svg", short: "Email import + OCR", long: "Minimax supports invoice import via an email address with automatic OCR processing and bookkeeping into the system.", href: "https://www.vasco.si/minimax" },
-  { name: "Birokrat", logo: "/logos/birokrat.png", short: "Email import + OCR", long: "Birokrat offers email-based import with OCR for automatic recognition of invoice data.", href: "https://www.birokrat.si" },
-  { name: "Pantheon", logo: "/logos/pantheon.png", short: "eBooks OCR service", long: "Pantheon uses the eBooks OCR service to digitise and automatically process documents.", href: "https://www.datalab.si/pantheon" },
-  { name: "SAOP", logo: "/logos/vasco.png", short: "API invoice import", long: "SAOP supports invoice import through an API with advanced automation options.", href: "https://www.vasco.si" },
-  { name: "E-računi", logo: "/logos/eracuni.png", short: "Email + DigiBox OCR", long: "E-računi uses DigiBox OCR technology for document processing and management.", href: "https://www.eracuni.com" },
-  { name: "Metakocka", logo: "/logos/metakocka.png", short: "Email import + OCR", long: "Metakocka supports email-based invoice import with automatic OCR and integration into the system.", href: "https://www.metakocka.si" },
-];
-
-const globalIntegrations = [
-  { name: "QuickBooks", short: "Receipt capture + email-in", href: "https://quickbooks.intuit.com/receipt-snap/" },
-  { name: "Xero", short: "Built-in Hubdoc OCR", href: "https://www.xero.com/" },
-  { name: "Sage", short: "AutoEntry OCR + email import", href: "https://www.sage.com/" },
-  { name: "FreshBooks", short: "Bill capture by email", href: "https://www.freshbooks.com/" },
-  { name: "Zoho Books", short: "Email-in + document scanning", href: "https://www.zoho.com/books/" },
-  { name: "NetSuite", short: "AP automation with OCR", href: "https://www.netsuite.com/" },
-  { name: "Dext", short: "Receipt OCR platform", href: "https://dext.com/" },
-  { name: "Hubdoc", short: "Document capture + OCR", href: "https://www.hubdoc.com/" },
-  { name: "Bill.com", short: "AP automation + email-in", href: "https://www.bill.com/" },
-  { name: "DATEV", short: "Document upload workflows", href: "https://www.datev.de/" },
+  { name: "Minimax", logo: "/logos/minimax.svg", short: "Invoice import and accounting workflow", href: "https://www.minimax.si" },
+  { name: "Birokrat", logo: "/logos/birokrat.png", short: "Document import and accounting workflow", href: "https://www.birokrat.si" },
+  { name: "Pantheon", logo: "/logos/pantheon.png", short: "Document and OCR workflow", href: "https://www.datalab.si/pantheon" },
+  { name: "SAOP", logo: null, short: "Digital document workflows", href: "https://www.saop.si" },
+  { name: "E-računi", logo: "/logos/eracuni.png", short: "Online accounting and document import", href: "https://www.eracuni.com" },
+  { name: "Metakocka", logo: "/logos/metakocka.png", short: "ERP and digital document import", href: "https://www.metakocka.si" },
 ];
 
 const faq = [
-  ["What is an accounting software integration?", "It connects invoice capture with the accounting system where documents are processed. Slikaj Račun forwards the invoice image to the configured import address."],
-  ["Does it require a direct API integration?", "Not necessarily. If your accounting software accepts invoice documents by email, Slikaj Račun can use that workflow without replacing your accounting system."],
-  ["Does Slikaj Račun perform the OCR itself?", "Yes, with a paid OCR plan. If you use the free plan without OCR, the accounting software performs the OCR after receiving the document."],
+  ["What is an accounting software integration?", "It connects invoice capture and approved invoice data with the accounting workflow you already use. The delivery can be the original PDF by email, a UBL/eSLOG XML file or structured JSON through an API."],
+  ["Do I need to replace my accounting software?", "No. Slikaj Račun complements the system you already use for bookkeeping and invoicing."],
+  ["Does Slikaj Račun perform invoice OCR itself?", "Yes. With AI OCR enabled, Slikaj Račun extracts invoice fields from PDFs or images, validates key values and sends uncertain documents to review before structured delivery."],
+  ["Can accounting firms manage multiple companies?", "Yes. Higher plans support multiple companies under one user account with separate destinations and delivery settings."],
+  ["Are UBL and eSLOG supported?", "Yes. Approved invoice data can be used in UBL 2.1 or eSLOG 2.0 XML workflows, as well as JSON API delivery."],
 ];
 
 export default function Integrations() {
@@ -46,57 +36,60 @@ export default function Integrations() {
   };
 
   return (
-    <div className="py-24 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 min-h-screen">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 py-24">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-16">
-          <Badge className="mb-4 bg-indigo-100 text-indigo-700 hover:bg-indigo-200 border-0">Accounting software integrations</Badge>
-          <h1 className="text-4xl sm:text-5xl tracking-tight mb-6 font-bold">Accounting software integrations for OCR and email invoice import</h1>
-          <p className="text-xl text-slate-600 max-w-3xl mx-auto mb-6">
-            With a paid OCR plan, Slikaj Račun reads the invoice and lets you review the extracted data before export. On the free plan without OCR, the original document is forwarded to your accounting software for processing.
-          </p>
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-left max-w-3xl mx-auto">
-            <div className="flex gap-3">
-              <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-amber-900"><strong>How processing works:</strong> on the free plan without OCR, your accounting software processes the document. With a paid OCR plan, Slikaj Račun reads the invoice and exports the reviewed data to your accounting workflow.</p>
-            </div>
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mb-16 text-center">
+          <Badge className="mb-4 border-0 bg-indigo-100 text-indigo-700 hover:bg-indigo-200">Accounting integrations</Badge>
+          <h1 className="mb-6 text-4xl font-bold tracking-tight sm:text-5xl">Invoice OCR and accounting software integrations in Slovenia</h1>
+          <p className="mx-auto mb-6 max-w-4xl text-xl text-slate-600">Slikaj Račun connects incoming invoice capture with your existing accounting process. Forward the original invoice to an import email, or extract and validate fields before structured delivery.</p>
+          <div className="mx-auto max-w-3xl rounded-lg border border-blue-200 bg-blue-50 p-4 text-left">
+            <div className="flex gap-3"><AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-blue-700" /><p className="text-sm text-blue-950"><strong>Flexible delivery:</strong> the exact import method depends on your accounting provider and plan. Slikaj Račun supports original-document email forwarding, UBL/eSLOG XML and JSON API workflows.</p></div>
           </div>
         </div>
 
-        <h2 className="text-2xl mb-3 font-semibold">Global accounting platforms</h2>
-        <p className="text-slate-600 mb-6">Examples of platforms with document capture, OCR or accounts-payable automation workflows.</p>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-12">
-          {globalIntegrations.map((p) => (
-            <a key={p.name} href={p.href} target="_blank" rel="noopener noreferrer" className="block bg-white border border-slate-200 rounded-xl p-4 hover:border-blue-400 hover:shadow-md transition-all">
-              <div className="flex items-center justify-between mb-1"><span className="font-bold text-slate-900">{p.name}</span><Check className="w-4 h-4 text-green-600" /></div>
-              <p className="text-xs text-slate-500">{p.short}</p>
-            </a>
-          ))}
-        </div>
-
-        <h2 className="text-2xl mb-3 font-semibold">Slovenian accounting programs</h2>
-        <p className="text-slate-600 mb-6">Common Slovenian accounting systems used with invoice import and OCR workflows.</p>
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <h2 className="mb-3 text-2xl font-semibold">Accounting software used in Slovenian workflows</h2>
+        <p className="mb-6 text-slate-600">Common platforms that can be part of an invoice import or document-processing workflow. Exact capabilities depend on the provider configuration.</p>
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {integrations.map((p) => (
-            <a key={p.name} href={p.href} target="_blank" rel="noopener noreferrer" className="block transition-transform hover:scale-105">
-              <Card className="border-slate-200 hover:shadow-lg transition-shadow h-full">
+            <a key={p.name} href={p.href} target="_blank" rel="noopener noreferrer" className="block transition-transform hover:scale-[1.02]">
+              <Card className="h-full border-slate-200 transition-shadow hover:shadow-lg">
                 <CardHeader>
-                  <div className="flex items-center justify-between mb-3"><img src={p.logo} alt={p.name} className="h-10 object-contain" /><ExternalLink className="w-4 h-4 text-slate-400" /></div>
-                  <CardTitle className="flex items-center justify-between text-xl">{p.name}<Check className="w-5 h-5 text-green-600" /></CardTitle>
+                  <div className="mb-3 flex items-center justify-between">
+                    {p.logo ? <img src={p.logo} alt={`${p.name} accounting software`} className="h-10 object-contain" /> : <div className="flex h-10 items-center rounded-lg bg-slate-100 px-3 text-sm font-black text-slate-700">SAOP</div>}
+                    <ExternalLink className="h-4 w-4 text-slate-400" />
+                  </div>
+                  <CardTitle className="flex items-center justify-between text-xl">{p.name}<Check className="h-5 w-5 text-green-600" /></CardTitle>
                   <CardDescription className="mt-2">{p.short}</CardDescription>
-                  <Badge variant="outline" className="w-fit mt-3 bg-green-50 text-green-700 border-green-200">✓ supported workflow</Badge>
-                  <p className="text-sm text-slate-600 mt-3">{p.long}</p>
+                  <p className="mt-3 text-xs text-slate-500">Import options depend on the accounting provider and subscription.</p>
                 </CardHeader>
               </Card>
             </a>
           ))}
         </div>
 
-        <div className="mt-14 max-w-4xl mx-auto bg-white border border-slate-200 rounded-2xl p-8">
-          <h2 className="text-2xl font-bold mb-6">Frequently asked questions</h2>
-          <div className="space-y-6">
-            {faq.map(([q, a]) => <div key={q}><h3 className="font-semibold text-lg mb-2">{q}</h3><p className="text-slate-600">{a}</p></div>)}
-          </div>
+        <article className="prose prose-slate prose-lg mx-auto mt-16 max-w-4xl rounded-2xl border border-slate-200 bg-white p-8 shadow-sm sm:p-10 max-w-none">
+          <h2>How an accounting integration works</h2>
+          <p>The simplest workflow is email import: configure a destination for each company, then forward the original invoice PDF or image. For automation, the invoice can first go through <Link href="/en/invoice-ocr-slovenia">invoice OCR and data extraction</Link>.</p>
+          <p>After extraction, Slikaj Račun can validate totals, VAT, IBAN and other key fields. Low-confidence documents are moved to a review queue instead of being sent downstream blindly.</p>
+
+          <h2>Three delivery models</h2>
+          <h3>1. Original invoice by email</h3>
+          <p>Forward the original PDF or image to the configured accounting or bookkeeping import address.</p>
+          <h3>2. UBL 2.1 or eSLOG 2.0</h3>
+          <p>Use approved OCR data in a structured XML workflow for systems that accept UBL or eSLOG documents.</p>
+          <h3>3. JSON API</h3>
+          <p>Send approved structured invoice data to your own ERP or integration endpoint over HTTPS.</p>
+
+          <h2>Multi-company workflow for accounting firms</h2>
+          <p>Accounting firms can manage multiple client companies under one user account. Each company can have its own destination and delivery configuration, while bulk-uploaded invoices remain individually traceable.</p>
+
+          <h2>Frequently asked questions</h2>
+          {faq.map(([q, a]) => <section key={q}><h3>{q}</h3><p>{a}</p></section>)}
+        </article>
+
+        <div className="mt-12 text-center">
+          <Link href="/en/invoice-ocr-slovenia" className="inline-flex rounded-xl bg-slate-950 px-6 py-3 font-semibold text-white hover:bg-slate-800">Explore invoice OCR in Slovenia</Link>
         </div>
       </div>
     </div>
