@@ -50,8 +50,9 @@ function translateWarning(message: string) {
   match = /^Computed gross from VAT breakdown differs from extracted gross total(?: by)?\s*(.*)$/i.exec(trimmed);
   if (match) return `Izračunani bruto znesek iz DDV razčlenitve se razlikuje od prebranega bruto zneska${match[1] ? ` za ${match[1]}` : ""}.`;
 
-  match = /^Document total is within monetary tolerance(?:.*)$/i.exec(trimmed);
-  if (match) return "Skupni znesek dokumenta je znotraj dovoljene tolerance zaokroževanja.";
+  if (/^Document total is within monetary tolerance/i.test(trimmed)) {
+    return "Skupni znesek dokumenta je znotraj dovoljene tolerance zaokroževanja.";
+  }
 
   return trimmed;
 }
@@ -72,7 +73,7 @@ function fieldName(value: string) {
 export function SlovenianWarningTranslator() {
   useEffect(() => {
     const translate = () => {
-      document.querySelectorAll(".invoice-review-route .invoice-warning-message").forEach((node) => {
+      document.querySelectorAll(".invoice-review-route .bg-amber-50 li").forEach((node) => {
         const original = node.getAttribute("data-original-warning") || node.textContent || "";
         if (!node.getAttribute("data-original-warning")) node.setAttribute("data-original-warning", original);
         const translated = translateWarning(original);
