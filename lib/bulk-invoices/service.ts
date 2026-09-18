@@ -79,10 +79,20 @@ const classificationSchema = {
   },
 } as const;
 
+export type BulkPageClassification = {
+  pageNumber: number;
+  startsNewInvoice: boolean;
+  continuationOfPrevious: boolean;
+  invoiceNumber: string | null;
+  supplierName: string | null;
+  confidence: number;
+  reason: string;
+};
+
 export async function classifyBulkPages(args: {
   pages: Array<{ pageNumber: number; markdown: string }>;
   previousPage?: { pageNumber: number; markdown: string } | null;
-}) {
+}): Promise<BulkPageClassification[]> {
   const input = args.pages.map((p) => ({
     pageNumber: p.pageNumber,
     markdown: p.markdown.slice(0, 9000),
