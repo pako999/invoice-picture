@@ -1,6 +1,7 @@
 import { getDb } from "@/lib/db";
 import { bulkInvoiceJobs } from "@/lib/schema";
 import { BULK_PDF_GATEWAY_URL, BULK_PDF_MAX_BYTES } from "@/lib/bulk-invoices/config";
+import { assertBulkJobAdmission } from "@/lib/bulk-invoices/admission";
 
 type EnqueueExistingPdfArgs = {
   clerkToken: string;
@@ -17,6 +18,8 @@ export async function enqueueExistingPdfAsBulkJob(args: EnqueueExistingPdfArgs) 
   if (!bytes.length || bytes.length > BULK_PDF_MAX_BYTES || bytes.subarray(0, 4).toString() !== "%PDF") {
     throw new Error("Obstoječi dokument ni veljaven PDF za ponovno razdelitev.");
   }
+
+  await assertBulkJobAdmission(args.clerkUserId);
 
   const filename = sanitizeFilename(args.filename);
   const signed = await requestUploadTarget(args.clerkToken, filename, bytes.length);

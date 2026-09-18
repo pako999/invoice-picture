@@ -35,9 +35,9 @@ export async function ProcessingHistory({ documentId }: { documentId: number }) 
   ]);
 
   return (
-    <section className="mx-auto mb-28 mt-4 max-w-[1600px] px-3 sm:px-5 lg:px-7">
-      <div className="grid gap-4 lg:grid-cols-2">
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+    <section className="mx-auto mb-28 mt-4 w-full min-w-0 max-w-[1600px] overflow-x-hidden px-3 sm:px-5 lg:px-7">
+      <div className="grid min-w-0 gap-4 lg:grid-cols-2">
+        <div className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
           <h2 className="font-extrabold text-slate-900 dark:text-white">Zgodovina OCR obdelave</h2>
           <div className="mt-3 space-y-2 text-xs">
             {attempts.length === 0 ? <p className="text-slate-500">Še ni processing poskusov.</p> : attempts.map((a) => (
@@ -49,7 +49,7 @@ export async function ProcessingHistory({ documentId }: { documentId: number }) 
             ))}
           </div>
         </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+        <div className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
           <h2 className="font-extrabold text-slate-900 dark:text-white">Audit trail</h2>
           <div className="mt-3 max-h-80 space-y-2 overflow-auto text-xs">
             {audit.map((a) => <div key={a.id} className="rounded-xl bg-slate-50 p-3 dark:bg-slate-800"><strong>{a.action}</strong><div className="mt-1 text-slate-500">{new Date(a.createdAt).toLocaleString("sl-SI")}</div></div>)}

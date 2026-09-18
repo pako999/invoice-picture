@@ -21,6 +21,7 @@ import { normalizedInvoiceSchema, type NormalizedInvoice } from "@/lib/invoice-i
 import { normalizeInvoiceValues, validateInvoice } from "@/lib/invoice-intelligence/validation";
 import { estimateSourcePages } from "@/lib/invoice-intelligence/safety";
 import { enqueueExistingPdfAsBulkJob } from "@/lib/bulk-invoices/enqueue-existing-pdf";
+import { BulkAdmissionError } from "@/lib/bulk-invoices/admission";
 
 const allowedPaths = new Set([
   "documentType", "documentLanguage", "supplier.name", "supplier.address", "supplier.postalCode", "supplier.city", "supplier.countryCode",
@@ -105,16 +106,24 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const estimatedPages = document.originalBase64 && document.mimeType === "application/pdf"
       ? estimateSourcePages({ base64: document.originalBase64, mimeType: document.mimeType, filename: document.filename })
       : null;
-    if (document.bulkJobId == null && document.originalBase64 && document.mimeType === "application/pdf" && (estimatedPages ?? 1) > 1) {
+    if (document.bulkJobId == null && document.originalBase64 && document.mimeType === "application/pdf") {
       const token = await getToken();
       if (!token) return NextResponse.json({ error: "Seja je potekla." }, { status: 401 });
-      const bulkJobId = await enqueueExistingPdfAsBulkJob({
-        clerkToken: token,
-        clerkUserId: userId,
-        companyId: document.companyId,
-        filename: document.filename,
-        base64: document.originalBase64,
-      });
+      let bulkJobId: number;
+      try {
+        bulkJobId = await enqueueExistingPdfAsBulkJob({
+          clerkToken: token,
+          clerkUserId: userId,
+          companyId: document.companyId,
+          filename: document.filename,
+          base64: document.originalBase64,
+        });
+      } catch (error) {
+        if (error instanceof BulkAdmissionError) {
+          return NextResponse.json({ error: error.message, code: error.code }, { status: error.status });
+        }
+        throw error;
+      }
       await db.insert(invoiceAuditLogs).values({
         documentId,
         clerkUserId: userId,

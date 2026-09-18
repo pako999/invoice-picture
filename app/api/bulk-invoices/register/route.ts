@@ -4,9 +4,9 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "@/lib/db";
 import { companies } from "@/lib/schema";
-import { getStatus } from "@/lib/subscription";
 import { BULK_PDF_GATEWAY_URL, BULK_PDF_MAX_BYTES } from "@/lib/bulk-invoices/config";
 import { bulkSql } from "@/lib/bulk-invoices/service";
+import { assertBulkJobAdmission, BulkAdmissionError } from "@/lib/bulk-invoices/admission";
 
 const schema = z.object({
   objectKey: z.string().min(1).max(1024),
@@ -23,8 +23,7 @@ export async function POST(req: NextRequest) {
     if (!input.objectKey.startsWith(`bulk/${userId}/`) || !/\.pdf$/i.test(input.filename)) {
       return NextResponse.json({ error: "Neveljaven bulk PDF." }, { status: 400 });
     }
-    const status = await getStatus(userId);
-    if (!status.canSend) return NextResponse.json({ error: "Paket ni aktiven.", code: "subscription_required" }, { status: 402 });
+    await assertBulkJobAdmission(userId);
 
     const db = getDb();
     if (input.companyId) {
@@ -34,13 +33,6 @@ export async function POST(req: NextRequest) {
     }
 
     const sql = bulkSql();
-    const [counts, globalCounts] = await Promise.all([
-      sql`SELECT count(*)::int AS count FROM "bulkInvoiceJobs" WHERE "clerkUserId"=${userId} AND "status"='processing'`,
-      sql`SELECT count(*)::int AS count FROM "bulkInvoiceJobs" WHERE "status"='processing'`,
-    ]);
-    if (Number(counts[0]?.count ?? 0) >= 2) return NextResponse.json({ error: "Hkrati lahko obdelujete največ 2 velika PDF paketa.", code: "bulk_backpressure" }, { status: 429 });
-    if (Number(globalCounts[0]?.count ?? 0) >= 120) return NextResponse.json({ error: "Sistem trenutno obdeluje veliko bulk PDF-jev. Poskusite ponovno čez nekaj minut.", code: "bulk_backpressure" }, { status: 429 });
-
     const token = await getToken();
     if (!token) return NextResponse.json({ error: "Seja je potekla." }, { status: 401 });
     const signed = await fetch(`${BULK_PDF_GATEWAY_URL}/sign-download`, {
@@ -68,6 +60,9 @@ export async function POST(req: NextRequest) {
     `;
     return NextResponse.json({ success: true, job: rows[0] }, { status: 201 });
   } catch (error) {
+    if (error instanceof BulkAdmissionError) {
+      return NextResponse.json({ error: error.message, code: error.code }, { status: error.status });
+    }
     return NextResponse.json({ error: error instanceof Error ? error.message : "Bulk upload ni uspel." }, { status: 400 });
   }
 }

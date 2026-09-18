@@ -1,3 +1,17 @@
+.invoice-review-route {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: clip;
+}
+
+.invoice-review-route > main,
+.invoice-review-route > section {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
 .invoice-review-route > main > div.fixed.inset-x-0.bottom-0 button:last-child {
   min-width: 9.5rem;
   border-color: rgb(5 150 105) !important;
