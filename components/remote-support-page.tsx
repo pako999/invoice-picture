@@ -194,7 +194,7 @@ const stepIcons = [Power, KeyRound, MousePointer2, Eye];
 export function RemoteSupportPage({ locale }: { locale: Locale }) {
   const t = copy[locale];
   const isSl = locale === "sl";
-  const contactHref = isSl ? "/kontakt" : "/en/contact";
+  const contactHref = isSl ? "/contact" : "/en/contact";
   const languageHref = isSl ? "/en/remote-support" : "/oddaljena-pomoc";
 
   const howToJsonLd = {
