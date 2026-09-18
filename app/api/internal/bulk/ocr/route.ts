@@ -21,7 +21,8 @@ export async function POST(req:Request){
   return NextResponse.json({success:true,pages:out.pages.length,nextPage:out.nextPage,done:out.done});
  }catch(error){
   const msg=error instanceof Error?error.message:String(error);
-  await sql`UPDATE "bulkInvoiceJobs" SET "lockedAt"=NULL,"lastError"=${msg.slice(0,2000)},"updatedAt"=now() WHERE "id"=${data.jobId}`;
-  const status=/limit|quota/i.test(msg)?402:500;return NextResponse.json({error:msg},{status});
+  const quotaReached=/limit|quota/i.test(msg);
+  await sql`UPDATE "bulkInvoiceJobs" SET "stage"=${quotaReached?'quota_wait':'ocr'},"lockedAt"=NULL,"lastError"=${msg.slice(0,2000)},"updatedAt"=now() WHERE "id"=${data.jobId}`;
+  const status=quotaReached?402:500;return NextResponse.json({error:msg},{status});
  }
 }

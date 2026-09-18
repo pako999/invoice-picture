@@ -14,9 +14,14 @@ export class OcrRunBudgetError extends Error {
 }
 
 export function getOcrSafetyConfig() {
+  // Commercial plan limits decide how many pages a customer may process. This
+  // is only a technical guardrail matching the largest supported bulk PDF.
+  // Keep it separate from the retired 25-page cost cap so paid/admin accounts
+  // can use the OCR pages they actually have available.
+  const maxPagesPerDocument = envInt("INVOICE_TECHNICAL_MAX_OCR_PAGES_PER_DOCUMENT", 500, 1, 500);
   return {
-    maxPagesPerDocument: envInt("INVOICE_MAX_OCR_PAGES_PER_DOCUMENT", 25, 1, 50),
-    maxPagesPerCron: envInt("INVOICE_MAX_OCR_PAGES_PER_CRON", 40, 1, 500),
+    maxPagesPerDocument,
+    maxPagesPerCron: Math.max(maxPagesPerDocument, envInt("INVOICE_MAX_OCR_PAGES_PER_CRON", 500, 1, 5_000)),
     maxDocumentsPerCron: envInt("INVOICE_MAX_DOCUMENTS_PER_CRON", 5, 1, 25),
     globalDailyPages: envInt("INVOICE_GLOBAL_EMERGENCY_DAILY_OCR_PAGE_LIMIT", 10_000, 1_000, 1_000_000),
     globalMonthlyPages: envInt("INVOICE_GLOBAL_EMERGENCY_MONTHLY_OCR_PAGE_LIMIT", 100_000, 10_000, 10_000_000),

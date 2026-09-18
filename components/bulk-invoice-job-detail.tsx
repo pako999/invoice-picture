@@ -26,6 +26,7 @@ type Group = {
   validationStatus: string | null;
   overallConfidenceBps: number | null;
   documentFilename: string | null;
+  previewUrl: string | null;
 };
 
 type Job = {
@@ -53,6 +54,7 @@ export function BulkInvoiceJobDetail({ id, locale }: { id: number; locale: Local
   const [ranges, setRanges] = useState<Array<{ startPage: number; endPage: number }>>([]);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [openPreviews, setOpenPreviews] = useState<number[]>([]);
   const prefix = locale === "en" ? "/en" : "";
 
   const load = useCallback(async () => {
@@ -260,33 +262,57 @@ export function BulkInvoiceJobDetail({ id, locale }: { id: number; locale: Local
             {locale === "sl" ? "Posamezni računi" : "Individual invoices"} ({groups.length})
           </h2>
           <div className="space-y-2">
-            {groups.map((group) => (
-              <div
+            {groups.map((group) => {
+              const previewOpen = openPreviews.includes(group.groupIndex);
+              return (
+              <article
                 key={group.groupIndex}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900"
+                className="overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900"
               >
-                <div>
-                  <div className="font-bold text-slate-950 dark:text-white">
-                    {locale === "sl" ? "Račun" : "Invoice"} {group.groupIndex + 1} · {locale === "sl" ? "strani" : "pages"} {group.startPage + 1}–{group.endPage + 1}
+                <div className="flex flex-wrap items-center justify-between gap-3 p-4">
+                  <div>
+                    <div className="font-bold text-slate-950 dark:text-white">
+                      {locale === "sl" ? "Račun" : "Invoice"} {group.groupIndex + 1} · {locale === "sl" ? "strani" : "pages"} {group.startPage + 1}–{group.endPage + 1}
+                    </div>
+                    <div className="mt-1 text-xs text-slate-500">
+                      {group.documentStatus ?? group.status} · {group.deliveryStatus}
+                      {group.overallConfidenceBps != null ? ` · ${Math.round(group.overallConfidenceBps / 100)}%` : ""}
+                    </div>
+                    {group.deliveryError && <div className="mt-1 text-xs text-red-600">{group.deliveryError}</div>}
                   </div>
-                  <div className="mt-1 text-xs text-slate-500">
-                    {group.documentStatus ?? group.status} · {group.deliveryStatus}
-                    {group.overallConfidenceBps != null ? ` · ${Math.round(group.overallConfidenceBps / 100)}%` : ""}
+                  <div className="flex flex-wrap gap-2">
+                    {group.previewUrl && (
+                      <button
+                        type="button"
+                        onClick={() => setOpenPreviews((current) => previewOpen ? current.filter((id) => id !== group.groupIndex) : [...current, group.groupIndex])}
+                        className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+                      >
+                        {previewOpen ? (locale === "sl" ? "Skrij predogled" : "Hide preview") : (locale === "sl" ? "Predogled" : "Preview")}
+                      </button>
+                    )}
+                    {group.documentId ? (
+                      <Link
+                        href={`/invoice-review/${group.documentId}`}
+                        className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700"
+                      >
+                        {locale === "sl" ? "Odpri račun" : "Open invoice"}
+                      </Link>
+                    ) : (
+                      <span className="text-xs font-semibold text-slate-400">{locale === "sl" ? "V obdelavi…" : "Processing…"}</span>
+                    )}
                   </div>
-                  {group.deliveryError && <div className="mt-1 text-xs text-red-600">{group.deliveryError}</div>}
                 </div>
-                {group.documentId ? (
-                  <Link
-                    href={`/invoice-review/${group.documentId}`}
-                    className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700"
-                  >
-                    {locale === "sl" ? "Odpri račun" : "Open invoice"}
-                  </Link>
-                ) : (
-                  <span className="text-xs font-semibold text-slate-400">{locale === "sl" ? "V obdelavi…" : "Processing…"}</span>
+                {previewOpen && group.previewUrl && (
+                  <div className="border-t border-slate-200 bg-slate-100 p-2 dark:border-slate-700 dark:bg-slate-950">
+                    <iframe
+                      src={group.previewUrl}
+                      title={`${locale === "sl" ? "Predogled računa" : "Invoice preview"} ${group.groupIndex + 1}`}
+                      className="h-[62vh] min-h-[420px] w-full rounded-xl bg-white"
+                    />
+                  </div>
                 )}
-              </div>
-            ))}
+              </article>
+            )})}
           </div>
         </section>
       )}

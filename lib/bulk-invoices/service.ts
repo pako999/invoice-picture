@@ -2,6 +2,7 @@ import { neon } from "@neondatabase/serverless";
 import { invoiceJsonSchema, normalizedInvoiceSchema, type NormalizedInvoice } from "@/lib/invoice-intelligence/types";
 import { normalizeInvoiceValues, validateInvoice } from "@/lib/invoice-intelligence/validation";
 import { reserveOcrProviderBudget } from "@/lib/invoice-intelligence/safety";
+import { getOcrUsageSummary, quotaPageError } from "@/lib/invoice-intelligence/quota";
 
 const OCR_ENDPOINT = "https://api.mistral.ai/v1/ocr";
 const CHAT_ENDPOINT = "https://api.mistral.ai/v1/chat/completions";
@@ -21,7 +22,15 @@ export async function ocrBulkPages(args: {
 }) {
   const apiKey = process.env.MISTRAL_API_KEY;
   if (!apiKey) throw new Error("MISTRAL_API_KEY is not configured");
-  const endPage = Math.min(args.pageCount - 1, args.startPage + args.batchPages - 1);
+  const usage = await getOcrUsageSummary(args.clerkUserId);
+  const remainingDailyPages = Math.max(0, usage.dailyPageLimit - usage.dayPages);
+  const availablePages = Math.min(usage.remainingPages, remainingDailyPages);
+  if (availablePages <= 0) {
+    throw quotaPageError(usage, remainingDailyPages <= 0 ? "daily_pages" : "pages");
+  }
+
+  const pagesThisBatch = Math.min(args.batchPages, availablePages, args.pageCount - args.startPage);
+  const endPage = Math.min(args.pageCount - 1, args.startPage + pagesThisBatch - 1);
   const pages = Array.from({ length: endPage - args.startPage + 1 }, (_, i) => args.startPage + i);
   await reserveOcrProviderBudget({ clerkUserId: args.clerkUserId, provider: "mistral", pages: pages.length });
 

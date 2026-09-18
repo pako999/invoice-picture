@@ -79,6 +79,10 @@ export function InvoiceReviewClient({ documentId }: { documentId: number }) {
     const json = await res.json();
     setBusy(null);
     if (!res.ok) { setMessage(json.error ?? "Napaka"); return; }
+    if (action === "reprocess" && Number.isInteger(Number(json.bulkJobId))) {
+      router.push(`/bulk-invoices/${Number(json.bulkJobId)}`);
+      return;
+    }
     setMessage(action === "approve" ? (json.manualOverride ? "Račun je ročno potrjen kljub opozorilom." : "Račun je potrjen.") : action === "reject" ? "Račun je zavrnjen." : action === "reprocess" ? "Račun je ponovno v čakalni vrsti." : "Spremembe so shranjene.");
     await load();
     if (action === "approve" || action === "reject") setTimeout(() => goRelative(1), 250);
@@ -106,6 +110,7 @@ export function InvoiceReviewClient({ documentId }: { documentId: number }) {
   const selectedEvidence = useMemo(() => detail?.evidence.find((e) => e.fieldPath === selectedPath) ?? null, [detail, selectedPath]);
   const latestValidation = detail?.validations?.[0] ?? null;
   const invoice = detail?.document.approved ?? detail?.document.normalized;
+  const needsPdfSplit = detail?.document.mimeType === "application/pdf" && detail.document.warnings.some((warning) => /hard-capped|first 25 pages|technical PDF limit/i.test(warning));
 
   if (!detail) return <main className="mx-auto max-w-7xl p-8"><div className="flex items-center gap-2 text-slate-500"><Loader2 className="h-5 w-5 animate-spin" /> Nalaganje dokumenta…</div>{message && <p className="mt-4 text-red-600">{message}</p>}</main>;
 
@@ -159,7 +164,7 @@ export function InvoiceReviewClient({ documentId }: { documentId: number }) {
             <Action busy={busy} name="approve" onClick={() => submit("approve")} className="border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700" icon={<Check className="h-5 w-5" />}>Potrdi račun</Action>
             <Action busy={busy} name="save" onClick={() => submit("save")} icon={<Save className="h-5 w-5" />}>Shrani</Action>
             <Action busy={busy} name="reject" onClick={() => submit("reject")} className="border-red-200 text-red-700" icon={<XCircle className="h-5 w-5" />}>Zavrni</Action>
-            <Action busy={busy} name="reprocess" onClick={() => submit("reprocess")} icon={<RefreshCw className="h-5 w-5" />}>Ponovno obdelaj</Action>
+            <Action busy={busy} name="reprocess" onClick={() => submit("reprocess")} icon={<RefreshCw className="h-5 w-5" />}>{needsPdfSplit ? "Razdeli in ponovno obdelaj" : "Ponovno obdelaj"}</Action>
           </div>
         </div>
       </div>

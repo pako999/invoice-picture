@@ -19,6 +19,8 @@ import { createDocumentSignature } from "@/lib/invoice-intelligence/signing";
 import { resolveManualApprovalReason } from "@/lib/invoice-intelligence/manual-approval";
 import { normalizedInvoiceSchema, type NormalizedInvoice } from "@/lib/invoice-intelligence/types";
 import { normalizeInvoiceValues, validateInvoice } from "@/lib/invoice-intelligence/validation";
+import { estimateSourcePages } from "@/lib/invoice-intelligence/safety";
+import { enqueueExistingPdfAsBulkJob } from "@/lib/bulk-invoices/enqueue-existing-pdf";
 
 const allowedPaths = new Set([
   "documentType", "documentLanguage", "supplier.name", "supplier.address", "supplier.postalCode", "supplier.city", "supplier.countryCode",
@@ -91,7 +93,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const { userId } = await auth();
+  const { userId, getToken } = await auth();
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const documentId = Number((await params).id);
   const data = patchSchema.parse(await req.json());
@@ -100,6 +102,28 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (!document) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   if (data.action === "reprocess") {
+    const estimatedPages = document.originalBase64 && document.mimeType === "application/pdf"
+      ? estimateSourcePages({ base64: document.originalBase64, mimeType: document.mimeType, filename: document.filename })
+      : null;
+    if (document.bulkJobId == null && document.originalBase64 && document.mimeType === "application/pdf" && (estimatedPages ?? 1) > 1) {
+      const token = await getToken();
+      if (!token) return NextResponse.json({ error: "Seja je potekla." }, { status: 401 });
+      const bulkJobId = await enqueueExistingPdfAsBulkJob({
+        clerkToken: token,
+        clerkUserId: userId,
+        companyId: document.companyId,
+        filename: document.filename,
+        base64: document.originalBase64,
+      });
+      await db.insert(invoiceAuditLogs).values({
+        documentId,
+        clerkUserId: userId,
+        action: "reprocess_as_bulk",
+        metadataJson: JSON.stringify({ bulkJobId, estimatedPages }),
+      });
+      return NextResponse.json({ success: true, status: "bulk_queued", bulkJobId });
+    }
+
     await db.update(invoiceDocuments).set({ status: "queued", validationStatus: "pending", processedAt: null, approvedAt: null, updatedAt: new Date() }).where(eq(invoiceDocuments.id, documentId));
 
     if (document.bulkJobId != null && document.bulkGroupIndex != null && document.storageObjectKey) {

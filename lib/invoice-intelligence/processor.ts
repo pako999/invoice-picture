@@ -80,7 +80,7 @@ export async function processInvoiceDocument(documentId: number, runBudget?: Ocr
           (estimatedPages == null && result.pagesProcessed >= safety.maxPagesPerDocument)
         );
         if (wasHardCapped) {
-          const warning = `OCR was hard-capped to the first ${safety.maxPagesPerDocument} pages for cost safety. Verify the complete document manually.`;
+          const warning = `OCR processed the first ${safety.maxPagesPerDocument} pages because the document exceeds the technical PDF limit. Verify the remaining pages manually.`;
           result.invoice.warnings.push(warning);
           validation = { ...validation, status: "needs_review", warnings: [...validation.warnings, warning] };
         }

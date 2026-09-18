@@ -13,12 +13,18 @@ function fakePdf(pageCount: number) {
   return Buffer.from(`%PDF-1.4\n${body}\n%%EOF`).toString("base64");
 }
 
-test("1000-page PDF is detected but Mistral is hard-capped", () => {
+test("1000-page PDF is limited only by the 500-page technical guardrail", () => {
   const input = { base64: fakePdf(1000), mimeType: "application/pdf", filename: "huge.pdf" };
   assert.equal(estimateSourcePages(input), 1000);
   assert.equal(mistralPagesForInput(input)?.length, getOcrSafetyConfig().maxPagesPerDocument);
   assert.equal(providerReservationPages(input), getOcrSafetyConfig().maxPagesPerDocument);
   assert.equal(azureAllowedForInput(input), false);
+});
+
+test("a 43-page PDF is no longer truncated to the first 25 pages", () => {
+  const input = { base64: fakePdf(43), mimeType: "application/pdf", filename: "invoice-batch.pdf" };
+  assert.equal(mistralPagesForInput(input)?.length, 43);
+  assert.equal(providerReservationPages(input), 43);
 });
 
 test("unknown-page PDF still receives explicit Mistral page allow-list", () => {
