@@ -12,6 +12,7 @@ const bilingualRoutes: { slug: string; priority: number; changeFrequency: Metada
   { slug: "cenik",                    priority: 0.9, changeFrequency: "monthly" },
   { slug: "contact",                  priority: 0.7, changeFrequency: "yearly" },
   { slug: "pomoc-pri-nastavitvi",     priority: 0.7, changeFrequency: "monthly" },
+  { slug: "oddaljena-pomoc",         priority: 0.6, changeFrequency: "monthly" },
   { slug: "navodila-za-uporabo",      priority: 0.7, changeFrequency: "monthly" },
   { slug: "pogosta-vprasanja",        priority: 0.7, changeFrequency: "monthly" },
   { slug: "pogoji-uporabe",           priority: 0.3, changeFrequency: "yearly" },
