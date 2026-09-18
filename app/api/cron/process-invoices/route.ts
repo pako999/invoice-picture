@@ -4,6 +4,7 @@ import { purgeExpiredInvoiceDocuments } from "@/lib/invoice-intelligence/retenti
 import { queuePreviouslyUploadedDocuments } from "@/lib/invoice-intelligence/bootstrap-queue";
 import { queuePendingApprovedDeliveries, runQueuedDeliveryJobs } from "@/lib/invoice-intelligence/delivery";
 import { runQueuedUploadJobs } from "@/lib/invoice-upload-queue";
+import { DEFAULT_PDF_UPLOAD_JOB_BATCH_SIZE, MAX_PDF_UPLOAD_WORKER_CONCURRENCY } from "@/lib/pdf-upload-limits";
 
 export const maxDuration = 300;
 export const dynamic = "force-dynamic";
@@ -17,8 +18,8 @@ export async function GET(req: Request) {
 
   const limit = Math.max(1, Math.min(10, Number(process.env.INVOICE_CRON_BATCH_SIZE ?? 3)));
   const deliveryLimit = Math.max(1, Math.min(20, Number(process.env.INVOICE_DELIVERY_BATCH_SIZE ?? 5)));
-  const uploadLimit = Math.max(1, Math.min(50, Number(process.env.INVOICE_UPLOAD_JOB_BATCH_SIZE ?? 20)));
-  const uploadConcurrency = Math.max(1, Math.min(5, Number(process.env.INVOICE_UPLOAD_JOB_CONCURRENCY ?? 5)));
+  const uploadLimit = Math.max(1, Math.min(50, Number(process.env.INVOICE_UPLOAD_JOB_BATCH_SIZE ?? DEFAULT_PDF_UPLOAD_JOB_BATCH_SIZE)));
+  const uploadConcurrency = Math.max(1, Math.min(MAX_PDF_UPLOAD_WORKER_CONCURRENCY, Number(process.env.INVOICE_UPLOAD_JOB_CONCURRENCY ?? MAX_PDF_UPLOAD_WORKER_CONCURRENCY)));
   const startedAt = Date.now();
   const uploadResults = await runQueuedUploadJobs(uploadLimit, uploadConcurrency);
   const newlyQueued = await queuePreviouslyUploadedDocuments(100);
