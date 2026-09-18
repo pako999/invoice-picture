@@ -31,6 +31,7 @@ export const slugMap: Record<string, string> = {
   "pogosta-vprasanja": "faq",
   "navodila-za-uporabo": "user-guide",
   "pomoc-pri-nastavitvi": "setup-help",
+  "oddaljena-pomoc": "remote-support",
   zasebnost: "privacy",
   "pogoji-uporabe": "terms",
   vracila: "refunds",
