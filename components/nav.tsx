@@ -109,7 +109,17 @@ export function Nav() {
   useEffect(() => { setMenuOpen(false); }, [path]);
   useEffect(() => {
     document.body.style.overflow = menuOpen ? "hidden" : "";
-    return () => { document.body.style.overflow = ""; };
+
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") setMenuOpen(false);
+    }
+
+    if (menuOpen) document.addEventListener("keydown", closeOnEscape);
+
+    return () => {
+      document.body.style.overflow = "";
+      document.removeEventListener("keydown", closeOnEscape);
+    };
   }, [menuOpen]);
 
   function changeLanguage(target: Locale) {
@@ -136,7 +146,7 @@ export function Nav() {
             </nav>
           )}
 
-          {isSignedIn && (
+          {isSignedIn && !menuOpen && (
             <nav className="hidden md:flex items-center gap-1">
               {appLinks.map((l) => (
                 <Link key={l.href} href={l.href}
@@ -208,87 +218,119 @@ export function Nav() {
               ) : null}
             </div>
 
-            {!isSignedIn && (
-              <button type="button"
-                aria-label={menuOpen ? t.closeMenu : t.openMenu}
-                aria-expanded={menuOpen}
-                onClick={() => setMenuOpen((v) => !v)}
-                className="md:hidden flex items-center justify-center w-10 h-10 rounded-lg text-gray-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors">
-                {menuOpen ? (
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M6 6l12 12M18 6L6 18"/>
-                  </svg>
-                ) : (
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M4 7h16M4 12h16M4 17h16"/>
-                  </svg>
-                )}
-              </button>
-            )}
+            <button type="button"
+              aria-label={menuOpen ? t.closeMenu : t.openMenu}
+              aria-expanded={menuOpen}
+              aria-controls="mobile-menu"
+              onClick={() => setMenuOpen((v) => !v)}
+              className="md:hidden flex items-center justify-center w-10 h-10 rounded-xl text-gray-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M4 7h16M4 12h16M4 17h16"/>
+              </svg>
+            </button>
           </div>
         </div>
 
-        {!isSignedIn && menuOpen && (
-          <div className="md:hidden border-t border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900">
-            <nav className="max-w-5xl mx-auto px-4 py-3 flex flex-col gap-1">
-              {(isLanding ? landingLinks : publicLinks).map((l) => {
-                const isAnchor = l.href.startsWith("#");
-                const Tag: React.ElementType = isAnchor ? "a" : Link;
-                return (
-                  <Tag key={l.href} href={l.href} onClick={() => setMenuOpen(false)}
-                    className={`px-3 py-3 rounded-lg text-base font-medium transition-colors ${
-                      !isAnchor && path === l.href ? "bg-blue-600 text-white"
-                      : "text-gray-700 hover:bg-gray-100 dark:text-slate-200 dark:hover:bg-slate-800"
-                    }`}>
-                    {l.label}
-                  </Tag>
-                );
-              })}
-              <Link href={localeUrl(locale, "contact")} onClick={() => setMenuOpen(false)}
-                className={`px-3 py-3 rounded-lg text-base font-medium transition-colors ${
-                  path === localeUrl(locale, "contact") ? "bg-blue-600 text-white"
-                  : "text-gray-700 hover:bg-gray-100 dark:text-slate-200 dark:hover:bg-slate-800"
-                }`}>
-                {t.contact}
+        {menuOpen && (
+          <div
+            id="mobile-menu"
+            role="dialog"
+            aria-modal="true"
+            aria-label={t.openMenu}
+            className="md:hidden fixed inset-0 z-[60] flex flex-col bg-white dark:bg-slate-950"
+          >
+            <div className="h-14 shrink-0 px-4 flex items-center justify-between border-b border-gray-200 dark:border-slate-800">
+              <Link href={localeUrl(locale, "")} className="text-lg" onClick={() => setMenuOpen(false)}>
+                <LogoWordmark />
               </Link>
+              <button
+                type="button"
+                aria-label={t.closeMenu}
+                onClick={() => setMenuOpen(false)}
+                className="flex h-10 w-10 items-center justify-center rounded-xl text-gray-700 hover:bg-gray-100 dark:text-slate-200 dark:hover:bg-slate-800"
+              >
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M6 6l12 12M18 6L6 18"/>
+                </svg>
+              </button>
+            </div>
 
-              {/* Language switcher inside drawer */}
-              <div className="mt-3 pt-3 border-t border-gray-200 dark:border-slate-700 flex gap-2">
-                <button
-                  onClick={() => { changeLanguage("sl"); setMenuOpen(false); }}
-                  className={`flex-1 py-2 rounded-lg text-sm font-bold transition-colors ${
-                    locale === "sl" ? "bg-blue-600 text-white" : "bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-200"
-                  }`}
-                >
-                  🇸🇮 {t.languageSlovenian}
-                </button>
-                <button
-                  onClick={() => { changeLanguage("en"); setMenuOpen(false); }}
-                  className={`flex-1 py-2 rounded-lg text-sm font-bold transition-colors ${
-                    locale === "en" ? "bg-blue-600 text-white" : "bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-200"
-                  }`}
-                >
-                  🇬🇧 {t.languageEnglish}
-                </button>
+            <nav className="flex-1 overflow-y-auto px-5 py-6 flex flex-col">
+              <div className="flex flex-col gap-2">
+                {(isSignedIn ? appLinks : isLanding ? landingLinks : publicLinks).map((l) => {
+                  const isAnchor = l.href.startsWith("#");
+                  const Tag: React.ElementType = isAnchor ? "a" : Link;
+                  return (
+                    <Tag
+                      key={l.href}
+                      href={l.href}
+                      onClick={() => setMenuOpen(false)}
+                      className={`flex items-center gap-3 px-4 py-4 rounded-2xl text-xl font-bold transition-colors ${
+                        !isAnchor && path === l.href
+                          ? "bg-blue-600 text-white"
+                          : "text-slate-900 hover:bg-blue-50 dark:text-white dark:hover:bg-slate-800"
+                      }`}
+                    >
+                      {"icon" in l && <span className="text-2xl" aria-hidden="true">{l.icon}</span>}
+                      <span>{l.label}</span>
+                    </Tag>
+                  );
+                })}
+
+                {!isSignedIn && (
+                  <Link
+                    href={localeUrl(locale, "contact")}
+                    onClick={() => setMenuOpen(false)}
+                    className={`px-4 py-4 rounded-2xl text-xl font-bold transition-colors ${
+                      path === localeUrl(locale, "contact")
+                        ? "bg-blue-600 text-white"
+                        : "text-slate-900 hover:bg-blue-50 dark:text-white dark:hover:bg-slate-800"
+                    }`}
+                  >
+                    {t.contact}
+                  </Link>
+                )}
               </div>
 
-              <div className="mt-3 pt-3 border-t border-gray-200 dark:border-slate-700 flex flex-col gap-2">
-                {isLoaded && (
-                  <>
+              <div className="mt-auto pt-6">
+                <div className="border-t border-gray-200 dark:border-slate-800 pt-5 flex gap-3">
+                  <button
+                    onClick={() => { changeLanguage("sl"); setMenuOpen(false); }}
+                    className={`flex-1 py-3 rounded-xl text-sm font-bold transition-colors ${
+                      locale === "sl" ? "bg-blue-600 text-white" : "bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-200"
+                    }`}
+                  >
+                    🇸🇮 {t.languageSlovenian}
+                  </button>
+                  <button
+                    onClick={() => { changeLanguage("en"); setMenuOpen(false); }}
+                    className={`flex-1 py-3 rounded-xl text-sm font-bold transition-colors ${
+                      locale === "en" ? "bg-blue-600 text-white" : "bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-200"
+                    }`}
+                  >
+                    🇬🇧 {t.languageEnglish}
+                  </button>
+                </div>
+
+                {!isSignedIn && isLoaded && (
+                  <div className="mt-4 flex flex-col gap-2">
                     <SignInButton mode="modal">
-                      <button onClick={() => setMenuOpen(false)}
-                        className="w-full text-base text-gray-700 dark:text-slate-200 hover:bg-gray-100 dark:hover:bg-slate-800 font-medium px-3 py-3 rounded-lg transition-colors text-left">
+                      <button
+                        onClick={() => setMenuOpen(false)}
+                        className="w-full px-4 py-3 rounded-xl text-base font-bold text-slate-800 bg-gray-100 hover:bg-gray-200 dark:text-white dark:bg-slate-800 dark:hover:bg-slate-700"
+                      >
                         {t.signIn}
                       </button>
                     </SignInButton>
                     <SignUpButton mode="modal">
-                      <button onClick={() => setMenuOpen(false)}
-                        className="w-full text-base bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-3 rounded-xl transition-colors flex items-center justify-center gap-2">
-                        <span>📷</span>
-                        <span>{t.startScanning}</span>
+                      <button
+                        onClick={() => setMenuOpen(false)}
+                        className="w-full px-4 py-3 rounded-xl text-base font-bold text-white bg-blue-600 hover:bg-blue-700"
+                      >
+                        {t.startScanning}
                       </button>
                     </SignUpButton>
-                  </>
+                  </div>
                 )}
               </div>
             </nav>
