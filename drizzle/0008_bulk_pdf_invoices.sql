@@ -56,6 +56,8 @@ CREATE TABLE IF NOT EXISTS "bulkInvoiceGroups" (
   "boundaryConfidenceBps" integer,
   "needsBoundaryReview" boolean NOT NULL DEFAULT false,
   "status" varchar(32) NOT NULL DEFAULT 'pending',
+  "deliveryStatus" varchar(32) NOT NULL DEFAULT 'pending',
+  "deliveryError" text,
   "documentId" integer REFERENCES "invoiceDocuments"("id") ON DELETE SET NULL,
   "createdAt" timestamp NOT NULL DEFAULT now(),
   "updatedAt" timestamp NOT NULL DEFAULT now()
