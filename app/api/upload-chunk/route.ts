@@ -2,10 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { neon } from "@neondatabase/serverless";
 import { z } from "zod";
-import { MAX_PDF_UPLOAD_CHUNKS, PDF_UPLOAD_CHUNK_BYTES } from "@/lib/pdf-upload-limits";
-
-const MAX_ACTIVE_UPLOADS_PER_USER = 3;
-const MAX_ACTIVE_UPLOADS_GLOBAL = 300;
+import {
+  MAX_ACTIVE_PDF_UPLOADS_GLOBAL,
+  MAX_IN_PROGRESS_PDF_UPLOADS_PER_USER,
+  MAX_PDF_UPLOAD_CHUNKS,
+  PDF_UPLOAD_CHUNK_BYTES,
+} from "@/lib/pdf-upload-limits";
 
 const schema = z.object({
   uploadId: z.string().uuid(),
@@ -44,10 +46,15 @@ export async function POST(req: NextRequest) {
           )`;
 
       const [userRows, globalRows, existingRows] = await Promise.all([
-        sql`SELECT count(DISTINCT "uploadId")::int AS count
-            FROM "invoiceUploadChunks"
-            WHERE "clerkUserId" = ${userId}
-              AND "createdAt" >= now() - interval '2 hours'`,
+        sql`SELECT count(DISTINCT c."uploadId")::int AS count
+            FROM "invoiceUploadChunks" c
+            WHERE c."clerkUserId" = ${userId}
+              AND c."createdAt" >= now() - interval '2 hours'
+              AND NOT EXISTS (
+                SELECT 1 FROM "invoiceUploadJobs" j
+                WHERE j."uploadId" = c."uploadId"
+                  AND j."clerkUserId" = c."clerkUserId"
+              )`,
         sql`SELECT count(DISTINCT "uploadId")::int AS count
             FROM "invoiceUploadChunks"
             WHERE "createdAt" >= now() - interval '2 hours'`,
@@ -56,14 +63,14 @@ export async function POST(req: NextRequest) {
             LIMIT 1`,
       ]);
 
-      if (!existingRows.length && Number(userRows[0]?.count ?? 0) >= MAX_ACTIVE_UPLOADS_PER_USER) {
+      if (!existingRows.length && Number(userRows[0]?.count ?? 0) >= MAX_IN_PROGRESS_PDF_UPLOADS_PER_USER) {
         return NextResponse.json({
           error: "Preveč aktivnih uploadov. Počakajte, da se trenutni zaključijo.",
           code: "upload_backpressure",
         }, { status: 429, headers: { "Retry-After": "10" } });
       }
 
-      if (!existingRows.length && Number(globalRows[0]?.count ?? 0) >= MAX_ACTIVE_UPLOADS_GLOBAL) {
+      if (!existingRows.length && Number(globalRows[0]?.count ?? 0) >= MAX_ACTIVE_PDF_UPLOADS_GLOBAL) {
         return NextResponse.json({
           error: "Sistem trenutno obdeluje veliko dokumentov. Poskusite ponovno čez nekaj sekund.",
           code: "upload_backpressure",
@@ -75,7 +82,7 @@ export async function POST(req: NextRequest) {
       INSERT INTO "invoiceUploadChunks"
         ("uploadId", "clerkUserId", "chunkIndex", "totalChunks", "data", "createdAt")
       VALUES
-        (${input.uploadId}, ${userId}, ${input.chunkIndex}, ${input.totalChunks}, ${input.data}, now())
+        (${input.uploadId}, ${userId}, ${input.chunkIndex}, ${input.totalChunks}, decode(${input.data}, 'base64'), now())
       ON CONFLICT ("uploadId", "clerkUserId", "chunkIndex")
       DO UPDATE SET
         "totalChunks" = EXCLUDED."totalChunks",
