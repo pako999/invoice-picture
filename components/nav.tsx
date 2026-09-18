@@ -271,7 +271,7 @@ export function Nav() {
                           : "text-slate-900 hover:bg-blue-50 dark:text-white dark:hover:bg-slate-800"
                       }`}
                     >
-                      {"icon" in l && <span className="text-2xl" aria-hidden="true">{l.icon}</span>}
+                      {"icon" in l && typeof l.icon === "string" && <span className="text-2xl" aria-hidden="true">{l.icon}</span>}
                       <span>{l.label}</span>
                     </Tag>
                   );
