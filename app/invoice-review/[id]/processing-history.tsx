@@ -14,8 +14,24 @@ export async function ProcessingHistory({ documentId }: { documentId: number }) 
   if (!document) return null;
 
   const [attempts, audit] = await Promise.all([
-    db.select().from(invoiceProcessingAttempts).where(eq(invoiceProcessingAttempts.documentId, documentId)).orderBy(desc(invoiceProcessingAttempts.startedAt)).limit(50),
-    db.select().from(invoiceAuditLogs).where(and(eq(invoiceAuditLogs.documentId, documentId), eq(invoiceAuditLogs.clerkUserId, userId))).orderBy(desc(invoiceAuditLogs.createdAt)).limit(100),
+    db.select({
+      id: invoiceProcessingAttempts.id,
+      provider: invoiceProcessingAttempts.provider,
+      model: invoiceProcessingAttempts.model,
+      status: invoiceProcessingAttempts.status,
+      errorMessage: invoiceProcessingAttempts.errorMessage,
+      durationMs: invoiceProcessingAttempts.durationMs,
+      pagesProcessed: invoiceProcessingAttempts.pagesProcessed,
+      startedAt: invoiceProcessingAttempts.startedAt,
+      completedAt: invoiceProcessingAttempts.completedAt,
+    }).from(invoiceProcessingAttempts)
+      .where(eq(invoiceProcessingAttempts.documentId, documentId))
+      .orderBy(desc(invoiceProcessingAttempts.startedAt))
+      .limit(50),
+    db.select().from(invoiceAuditLogs)
+      .where(and(eq(invoiceAuditLogs.documentId, documentId), eq(invoiceAuditLogs.clerkUserId, userId)))
+      .orderBy(desc(invoiceAuditLogs.createdAt))
+      .limit(100),
   ]);
 
   return (
@@ -27,7 +43,7 @@ export async function ProcessingHistory({ documentId }: { documentId: number }) 
             {attempts.length === 0 ? <p className="text-slate-500">Še ni processing poskusov.</p> : attempts.map((a) => (
               <div key={a.id} className="rounded-xl bg-slate-50 p-3 dark:bg-slate-800">
                 <div className="flex flex-wrap items-center justify-between gap-2"><strong>{a.provider} · {a.model || "—"}</strong><span>{a.status}</span></div>
-                <div className="mt-1 text-slate-500">{a.durationMs == null ? "—" : `${a.durationMs} ms`} · strani {a.pagesProcessed ?? "—"} · strošek {a.costMicros == null ? "—" : `${(a.costMicros / 1_000_000).toFixed(4)} €`}</div>
+                <div className="mt-1 text-slate-500">{a.durationMs == null ? "—" : `${a.durationMs} ms`} · strani {a.pagesProcessed ?? "—"}</div>
                 {a.errorMessage && <div className="mt-1 text-red-600">{a.errorMessage}</div>}
               </div>
             ))}
