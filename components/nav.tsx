@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
+import { createPortal } from "react-dom";
 import { usePathname, useRouter } from "next/navigation";
 import { SignInButton, SignUpButton, UserButton, useUser } from "@clerk/nextjs";
 import { LogoWordmark } from "@/components/logo";
@@ -231,7 +232,7 @@ export function Nav() {
           </div>
         </div>
 
-        {menuOpen && (
+        {menuOpen && createPortal((
           <div
             id="mobile-menu"
             role="dialog"
@@ -335,7 +336,7 @@ export function Nav() {
               </div>
             </nav>
           </div>
-        )}
+        ), document.body)}
       </header>
 
       {isSignedIn && (
