@@ -19,7 +19,7 @@ interface SelectedFile {
 }
 
 const MAX_BATCH_FILES = 500;
-const MAX_FILE_SIZE = 10 * 1024 * 1024;
+const MAX_IMAGE_FILE_SIZE = 10 * 1024 * 1024;\nconst MAX_PDF_FILE_SIZE = 200 * 1024 * 1024;
 
 function readFileAsBase64(file: File): Promise<{ base64: string; mime: string }> {
   return new Promise((resolve, reject) => {
@@ -109,7 +109,7 @@ export default function ScanPage() {
   const [showLimitModal, setShowLimitModal] = useState(false);
   const [ocrLimit, setOcrLimit] = useState<{ plan: CommercialPlan; message: string | null; originalSent: boolean } | null>(null);
   const [sendProgress, setSendProgress] = useState({ current: 0, total: 0 });
-  const [queuedCount, setQueuedCount] = useState(0);
+  const [queuedCount, setQueuedCount] = useState(0);\n  const [bulkJobIds, setBulkJobIds] = useState<number[]>([]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -135,8 +135,8 @@ export default function ScanPage() {
 
   function addFiles(incoming: File[]) {
     const valid = incoming.filter((f) => f.type.startsWith("image/") || f.type === "application/pdf");
-    const oversized = valid.filter((f) => f.size > MAX_FILE_SIZE);
-    const allowed = valid.filter((f) => f.size <= MAX_FILE_SIZE);
+    const oversized = valid.filter((f) => isPdf(f.type) ? f.size > MAX_PDF_FILE_SIZE : f.size > MAX_IMAGE_FILE_SIZE);
+    const allowed = valid.filter((f) => isPdf(f.type) ? f.size <= MAX_PDF_FILE_SIZE : f.size <= MAX_IMAGE_FILE_SIZE);
     const freeRemaining = subStatus?.isFree && subStatus.monthlyLimit !== null
       ? Math.max(0, subStatus.monthlyLimit - subStatus.monthlyUsage)
       : MAX_BATCH_FILES;
@@ -156,7 +156,12 @@ export default function ScanPage() {
 
     if (oversized.length > 0 || allowed.length > accepted.length) {
       const messages = [];
-      if (oversized.length > 0) messages.push(`${oversized.length} datotek je večjih od 10 MB`);
+      if (oversized.length > 0) {
+        const bigPdfs = oversized.filter((f) => isPdf(f.type)).length;
+        const bigImages = oversized.length - bigPdfs;
+        if (bigPdfs) messages.push(`${bigPdfs} PDF ${bigPdfs === 1 ? "je večji" : "so večji"} od 200 MB`);
+        if (bigImages) messages.push(`${bigImages} slik ${bigImages === 1 ? "je večja" : "je večjih"} od 10 MB`);
+      }
       if (allowed.length > accepted.length) {
         messages.push(subStatus?.isFree
           ? `brezplačni paket dovoljuje še ${freeRemaining} računov ta mesec`
@@ -196,7 +201,7 @@ export default function ScanPage() {
     if (files.length === 0) return;
     setStatus("sending");
     setErrMsg("");
-    setQueuedCount(0);
+    setQueuedCount(0);\n    setBulkJobIds([]);
     setSendProgress({ current: 0, total: files.length });
     const failed: SelectedFile[] = [];
     let sent = 0;
@@ -257,7 +262,7 @@ export default function ScanPage() {
         if (json.ocrLimitReached) {
           setOcrLimit({ plan: json.ocrPlan ?? "free", message: json.ocrMessage ?? null, originalSent: true });
         }
-        if (json.queued) queued += 1;
+        if (json.queued) queued += 1;\n        if (Number.isInteger(Number(json.bulkJobId))) setBulkJobIds((current) => [...current, Number(json.bulkJobId)]);
         else sent += 1;
 
         URL.revokeObjectURL(selected.url);
@@ -384,7 +389,14 @@ export default function ScanPage() {
       {/* Notifications */}
       {status === "ok" && (
         <div className="mb-5 flex items-center gap-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 px-4 py-3 rounded-xl text-sm font-medium">
-          ✅ {queuedCount > 0 ? `${queuedCount} PDF ${queuedCount === 1 ? "je sprejet" : "so sprejeti"} v varno čakalno vrsto za pošiljanje` : (files.length === 0 ? "Vsi dokumenti so bili poslani" : "Dokument uspešno poslan")}{sentToLabel ? ` — ${sentToLabel}` : ""}!
+          ✅ {queuedCount > 0 ? `${queuedCount} PDF ${queuedCount === 1 ? "je sprejet" : "so sprejeti"} za samodejno razdelitev na posamezne račune in OCR` : (files.length === 0 ? "Vsi dokumenti so bili poslani" : "Dokument uspešno poslan")}{sentToLabel ? ` — ${sentToLabel}` : ""}!
+        </div>
+      )}
+      {status === "ok" && bulkJobIds.length > 0 && (
+        <div className="mb-5">
+          <Link href={`/bulk-invoices/${bulkJobIds[bulkJobIds.length - 1]}`} className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-700">
+            Preglej razdelitev in OCR PDF paketa →
+          </Link>
         </div>
       )}
       {status === "err" && (
@@ -400,7 +412,7 @@ export default function ScanPage() {
             <p className="text-sm font-bold text-gray-700 dark:text-slate-300">Izbranih dokumentov: {files.length}/{MAX_BATCH_FILES}</p>
             <button onClick={() => clearFiles()} disabled={status === "sending"} className="text-xs font-semibold text-red-600 hover:underline disabled:opacity-40">Odstrani vse</button>
           </div>
-          <p className="text-xs text-gray-500 dark:text-slate-400">Vsak dokument bo poslan v ločenem emailu.</p>
+          <p className="text-xs text-gray-500 dark:text-slate-400">PDF lahko vsebuje več računov. Sistem bo samodejno prepoznal meje računov, jih razdelil in vsakega obdelal ločeno.</p>
           <div className="max-h-96 overflow-y-auto space-y-2">
             {files.map((selected) => (
               <div key={selected.id} className="relative flex items-center gap-3 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-3">
@@ -442,8 +454,8 @@ export default function ScanPage() {
             <span className="text-5xl">📄</span>
             <div className="text-center">
               <p className="text-sm font-semibold text-gray-700 dark:text-slate-300">Povleci dokumente sem</p>
-              <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">Klikni ali povleci do 500 dokumentov · JPG · PNG · WEBP · <strong>PDF</strong> — vsak do 10 MB</p>
-              <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">Vsak dokument se pošlje kot ločen email.</p>
+              <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">Klikni ali povleci do 500 dokumentov · slike do 10 MB · <strong>PDF do 200 MB</strong></p>
+              <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">En PDF lahko vsebuje 100+ računov — sistem jih samodejno razdeli in obdela posamezno.</p>
             </div>
           </div>
 
