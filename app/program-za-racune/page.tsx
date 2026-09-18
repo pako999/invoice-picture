@@ -4,7 +4,7 @@ import { Camera, ScanText, Building2, ArrowRight, ShieldCheck } from "lucide-rea
 
 export const metadata: Metadata = {
   title: "Program za račune z OCR za prejete račune | Slikaj Račun",
-  description: "Program za prejete račune: fotografirajte ali naložite PDF, OCR prebere podatke, sistem jih preveri in račun pošlje v računovodski workflow. Za slovenske in angleške račune.",
+  description: "Program za prejete račune: fotografirajte ali naložite PDF, OCR prebere podatke, sistem jih preveri in račun pošlje v računovodski workflow. Za slovenske in tuje račune.",
   alternates: { canonical: "/program-za-racune" },
   openGraph: {
     title: "Program za račune z OCR – Slikaj Račun",
@@ -74,8 +74,8 @@ export default function ProgramZaRacunePage() {
         <h2>Program za račune za računovodske servise</h2>
         <p>Računovodski servis lahko vodi več podjetij iz enega uporabniškega računa. Vsako podjetje ima lahko svojo destinacijo in način dostave, dokumenti pa ostanejo ločeno sledljivi.</p>
 
-        <h2>Slovenski in angleški računi</h2>
-        <p>OCR workflow je primeren za slovenske in angleške račune, zato lahko v istem procesu obdelate domače in tuje dobavitelje brez ločene aplikacije za vsak jezik.</p>
+        <h2>Slovenski in tuji računi</h2>
+        <p>OCR workflow je primeren za slovenske in tuje račune v različnih jezikih, zato lahko v istem procesu obdelate domače in tuje dobavitelje brez ločene aplikacije za vsak jezik.</p>
 
         <h2>Pogosta vprašanja</h2>
         {faq.map((item) => <section key={item.q}><h3>{item.q}</h3><p>{item.a}</p></section>)}
