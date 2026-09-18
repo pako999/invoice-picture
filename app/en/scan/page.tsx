@@ -19,7 +19,7 @@ interface SelectedFile {
 }
 
 const MAX_BATCH_FILES = 500;
-const MAX_FILE_SIZE = 10 * 1024 * 1024;
+const MAX_IMAGE_FILE_SIZE = 10 * 1024 * 1024;\nconst MAX_PDF_FILE_SIZE = 200 * 1024 * 1024;
 
 function readFileAsBase64(file: File): Promise<{ base64: string; mime: string }> {
   return new Promise((resolve, reject) => {
@@ -108,7 +108,7 @@ export default function ScanPage() {
   const [showLimitModal, setShowLimitModal] = useState(false);
   const [ocrLimit, setOcrLimit] = useState<{ plan: CommercialPlan; message: string | null; originalSent: boolean } | null>(null);
   const [sendProgress, setSendProgress] = useState({ current: 0, total: 0 });
-  const [queuedCount, setQueuedCount] = useState(0);
+  const [queuedCount, setQueuedCount] = useState(0);\n  const [bulkJobIds, setBulkJobIds] = useState<number[]>([]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -133,8 +133,8 @@ export default function ScanPage() {
 
   function addFiles(incoming: File[]) {
     const valid = incoming.filter((f) => f.type.startsWith("image/") || f.type === "application/pdf");
-    const oversized = valid.filter((f) => f.size > MAX_FILE_SIZE);
-    const allowed = valid.filter((f) => f.size <= MAX_FILE_SIZE);
+    const oversized = valid.filter((f) => isPdf(f.type) ? f.size > MAX_PDF_FILE_SIZE : f.size > MAX_IMAGE_FILE_SIZE);
+    const allowed = valid.filter((f) => isPdf(f.type) ? f.size <= MAX_PDF_FILE_SIZE : f.size <= MAX_IMAGE_FILE_SIZE);
     const freeRemaining = subStatus?.isFree && subStatus.monthlyLimit !== null
       ? Math.max(0, subStatus.monthlyLimit - subStatus.monthlyUsage)
       : MAX_BATCH_FILES;
@@ -154,7 +154,12 @@ export default function ScanPage() {
 
     if (oversized.length > 0 || allowed.length > accepted.length) {
       const messages = [];
-      if (oversized.length > 0) messages.push(`${oversized.length} files are larger than 10 MB`);
+      if (oversized.length > 0) {
+        const bigPdfs = oversized.filter((f) => isPdf(f.type)).length;
+        const bigImages = oversized.length - bigPdfs;
+        if (bigPdfs) messages.push(`${bigPdfs} PDF ${bigPdfs === 1 ? "is" : "are"} larger than 200 MB`);
+        if (bigImages) messages.push(`${bigImages} image ${bigImages === 1 ? "is" : "files are"} larger than 10 MB`);
+      }
       if (allowed.length > accepted.length) {
         messages.push(subStatus?.isFree
           ? `the Free plan allows ${freeRemaining} more invoices this month`
@@ -194,7 +199,7 @@ export default function ScanPage() {
     if (files.length === 0) return;
     setStatus("sending");
     setErrMsg("");
-    setQueuedCount(0);
+    setQueuedCount(0);\n    setBulkJobIds([]);
     setSendProgress({ current: 0, total: files.length });
     const failed: SelectedFile[] = [];
     let sent = 0;
@@ -255,7 +260,7 @@ export default function ScanPage() {
         if (json.ocrLimitReached) {
           setOcrLimit({ plan: json.ocrPlan ?? "free", message: json.ocrMessage ?? null, originalSent: true });
         }
-        if (json.queued) queued += 1;
+        if (json.queued) queued += 1;\n        if (Number.isInteger(Number(json.bulkJobId))) setBulkJobIds((current) => [...current, Number(json.bulkJobId)]);
         else sent += 1;
 
         URL.revokeObjectURL(selected.url);
@@ -380,6 +385,13 @@ export default function ScanPage() {
           ✅ {queuedCount > 0 ? `${queuedCount} PDF ${queuedCount === 1 ? "was" : "were"} safely queued for delivery` : "All documents were sent"}{sentToLabel ? ` — ${sentToLabel}` : ""}!
         </div>
       )}
+      {status === "ok" && bulkJobIds.length > 0 && (
+        <div className="mb-5">
+          <Link href={`/en/bulk-invoices/${bulkJobIds[bulkJobIds.length - 1]}`} className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-700">
+            Review PDF splitting and OCR →
+          </Link>
+        </div>
+      )}
       {status === "err" && (
         <div className="mb-5 flex items-center gap-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-xl text-sm font-medium">
           ❌ {errMsg}
@@ -392,7 +404,7 @@ export default function ScanPage() {
             <p className="text-sm font-bold text-gray-700 dark:text-slate-300">Selected documents: {files.length}/{MAX_BATCH_FILES}</p>
             <button onClick={clearFiles} disabled={status === "sending"} className="text-xs font-semibold text-red-600 hover:underline disabled:opacity-40">Remove all</button>
           </div>
-          <p className="text-xs text-gray-500 dark:text-slate-400">Each document will be sent in a separate email.</p>
+          <p className="text-xs text-gray-500 dark:text-slate-400">A PDF may contain many invoices. The system detects invoice boundaries, splits them and processes each invoice separately.</p>
           <div className="max-h-96 overflow-y-auto space-y-2">
             {files.map((selected) => (
               <div key={selected.id} className="relative flex items-center gap-3 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-3">
@@ -434,7 +446,7 @@ export default function ScanPage() {
             <div className="text-center">
               <p className="text-sm font-semibold text-gray-700 dark:text-slate-300">Drop documents here</p>
               <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">Click or drop up to 500 documents · JPG · PNG · WEBP · <strong>PDF</strong> — 10 MB each</p>
-              <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">Each document is sent as a separate email.</p>
+              <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">One PDF can contain 100+ invoices — the system automatically separates and processes them individually.</p>
             </div>
           </div>
 
