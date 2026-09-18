@@ -22,7 +22,7 @@ function detectLocale(pathname: string): Locale {
 }
 
 // App routes have the same slug in both locales (only the prefix differs)
-const APP_ROUTES = new Set(["scan", "invoices", "settings", "upgrade"]);
+const APP_ROUTES = new Set(["scan", "invoices", "settings", "upgrade", "bulk-invoices"]);
 
 /** Build the equivalent URL in the other locale for the current path.
  *  /             ↔ /en
@@ -62,8 +62,8 @@ export function Nav() {
 
   const isLanding = path === "/" || path === "/en";
   const appPaths = [
-    "/scan", "/invoices", "/settings",
-    "/en/scan", "/en/invoices", "/en/settings",
+    "/scan", "/invoices", "/settings", "/bulk-invoices",
+    "/en/scan", "/en/invoices", "/en/settings", "/en/bulk-invoices",
     "/admin",
   ];
   const isApp = appPaths.some((p) => path === p || path.startsWith(p + "/"));
@@ -79,6 +79,7 @@ export function Nav() {
     const prefix = locale === "en" ? "/en" : "";
     const links = [
       { href: `${prefix}/scan`,     label: t.scan,     icon: "📷" },
+      { href: `${prefix}/bulk-invoices`, label: locale === "en" ? "PDF batches" : "PDF paketi", icon: "🗂️" },
       { href: `${prefix}/invoices`, label: t.invoices, icon: "📋" },
       { href: `${prefix}/settings`, label: t.settings, icon: "⚙️" },
       { href: `${prefix}/contact`,  label: t.contact,  icon: "📨" },

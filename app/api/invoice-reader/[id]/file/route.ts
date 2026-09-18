@@ -4,9 +4,10 @@ import { and, eq } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { invoiceAuditLogs, invoiceDocuments } from "@/lib/schema";
 import { verifyDocumentSignature } from "@/lib/invoice-intelligence/signing";
+import { BULK_PDF_GATEWAY_URL } from "@/lib/bulk-invoices/config";
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const { userId } = await auth();
+  const { userId, getToken } = await auth();
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const documentId = Number((await params).id);
   const exp = Number(req.nextUrl.searchParams.get("exp"));
@@ -21,11 +22,44 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     filename: invoiceDocuments.filename,
     mimeType: invoiceDocuments.mimeType,
     originalBase64: invoiceDocuments.originalBase64,
-  }).from(invoiceDocuments).where(and(eq(invoiceDocuments.id, documentId), eq(invoiceDocuments.clerkUserId, userId))).limit(1);
+    storageObjectKey: invoiceDocuments.storageObjectKey,
+  }).from(invoiceDocuments)
+    .where(and(eq(invoiceDocuments.id, documentId), eq(invoiceDocuments.clerkUserId, userId)))
+    .limit(1);
   if (!document) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+  await db.insert(invoiceAuditLogs).values({
+    documentId,
+    clerkUserId: userId,
+    action: "download",
+    metadataJson: JSON.stringify({ inline: true, storageBacked: Boolean(document.storageObjectKey) }),
+  });
+
+  if (document.storageObjectKey) {
+    const token = await getToken();
+    if (!token) return NextResponse.json({ error: "Session expired" }, { status: 401 });
+
+    const signed = await fetch(`${BULK_PDF_GATEWAY_URL}/sign-download`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ key: document.storageObjectKey }),
+      signal: AbortSignal.timeout(15_000),
+    });
+    const body = await signed.json().catch(() => ({}));
+    if (!signed.ok || typeof body.url !== "string") {
+      return NextResponse.json({ error: "Could not open private document" }, { status: 502 });
+    }
+    return NextResponse.redirect(body.url, 307);
+  }
+
+  if (!document.originalBase64) {
+    return NextResponse.json({ error: "Document content is unavailable" }, { status: 404 });
+  }
+
   const bytes = Buffer.from(document.originalBase64, "base64");
-  await db.insert(invoiceAuditLogs).values({ documentId, clerkUserId: userId, action: "download", metadataJson: JSON.stringify({ inline: true }) });
   const inline = document.mimeType === "application/pdf" || document.mimeType.startsWith("image/");
   return new NextResponse(bytes, {
     headers: {

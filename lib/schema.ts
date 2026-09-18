@@ -1,4 +1,5 @@
 import {
+  boolean,
   index,
   integer,
   pgEnum,
@@ -71,6 +72,49 @@ export const companies = pgTable("companies", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
+export const bulkInvoiceJobs = pgTable("bulkInvoiceJobs", {
+  id: serial("id").primaryKey(),
+  clerkUserId: varchar("clerkUserId", { length: 255 }).notNull(),
+  companyId: integer("companyId").references(() => companies.id, { onDelete: "set null" }),
+  objectKey: text("objectKey").notNull(),
+  filename: varchar("filename", { length: 255 }).notNull(),
+  byteSize: integer("byteSize").notNull(),
+  status: varchar("status", { length: 32 }).default("processing").notNull(),
+  stage: varchar("stage", { length: 32 }).default("uploaded").notNull(),
+  pageCount: integer("pageCount"),
+  ocrNextPage: integer("ocrNextPage").default(0).notNull(),
+  classifyCursor: integer("classifyCursor").default(0).notNull(),
+  rangesJson: text("rangesJson"),
+  boundaryReviewRequired: boolean("boundaryReviewRequired").default(false).notNull(),
+  totalInvoices: integer("totalInvoices").default(0).notNull(),
+  processedInvoices: integer("processedInvoices").default(0).notNull(),
+  attempts: integer("attempts").default(0).notNull(),
+  lockedAt: timestamp("lockedAt"),
+  lastError: text("lastError"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+  completedAt: timestamp("completedAt"),
+}, (t) => ({
+  ownerObjectUnique: uniqueIndex("bulkInvoiceJobs_owner_object_unique").on(t.clerkUserId, t.objectKey),
+  queueIdx: index("bulkInvoiceJobs_queue_idx").on(t.status, t.stage, t.lockedAt, t.updatedAt),
+  ownerIdx: index("bulkInvoiceJobs_owner_idx").on(t.clerkUserId, t.createdAt),
+}));
+
+export const bulkInvoicePages = pgTable("bulkInvoicePages", {
+  id: serial("id").primaryKey(),
+  jobId: integer("jobId").notNull().references(() => bulkInvoiceJobs.id, { onDelete: "cascade" }),
+  pageNumber: integer("pageNumber").notNull(),
+  markdown: text("markdown").default("").notNull(),
+  ocrConfidenceBps: integer("ocrConfidenceBps"),
+  startsNewInvoice: boolean("startsNewInvoice"),
+  boundaryConfidenceBps: integer("boundaryConfidenceBps"),
+  classificationJson: text("classificationJson"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+}, (t) => ({
+  pageUnique: uniqueIndex("bulkInvoicePages_job_page_unique").on(t.jobId, t.pageNumber),
+}));
+
 /** Private source document + current processing state. Original file bytes stay
  * server-side in Postgres and are only served through an authorized/signed route. */
 export const invoiceDocuments = pgTable("invoiceDocuments", {
@@ -80,7 +124,12 @@ export const invoiceDocuments = pgTable("invoiceDocuments", {
   sourceInvoiceId: integer("sourceInvoiceId").references(() => invoices.id, { onDelete: "set null" }),
   filename: varchar("filename", { length: 255 }).notNull(),
   mimeType: varchar("mimeType", { length: 96 }).notNull(),
-  originalBase64: text("originalBase64").notNull(),
+  originalBase64: text("originalBase64"),
+  storageObjectKey: text("storageObjectKey"),
+  bulkJobId: integer("bulkJobId").references(() => bulkInvoiceJobs.id, { onDelete: "set null" }),
+  bulkGroupIndex: integer("bulkGroupIndex"),
+  sourcePageStart: integer("sourcePageStart"),
+  sourcePageEnd: integer("sourcePageEnd"),
   originalValueMetadataJson: text("originalValueMetadataJson"),
   sha256: varchar("sha256", { length: 64 }).notNull(),
   byteSize: integer("byteSize").notNull(),
@@ -110,6 +159,28 @@ export const invoiceDocuments = pgTable("invoiceDocuments", {
   ownerCreatedIdx: index("invoiceDocuments_owner_created_idx").on(t.clerkUserId, t.createdAt),
   checksumIdx: index("invoiceDocuments_checksum_idx").on(t.clerkUserId, t.sha256),
   statusIdx: index("invoiceDocuments_status_idx").on(t.status),
+  bulkJobIdx: index("invoiceDocuments_bulk_job_idx").on(t.bulkJobId, t.bulkGroupIndex),
+}));
+
+export const bulkInvoiceGroups = pgTable("bulkInvoiceGroups", {
+  id: serial("id").primaryKey(),
+  jobId: integer("jobId").notNull().references(() => bulkInvoiceJobs.id, { onDelete: "cascade" }),
+  groupIndex: integer("groupIndex").notNull(),
+  startPage: integer("startPage").notNull(),
+  endPage: integer("endPage").notNull(),
+  objectKey: text("objectKey"),
+  sha256: varchar("sha256", { length: 64 }),
+  byteSize: integer("byteSize"),
+  boundaryConfidenceBps: integer("boundaryConfidenceBps"),
+  needsBoundaryReview: boolean("needsBoundaryReview").default(false).notNull(),
+  status: varchar("status", { length: 32 }).default("pending").notNull(),
+  deliveryStatus: varchar("deliveryStatus", { length: 32 }).default("pending").notNull(),
+  deliveryError: text("deliveryError"),
+  documentId: integer("documentId").references(() => invoiceDocuments.id, { onDelete: "set null" }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+}, (t) => ({
+  groupUnique: uniqueIndex("bulkInvoiceGroups_job_group_unique").on(t.jobId, t.groupIndex),
 }));
 
 export const invoiceLineItems = pgTable("invoiceLineItems", {
@@ -248,5 +319,8 @@ export type UserSettings = typeof userSettings.$inferSelect;
 export type Invoice = typeof invoices.$inferSelect;
 export type Company = typeof companies.$inferSelect;
 export type InvoiceDocument = typeof invoiceDocuments.$inferSelect;
+export type BulkInvoiceJob = typeof bulkInvoiceJobs.$inferSelect;
+export type BulkInvoicePage = typeof bulkInvoicePages.$inferSelect;
+export type BulkInvoiceGroup = typeof bulkInvoiceGroups.$inferSelect;
 export type InvoiceLineItem = typeof invoiceLineItems.$inferSelect;
 export type InvoiceVatRow = typeof invoiceVatBreakdown.$inferSelect;

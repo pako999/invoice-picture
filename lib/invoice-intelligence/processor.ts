@@ -44,6 +44,12 @@ export async function processInvoiceDocument(documentId: number, runBudget?: Ocr
   const db = getDb();
   const [document] = await db.select().from(invoiceDocuments).where(eq(invoiceDocuments.id, documentId)).limit(1);
   if (!document) throw new Error("Invoice document not found");
+  if (!document.originalBase64) {
+    if (document.storageObjectKey && document.bulkJobId != null) {
+      throw new Error("Storage-backed bulk invoice documents are processed by the bulk extraction pipeline");
+    }
+    throw new Error("Invoice source content is unavailable");
+  }
 
   await db.update(invoiceDocuments).set({ status: "processing", processingStartedAt: new Date(), updatedAt: new Date() }).where(eq(invoiceDocuments.id, documentId));
 

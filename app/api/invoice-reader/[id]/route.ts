@@ -4,6 +4,8 @@ import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "@/lib/db";
 import {
+  bulkInvoiceGroups,
+  bulkInvoiceJobs,
   invoiceAuditLogs,
   invoiceCorrections,
   invoiceDocuments,
@@ -99,9 +101,36 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
   if (data.action === "reprocess") {
     await db.update(invoiceDocuments).set({ status: "queued", validationStatus: "pending", processedAt: null, approvedAt: null, updatedAt: new Date() }).where(eq(invoiceDocuments.id, documentId));
-    await db.insert(invoiceProcessingJobs).values({ documentId, status: "queued", attempts: 0, availableAt: new Date(), lockedAt: null, lastError: null })
-      .onConflictDoUpdate({ target: invoiceProcessingJobs.documentId, set: { status: "queued", attempts: 0, availableAt: new Date(), lockedAt: null, lastError: null, updatedAt: new Date() } });
-    await db.insert(invoiceAuditLogs).values({ documentId, clerkUserId: userId, action: "reprocess" });
+
+    if (document.bulkJobId != null && document.bulkGroupIndex != null && document.storageObjectKey) {
+      await db.update(bulkInvoiceGroups).set({
+        status: "reprocess",
+        deliveryStatus: "pending",
+        deliveryError: null,
+        updatedAt: new Date(),
+      }).where(and(
+        eq(bulkInvoiceGroups.jobId, document.bulkJobId),
+        eq(bulkInvoiceGroups.groupIndex, document.bulkGroupIndex),
+      ));
+      await db.update(bulkInvoiceJobs).set({
+        status: "processing",
+        stage: "extract",
+        lockedAt: null,
+        lastError: null,
+        completedAt: null,
+        updatedAt: new Date(),
+      }).where(eq(bulkInvoiceJobs.id, document.bulkJobId));
+    } else {
+      await db.insert(invoiceProcessingJobs).values({ documentId, status: "queued", attempts: 0, availableAt: new Date(), lockedAt: null, lastError: null })
+        .onConflictDoUpdate({ target: invoiceProcessingJobs.documentId, set: { status: "queued", attempts: 0, availableAt: new Date(), lockedAt: null, lastError: null, updatedAt: new Date() } });
+    }
+
+    await db.insert(invoiceAuditLogs).values({
+      documentId,
+      clerkUserId: userId,
+      action: "reprocess",
+      metadataJson: JSON.stringify({ bulk: document.bulkJobId != null }),
+    });
     return NextResponse.json({ success: true, status: "queued" });
   }
 
