@@ -36,7 +36,6 @@ export async function GET() {
     overallConfidenceBps: invoiceDocuments.overallConfidenceBps,
     validationStatus: invoiceDocuments.validationStatus,
     warningsJson: invoiceDocuments.warningsJson,
-    processingCostMicros: invoiceDocuments.processingCostMicros,
     createdAt: invoiceDocuments.createdAt,
     processedAt: invoiceDocuments.processedAt,
     approvedAt: invoiceDocuments.approvedAt,
@@ -54,7 +53,19 @@ export async function GET() {
   const histories = [] as Array<Record<string, unknown>>;
   for (const id of ids) {
     const [attempts, validations, evidence, duplicates] = await Promise.all([
-      db.select().from(invoiceProcessingAttempts).where(eq(invoiceProcessingAttempts.documentId, id)).limit(100),
+      db.select({
+        id: invoiceProcessingAttempts.id,
+        documentId: invoiceProcessingAttempts.documentId,
+        provider: invoiceProcessingAttempts.provider,
+        model: invoiceProcessingAttempts.model,
+        status: invoiceProcessingAttempts.status,
+        errorCode: invoiceProcessingAttempts.errorCode,
+        errorMessage: invoiceProcessingAttempts.errorMessage,
+        durationMs: invoiceProcessingAttempts.durationMs,
+        pagesProcessed: invoiceProcessingAttempts.pagesProcessed,
+        startedAt: invoiceProcessingAttempts.startedAt,
+        completedAt: invoiceProcessingAttempts.completedAt,
+      }).from(invoiceProcessingAttempts).where(eq(invoiceProcessingAttempts.documentId, id)).limit(100),
       db.select().from(invoiceValidationResults).where(eq(invoiceValidationResults.documentId, id)).limit(100),
       db.select().from(invoiceFieldEvidence).where(eq(invoiceFieldEvidence.documentId, id)).limit(1000),
       db.select().from(invoiceDuplicateRelations).where(eq(invoiceDuplicateRelations.documentId, id)).limit(100),
