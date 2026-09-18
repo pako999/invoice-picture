@@ -23,8 +23,8 @@ export async function GET(_req: Request,{params}:{params:Promise<{id:string}>}) 
   const job:any=jobs[0];
   // Keep the signed preview URL stable while this page polls job progress so
   // an open PDF iframe is not reloaded every three seconds.
-  const previewWindowMs=15*60_000;
-  const expires=(Math.floor(Date.now()/previewWindowMs)+2)*previewWindowMs;
+  const previewWindowMs=10*60_000;
+  const expires=(Math.floor(Date.now()/previewWindowMs)+1)*previewWindowMs;
   const groupsWithPreviews=groups.map((group:any)=>{
     const documentId=group.documentId==null?null:Number(group.documentId);
     return {

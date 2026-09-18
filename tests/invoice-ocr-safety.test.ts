@@ -27,10 +27,13 @@ test("a 43-page PDF is no longer truncated to the first 25 pages", () => {
   assert.equal(providerReservationPages(input), 43);
 });
 
-test("unknown-page PDF still receives explicit Mistral page allow-list", () => {
+test("unknown-page PDF uses a bounded caller-selected Mistral page allowance", () => {
   const input = { base64: Buffer.from("%PDF-1.4\ncompressed-or-unusual-page-tree\n%%EOF").toString("base64"), mimeType: "application/pdf", filename: "unknown.pdf" };
   assert.equal(estimateSourcePages(input), null);
-  assert.deepEqual(mistralPagesForInput(input), Array.from({ length: getOcrSafetyConfig().maxPagesPerDocument }, (_, i) => i));
+  assert.deepEqual(mistralPagesForInput(input), [0]);
+  assert.equal(mistralPagesForInput(input, 75)?.length, 75);
+  assert.equal(providerReservationPages(input), 1);
+  assert.equal(providerReservationPages(input, 75), 75);
   assert.equal(azureAllowedForInput(input), false);
 });
 

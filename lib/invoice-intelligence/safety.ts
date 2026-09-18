@@ -34,10 +34,10 @@ export function estimateSourcePages(input: { base64: string; mimeType: string; f
   try { const latin = Buffer.from(input.base64, "base64").toString("latin1"); const count = (latin.match(/\/Type\s*\/Page\b/g) || []).length; return count > 0 ? count : null; } catch { return null; }
 }
 export function isPdfInput(input: { mimeType: string; filename?: string }) { return input.mimeType === "application/pdf" || /\.pdf$/i.test(input.filename ?? ""); }
-export function mistralPagesForInput(input: { base64: string; mimeType: string; filename?: string }): number[] | undefined {
-  if (!isPdfInput(input)) return undefined; const cfg = getOcrSafetyConfig(); const estimated = estimateSourcePages(input); const count = Math.max(1, Math.min(estimated ?? cfg.maxPagesPerDocument, cfg.maxPagesPerDocument)); return Array.from({ length: count }, (_, i) => i);
+export function mistralPagesForInput(input: { base64: string; mimeType: string; filename?: string }, unknownPageLimit = 1): number[] | undefined {
+  if (!isPdfInput(input)) return undefined; const cfg = getOcrSafetyConfig(); const estimated = estimateSourcePages(input); const count = Math.max(1, Math.min(estimated ?? unknownPageLimit, cfg.maxPagesPerDocument)); return Array.from({ length: count }, (_, i) => i);
 }
-export function providerReservationPages(input: { base64: string; mimeType: string; filename?: string }) { const cfg = getOcrSafetyConfig(); const estimated = estimateSourcePages(input); return Math.max(1, Math.min(estimated ?? cfg.maxPagesPerDocument, cfg.maxPagesPerDocument)); }
+export function providerReservationPages(input: { base64: string; mimeType: string; filename?: string }, unknownPageLimit = 1) { const cfg = getOcrSafetyConfig(); const estimated = estimateSourcePages(input); return Math.max(1, Math.min(estimated ?? unknownPageLimit, cfg.maxPagesPerDocument)); }
 export function knownDocumentExceedsPageLimit(input: { base64: string; mimeType: string; filename?: string }) { const estimated = estimateSourcePages(input); return estimated != null && estimated > getOcrSafetyConfig().maxPagesPerDocument; }
 export function azureAllowedForInput(input: { base64: string; mimeType: string; filename?: string }) { if (!isPdfInput(input)) return true; const estimated = estimateSourcePages(input); return estimated != null && estimated <= getOcrSafetyConfig().maxPagesPerDocument; }
 export function createOcrRunBudget(): OcrRunBudget { return { remainingPages: getOcrSafetyConfig().maxPagesPerCron }; }
@@ -99,5 +99,21 @@ export async function reserveOcrProviderBudget(args: { clerkUserId: string; prov
     console.error("[invoice-ocr] Failed to reserve OCR budget", { error: message, clerkUserId: args.clerkUserId, provider: args.provider, pages });
     throw error;
   }
+}
+export async function releaseUnusedOcrProviderBudget(args: { clerkUserId: string; provider: OcrProvider; pages: number; runBudget?: OcrRunBudget }) {
+  const pages = Number.isFinite(args.pages) ? Math.max(0, Math.trunc(args.pages)) : 0;
+  if (pages === 0) return;
+  const config = getOcrSafetyConfig();
+  const url = process.env.DATABASE_URL; if (!url) throw new Error("DATABASE_URL is not set"); const sql = neon(url);
+  const now = new Date(); const dayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())); const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  const costPerPage = args.provider === "mistral" ? envInt("MISTRAL_ANNOTATED_PAGE_COST_MICROS", 5000, 0, 10_000_000) : envInt("AZURE_PAGE_COST_MICROS", 0, 0, 10_000_000);
+  const estimatedCost = pages * costPerPage; const userScope = `user:${args.clerkUserId}`;
+  await sql`UPDATE "invoiceOcrUsageBuckets"
+    SET "reservedPages"=GREATEST(0,"reservedPages"-${pages}),
+        "estimatedCostMicros"=GREATEST(0,"estimatedCostMicros"-${estimatedCost}),
+        "updatedAt"=now()
+    WHERE "scopeKey" IN ('global',${userScope})
+      AND (("bucketType"='day' AND "bucketStart"=${dayStart}) OR ("bucketType"='month' AND "bucketStart"=${monthStart}))`;
+  if (args.runBudget) args.runBudget.remainingPages = Math.min(config.maxPagesPerCron, args.runBudget.remainingPages + pages);
 }
 function envInt(name: string, fallback: number, min: number, max: number) { const parsed = Number.parseInt(process.env[name] ?? "", 10); if (!Number.isFinite(parsed)) return fallback; return Math.max(min, Math.min(max, parsed)); }
