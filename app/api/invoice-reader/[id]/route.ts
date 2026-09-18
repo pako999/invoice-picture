@@ -13,6 +13,7 @@ import {
   invoiceFieldEvidence,
   invoiceProcessingJobs,
   invoiceValidationResults,
+  invoices,
   supplierMappings,
 } from "@/lib/schema";
 import { createDocumentSignature } from "@/lib/invoice-intelligence/signing";
@@ -109,12 +110,22 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (document.bulkJobId == null && document.originalBase64 && document.mimeType === "application/pdf") {
       const token = await getToken();
       if (!token) return NextResponse.json({ error: "Seja je potekla." }, { status: 401 });
+      let sourceRecipientEmail: string | null = null;
+      if (document.companyId == null && document.sourceInvoiceId != null) {
+        const [source] = await db.select({ recipientEmail: invoices.recipientEmail }).from(invoices).where(and(
+          eq(invoices.id, document.sourceInvoiceId),
+          eq(invoices.clerkUserId, userId),
+        )).limit(1);
+        sourceRecipientEmail = source?.recipientEmail ?? null;
+      }
       let bulkJobId: number;
       try {
         bulkJobId = await enqueueExistingPdfAsBulkJob({
           clerkToken: token,
           clerkUserId: userId,
           companyId: document.companyId,
+          sourceInvoiceId: document.sourceInvoiceId,
+          recipientEmail: sourceRecipientEmail,
           filename: document.filename,
           base64: document.originalBase64,
         });

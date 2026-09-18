@@ -7,6 +7,8 @@ type EnqueueExistingPdfArgs = {
   clerkToken: string;
   clerkUserId: string;
   companyId: number | null;
+  sourceInvoiceId: number | null;
+  recipientEmail: string | null;
   filename: string;
   base64: string;
 };
@@ -40,6 +42,8 @@ export async function enqueueExistingPdfAsBulkJob(args: EnqueueExistingPdfArgs) 
   const [job] = await db.insert(bulkInvoiceJobs).values({
     clerkUserId: args.clerkUserId,
     companyId: args.companyId,
+    sourceInvoiceId: args.sourceInvoiceId,
+    recipientEmail: args.recipientEmail,
     objectKey: signed.objectKey,
     filename,
     byteSize: bytes.length,

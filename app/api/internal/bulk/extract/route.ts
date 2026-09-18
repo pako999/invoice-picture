@@ -19,12 +19,12 @@ export async function POST(req:Request){
   const jobs=await sql`SELECT * FROM "bulkInvoiceJobs" WHERE "id"=${data.jobId} LIMIT 1`;
   if(!jobs.length||jobs[0].stage!=='extract')return NextResponse.json({error:"Bulk job is not ready for extraction"},{status:409});
   const job:any=jobs[0];
-  let recipientEmail:string|null=null;let deliveryMode:"email_ocr"|"api_json"|"xml_email"="email_ocr";
+  let recipientEmail:string|null=typeof job.recipientEmail==="string"&&job.recipientEmail?job.recipientEmail:null;let deliveryMode:"email_ocr"|"api_json"|"xml_email"="email_ocr";
   if(job.companyId){
     const [company]=await db.select().from(companies).where(and(eq(companies.id,Number(job.companyId)),eq(companies.clerkUserId,String(job.clerkUserId)))).limit(1);
     if(!company)throw new Error("Bulk company not found");
     recipientEmail=company.recipientEmail;deliveryMode=(await getCompanyDeliverySettings(company.id,String(job.clerkUserId))).mode;
-  }else{
+  }else if(!recipientEmail){
     const [settings]=await db.select().from(userSettings).where(eq(userSettings.clerkUserId,String(job.clerkUserId))).limit(1);recipientEmail=settings?.recipientEmail??null;
   }
   if(!recipientEmail)throw new Error("Recipient email is not configured");
