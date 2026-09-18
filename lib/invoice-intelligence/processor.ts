@@ -24,6 +24,7 @@ import {
   providerReservationPages,
   releaseUnusedOcrProviderBudget,
   reserveOcrProviderBudget,
+  type OcrProviderBudgetReservation,
   type OcrRunBudget,
 } from "./safety";
 import { getOcrUsageSummary, OcrCommercialQuotaError } from "./quota";
@@ -61,6 +62,7 @@ export async function processInvoiceDocument(documentId: number, runBudget?: Ocr
   let result: ReaderResult | null = null;
   let validation: ValidationResult | null = null;
   let mistralError: unknown = null;
+  let mistralReservation: OcrProviderBudgetReservation | null = null;
 
   const deterministic = await recordAttempt(documentId, "deterministic", "deterministic-v1", async () => readDeterministically(input));
   if (deterministic) {
@@ -81,10 +83,11 @@ export async function processInvoiceDocument(documentId: number, runBudget?: Ocr
           runBudget?.remainingPages ?? safety.maxPagesPerCron,
         ));
       }
-      const mistralReservation = await reserveOcrProviderBudget({ clerkUserId: document.clerkUserId, provider: "mistral", pages: reservedProviderPages, runBudget });
+      mistralReservation = await reserveOcrProviderBudget({ clerkUserId: document.clerkUserId, provider: "mistral", pages: reservedProviderPages, runBudget });
       result = await recordAttempt(documentId, "mistral", process.env.MISTRAL_OCR_MODEL || "mistral-ocr-latest", async () => readWithMistral(input, reservedProviderPages));
       if (result) {
         await releaseUnusedOcrProviderBudget({ reservation: mistralReservation, pages: Number.isFinite(result.pagesProcessed) ? Math.max(0, reservedProviderPages - result.pagesProcessed) : 0, runBudget });
+        mistralReservation = null;
         result.invoice = await applySupplierMappings(document.clerkUserId, result.invoice);
         validation = validateInvoice(result.invoice);
         const wasHardCapped = isPdfInput(input) && (
@@ -100,6 +103,11 @@ export async function processInvoiceDocument(documentId: number, runBudget?: Ocr
         }
       }
     } catch (error) {
+      if (mistralReservation && estimatedPages == null) {
+        await releaseUnusedOcrProviderBudget({ reservation: mistralReservation, pages: reservedProviderPages, runBudget })
+          .catch((releaseError) => console.error("[invoice-ocr] Failed to release unused Mistral reservation", releaseError));
+        mistralReservation = null;
+      }
       if (error instanceof OcrCommercialQuotaError) throw error;
       if (isSafetyDeferral(error)) throw error;
       mistralError = error;
