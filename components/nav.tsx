@@ -128,11 +128,22 @@ export function Nav() {
     router.push(switchLocaleUrl(path, locale, target));
   }
 
+  function handleLogoClick(event: React.MouseEvent<HTMLAnchorElement>) {
+    const homeHref = localeUrl(locale, "");
+    setMenuOpen(false);
+    if (path === homeHref) {
+      event.preventDefault();
+      window.requestAnimationFrame(() => {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      });
+    }
+  }
+
   return (
     <>
       <header className="sticky top-0 z-50 bg-white/90 dark:bg-slate-900/90 backdrop-blur border-b border-gray-200 dark:border-slate-700">
         <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between gap-4">
-          <Link href={localeUrl(locale, "")} className="flex-shrink-0 text-lg" onClick={() => setMenuOpen(false)}>
+          <Link href={localeUrl(locale, "")} className="flex-shrink-0 text-lg" onClick={handleLogoClick}>
             <LogoWordmark />
           </Link>
 
@@ -241,7 +252,7 @@ export function Nav() {
             className="md:hidden fixed inset-0 z-[60] flex flex-col bg-white dark:bg-slate-950"
           >
             <div className="h-14 shrink-0 px-4 flex items-center justify-between border-b border-gray-200 dark:border-slate-800">
-              <Link href={localeUrl(locale, "")} className="text-lg" onClick={() => setMenuOpen(false)}>
+              <Link href={localeUrl(locale, "")} className="text-lg" onClick={handleLogoClick}>
                 <LogoWordmark />
               </Link>
               <button
