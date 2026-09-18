@@ -1,4 +1,5 @@
-const PDF_CHUNK_BYTES = 512 * 1024;
+import { MAX_PDF_UPLOAD_BYTES, PDF_UPLOAD_CHUNK_BYTES, pdfUploadChunkCount } from "@/lib/pdf-upload-limits";
+
 const MAX_RETRY_ATTEMPTS = 5;
 
 export type QueuedPdfResult = {
@@ -15,14 +16,14 @@ export async function queuePdfUpload(
   },
 ): Promise<QueuedPdfResult> {
   if (file.type !== "application/pdf") throw new Error("Expected a PDF file");
-  if (file.size <= 0 || file.size > 10 * 1024 * 1024) throw new Error("PDF must be 10 MB or smaller");
+  if (file.size <= 0 || file.size > MAX_PDF_UPLOAD_BYTES) throw new Error("PDF must be 10 MB or smaller");
 
   const uploadId = crypto.randomUUID();
-  const totalChunks = Math.ceil(file.size / PDF_CHUNK_BYTES);
+  const totalChunks = pdfUploadChunkCount(file.size);
 
   for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex += 1) {
-    const start = chunkIndex * PDF_CHUNK_BYTES;
-    const end = Math.min(file.size, start + PDF_CHUNK_BYTES);
+    const start = chunkIndex * PDF_UPLOAD_CHUNK_BYTES;
+    const end = Math.min(file.size, start + PDF_UPLOAD_CHUNK_BYTES);
     const data = await blobToBase64(file.slice(start, end));
 
     const result = await postJsonWithRetry("/api/upload-chunk", {
