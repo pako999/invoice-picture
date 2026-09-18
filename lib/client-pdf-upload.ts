@@ -1,4 +1,4 @@
-import { BULK_PDF_MAX_BYTES } from "@/lib/bulk-invoices/config";
+import { BULK_PDF_MAX_BYTES } from "@/lib/bulk-invoices/public-config";
 
 const MAX_RETRY_ATTEMPTS = 5;
 
