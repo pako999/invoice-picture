@@ -3,6 +3,7 @@ import { runQueuedInvoiceJobs } from "@/lib/invoice-intelligence/processor";
 import { purgeExpiredInvoiceDocuments } from "@/lib/invoice-intelligence/retention";
 import { queuePreviouslyUploadedDocuments } from "@/lib/invoice-intelligence/bootstrap-queue";
 import { queuePendingApprovedDeliveries, runQueuedDeliveryJobs } from "@/lib/invoice-intelligence/delivery";
+import { runQueuedUploadJobs } from "@/lib/invoice-upload-queue";
 
 export const maxDuration = 300;
 export const dynamic = "force-dynamic";
@@ -16,13 +17,19 @@ export async function GET(req: Request) {
 
   const limit = Math.max(1, Math.min(10, Number(process.env.INVOICE_CRON_BATCH_SIZE ?? 3)));
   const deliveryLimit = Math.max(1, Math.min(20, Number(process.env.INVOICE_DELIVERY_BATCH_SIZE ?? 5)));
+  const uploadLimit = Math.max(1, Math.min(50, Number(process.env.INVOICE_UPLOAD_JOB_BATCH_SIZE ?? 20)));
+  const uploadConcurrency = Math.max(1, Math.min(5, Number(process.env.INVOICE_UPLOAD_JOB_CONCURRENCY ?? 5)));
   const startedAt = Date.now();
+  const uploadResults = await runQueuedUploadJobs(uploadLimit, uploadConcurrency);
   const newlyQueued = await queuePreviouslyUploadedDocuments(100);
   const results = await runQueuedInvoiceJobs(limit);
   const newlyQueuedDeliveries = await queuePendingApprovedDeliveries(100);
   const deliveryResults = await runQueuedDeliveryJobs(deliveryLimit);
   const retentionDeleted = await purgeExpiredInvoiceDocuments(50);
   return NextResponse.json({
+    uploadsProcessed: uploadResults.length,
+    uploadsSucceeded: uploadResults.filter((r) => r.ok).length,
+    uploadsFailed: uploadResults.filter((r) => !r.ok).length,
     newlyQueued,
     processed: results.length,
     succeeded: results.filter((r) => r.ok).length,
@@ -33,6 +40,7 @@ export async function GET(req: Request) {
     deliveriesFailed: deliveryResults.filter((r) => !r.ok).length,
     retentionDeleted,
     durationMs: Date.now() - startedAt,
+    uploadResults,
     results,
     deliveryResults,
   });
