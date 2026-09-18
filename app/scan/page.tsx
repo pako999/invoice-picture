@@ -19,7 +19,8 @@ interface SelectedFile {
 }
 
 const MAX_BATCH_FILES = 500;
-const MAX_IMAGE_FILE_SIZE = 10 * 1024 * 1024;\nconst MAX_PDF_FILE_SIZE = 200 * 1024 * 1024;
+const MAX_IMAGE_FILE_SIZE = 10 * 1024 * 1024;
+const MAX_PDF_FILE_SIZE = 200 * 1024 * 1024;
 
 function readFileAsBase64(file: File): Promise<{ base64: string; mime: string }> {
   return new Promise((resolve, reject) => {
@@ -109,7 +110,8 @@ export default function ScanPage() {
   const [showLimitModal, setShowLimitModal] = useState(false);
   const [ocrLimit, setOcrLimit] = useState<{ plan: CommercialPlan; message: string | null; originalSent: boolean } | null>(null);
   const [sendProgress, setSendProgress] = useState({ current: 0, total: 0 });
-  const [queuedCount, setQueuedCount] = useState(0);\n  const [bulkJobIds, setBulkJobIds] = useState<number[]>([]);
+  const [queuedCount, setQueuedCount] = useState(0);
+  const [bulkJobIds, setBulkJobIds] = useState<number[]>([]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -201,7 +203,8 @@ export default function ScanPage() {
     if (files.length === 0) return;
     setStatus("sending");
     setErrMsg("");
-    setQueuedCount(0);\n    setBulkJobIds([]);
+    setQueuedCount(0);
+    setBulkJobIds([]);
     setSendProgress({ current: 0, total: files.length });
     const failed: SelectedFile[] = [];
     let sent = 0;
@@ -262,7 +265,8 @@ export default function ScanPage() {
         if (json.ocrLimitReached) {
           setOcrLimit({ plan: json.ocrPlan ?? "free", message: json.ocrMessage ?? null, originalSent: true });
         }
-        if (json.queued) queued += 1;\n        if (Number.isInteger(Number(json.bulkJobId))) setBulkJobIds((current) => [...current, Number(json.bulkJobId)]);
+        if (json.queued) queued += 1;
+        if (Number.isInteger(Number(json.bulkJobId))) setBulkJobIds((current) => [...current, Number(json.bulkJobId)]);
         else sent += 1;
 
         URL.revokeObjectURL(selected.url);
