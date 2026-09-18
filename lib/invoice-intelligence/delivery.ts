@@ -127,7 +127,7 @@ export async function deliverInvoiceDocument(documentId: number) {
       companyId: document.companyId,
       sourceInvoiceId: document.sourceInvoiceId,
       invoice,
-      source: { filename: document.filename, mimeType: document.mimeType, sha256: document.sha256, base64: document.originalBase64 },
+      source: { filename: document.filename, mimeType: document.mimeType, sha256: document.sha256, base64: document.originalBase64, storageObjectKey: document.storageObjectKey },
     });
     const response = await fetch(settings.apiEndpoint, {
       method: "POST",
