@@ -38,3 +38,21 @@ export function isPaidPlan(value: string | null | undefined): value is PaidPlan 
 export function planLabel(value: string | null | undefined, locale: "sl" | "en" = "sl") { const p = getPlanConfig(value); return locale === "en" ? p.nameEn : p.nameSl; }
 export function planPrice(value: PaidPlan, billing: BillingPeriod) { const p = PLAN_CONFIGS[value]; return billing === "yearly" ? p.yearlyPrice! : p.monthlyPrice!; }
 export function formatEur(value: number, locale: "sl" | "en" = "sl") { return new Intl.NumberFormat(locale === "sl" ? "sl-SI" : "en-IE", { minimumFractionDigits: value % 1 ? 2 : 0, maximumFractionDigits: 2 }).format(value) + " €"; }
+
+export function nextPaidPlan(value: CommercialPlan): PaidPlan | null {
+  switch (value) {
+    case "free":
+    case "expired":
+    case "canceled":
+      return "basic";
+    case "trial":
+    case "basic":
+      return "pro";
+    case "pro":
+      return "accounting_pro";
+    case "accounting_pro":
+      return "accounting_max";
+    case "accounting_max":
+      return null;
+  }
+}

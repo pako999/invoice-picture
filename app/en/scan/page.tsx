@@ -2,6 +2,8 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import type { Company } from "@/lib/schema";
+import type { CommercialPlan } from "@/lib/plans";
+import { OcrLimitUpgradeModal } from "@/components/ocr-limit-upgrade-modal";
 
 interface SubStatus {
   isFree: boolean;
@@ -70,7 +72,7 @@ function FreeLimitModal({ onClose }: { onClose: () => void }) {
             Monthly limit reached
           </h2>
           <p className="text-gray-600 dark:text-slate-400 text-sm leading-relaxed">
-            You&rsquo;ve hit the 3-invoice monthly cap on the free plan. Upgrade to Basic for unlimited invoice processing.
+            You&rsquo;ve hit the 3-invoice monthly cap on the free plan. Basic includes 50 OCR documents and 75 OCR pages per month.
           </p>
         </div>
         <div className="space-y-3">
@@ -103,6 +105,7 @@ export default function ScanPage() {
   const [dragging, setDragging] = useState(false);
   const [subStatus, setSubStatus] = useState<SubStatus | null>(null);
   const [showLimitModal, setShowLimitModal] = useState(false);
+  const [ocrLimit, setOcrLimit] = useState<{ plan: CommercialPlan; message: string | null; originalSent: boolean } | null>(null);
   const [sendProgress, setSendProgress] = useState({ current: 0, total: 0 });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -213,6 +216,11 @@ export default function ScanPage() {
         body: JSON.stringify(body),
       });
       const json = await res.json();
+      if (res.status === 402 && json.code === "ocr_plan_limit_reached") {
+        setOcrLimit({ plan: json.plan ?? "free", message: json.error ?? null, originalSent: false });
+        failed.push(...files.slice(index));
+        break;
+      }
       if (res.status === 402 || json.code === "subscription_required") {
         window.location.href = "/en/upgrade";
         return;
@@ -223,6 +231,9 @@ export default function ScanPage() {
         break;
       }
       if (!res.ok || !json.success) throw new Error(json.error ?? "Error");
+        if (json.ocrLimitReached) {
+          setOcrLimit({ plan: json.ocrPlan ?? "free", message: json.ocrMessage ?? null, originalSent: true });
+        }
         sent += 1;
         URL.revokeObjectURL(selected.url);
       } catch (err) {
@@ -247,6 +258,7 @@ export default function ScanPage() {
   return (
     <div className="max-w-2xl mx-auto px-4 py-10 pb-[60vh]">
       {showLimitModal && <FreeLimitModal onClose={() => setShowLimitModal(false)} />}
+      {ocrLimit && <OcrLimitUpgradeModal locale="en" plan={ocrLimit.plan} message={ocrLimit.message} originalSent={ocrLimit.originalSent} onClose={() => setOcrLimit(null)} />}
 
       <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white mb-2">Send invoice</h1>
       <p className="text-gray-500 dark:text-slate-400 mb-6">
@@ -275,7 +287,7 @@ export default function ScanPage() {
           </div>
           {isFreeAtLimit && (
             <p className="text-xs text-orange-700 dark:text-orange-400 mt-2">
-              Upgrade to Basic for unlimited invoice processing.
+              Basic includes 50 OCR documents and 75 OCR pages per month.
             </p>
           )}
         </div>

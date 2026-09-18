@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { ADMIN_OCR_OVERRIDE, PLAN_CONFIGS, getPlanConfig, isPaidPlan } from "../lib/plans";
+import { ADMIN_OCR_OVERRIDE, PLAN_CONFIGS, getPlanConfig, isPaidPlan, nextPaidPlan } from "../lib/plans";
 
 test("commercial OCR plans expose agreed prices and limits",()=>{
   assert.deepEqual([PLAN_CONFIGS.basic.monthlyPrice,PLAN_CONFIGS.basic.ocrDocumentsMonthly,PLAN_CONFIGS.basic.ocrPagesMonthly,PLAN_CONFIGS.basic.companyLimit],[9.9,50,75,1]);
@@ -17,3 +17,12 @@ test("yearly prices and delivery entitlements are correct",()=>{
 test("admin OCR override is 1000 pages per day",()=>{assert.equal(ADMIN_OCR_OVERRIDE.email,"info@surf-store.com");assert.equal(ADMIN_OCR_OVERRIDE.dailyPages,1000);assert.equal(ADMIN_OCR_OVERRIDE.monthlyPages,30000);});
 
 test("paid plan detection does not treat free/trial as paid",()=>{assert.equal(isPaidPlan("accounting_max"),true);assert.equal(isPaidPlan("trial"),false);assert.equal(getPlanConfig("missing").code,"free");});
+
+test("quota upgrades always point to the next useful paid plan",()=>{
+  assert.equal(nextPaidPlan("free"),"basic");
+  assert.equal(nextPaidPlan("trial"),"pro");
+  assert.equal(nextPaidPlan("basic"),"pro");
+  assert.equal(nextPaidPlan("pro"),"accounting_pro");
+  assert.equal(nextPaidPlan("accounting_pro"),"accounting_max");
+  assert.equal(nextPaidPlan("accounting_max"),null);
+});

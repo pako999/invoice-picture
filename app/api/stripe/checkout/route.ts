@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
 
     const user = await (await clerkClient()).users.getUser(userId);
     const email = (user.emailAddresses.find((item) => item.id === user.primaryEmailAddressId) ?? user.emailAddresses[0])?.emailAddress;
-    const [existing] = await getDb().select({ stripeCustomerId: subscriptions.stripeCustomerId }).from(subscriptions).where(eq(subscriptions.clerkUserId, userId)).limit(1);
+    const [existing] = await getDb().select({ stripeCustomerId: subscriptions.stripeCustomerId, stripeSubscriptionId: subscriptions.stripeSubscriptionId }).from(subscriptions).where(eq(subscriptions.clerkUserId, userId)).limit(1);
     const origin = appOrigin(req);
     const prefix = data.locale === "en" ? "/en" : "";
     const metadata = {
@@ -42,6 +42,7 @@ export async function POST(req: NextRequest) {
       customerEmail: email ?? "",
       tier: data.tier,
       billing: data.billing,
+      previousSubscriptionId: existing?.stripeSubscriptionId ?? "",
     };
 
     const session = await getStripe().checkout.sessions.create({

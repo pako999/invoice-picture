@@ -7,12 +7,14 @@ import { baseSubscriptionPlan, clearCommercialPlanEntitlement, setCommercialPlan
 import { isPaidPlan, planLabel, type BillingPeriod, type PaidPlan } from "@/lib/plans";
 import { getResend } from "@/lib/resend";
 import { subscriptions } from "@/lib/schema";
+import { getStripe } from "@/lib/stripe";
 
 export type StripePlanMetadata = {
   clerkUserId?: string;
   customerEmail?: string;
   tier?: string;
   billing?: string;
+  previousSubscriptionId?: string;
 };
 
 function addPeriod(from: Date, billing: BillingPeriod) {
@@ -61,6 +63,17 @@ async function sendActivation(userId: string, tier: PaidPlan, suppliedEmail?: st
   if (result.error) console.error("[stripe] activation email failed", result.error);
 }
 
+async function cancelPreviousSubscription(previousSubscriptionId: string | undefined, activeSubscriptionId: string) {
+  if (!previousSubscriptionId || previousSubscriptionId === activeSubscriptionId) return;
+  try {
+    const previous = await getStripe().subscriptions.retrieve(previousSubscriptionId);
+    if (previous.status !== "canceled") await getStripe().subscriptions.cancel(previousSubscriptionId);
+  } catch (error) {
+    if ((error as { code?: string }).code === "resource_missing") return;
+    throw error;
+  }
+}
+
 export async function activateStripeSubscription(subscription: Stripe.Subscription, fallbackMetadata: StripePlanMetadata = {}) {
   const metadata = { ...fallbackMetadata, ...subscription.metadata };
   const userId = metadata.clerkUserId;
@@ -75,7 +88,8 @@ export async function activateStripeSubscription(subscription: Stripe.Subscripti
   const currentPeriodEnd = subscriptionPeriodEnd(subscription, billing);
   const db = getDb();
   const [existing] = await db.select().from(subscriptions).where(eq(subscriptions.clerkUserId, userId)).limit(1);
-  const wasActive = Boolean(existing?.currentPeriodEnd && existing.currentPeriodEnd > now);
+  const previousSubscriptionId = metadata.previousSubscriptionId || existing?.stripeSubscriptionId || undefined;
+  const isNewPaidSubscription = existing?.stripeSubscriptionId !== subscription.id;
   const basePlan = baseSubscriptionPlan(tier);
 
   await db.insert(subscriptions).values({
@@ -97,19 +111,27 @@ export async function activateStripeSubscription(subscription: Stripe.Subscripti
     },
   });
   await setCommercialPlanEntitlement({ clerkUserId: userId, plan: tier, billing, source: "stripe" });
-  console.info("[stripe] commercial plan activated", { userId, tier, billing, currentPeriodEnd: currentPeriodEnd.toISOString() });
-  if (!wasActive) await sendActivation(userId, tier, metadata.customerEmail).catch((error) => console.error("[stripe] activation email", error));
+  await cancelPreviousSubscription(previousSubscriptionId, subscription.id);
+  console.info("[stripe] commercial plan activated after confirmed payment", { userId, tier, billing, currentPeriodEnd: currentPeriodEnd.toISOString() });
+  if (isNewPaidSubscription) await sendActivation(userId, tier, metadata.customerEmail).catch((error) => console.error("[stripe] activation email", error));
   return true;
+}
+
+export async function refreshStripeSubscription(subscription: Stripe.Subscription) {
+  const db = getDb();
+  const [stored] = await db.select({ clerkUserId: subscriptions.clerkUserId }).from(subscriptions).where(eq(subscriptions.stripeSubscriptionId, subscription.id)).limit(1);
+  if (!stored) return false;
+  return activateStripeSubscription(subscription, { clerkUserId: stored.clerkUserId });
 }
 
 export async function cancelStripeSubscription(subscription: Stripe.Subscription) {
   const db = getDb();
-  const metadataUserId = subscription.metadata.clerkUserId;
-  const [stored] = metadataUserId
-    ? [{ clerkUserId: metadataUserId }]
-    : await db.select({ clerkUserId: subscriptions.clerkUserId }).from(subscriptions).where(eq(subscriptions.stripeSubscriptionId, subscription.id)).limit(1);
-  await db.update(subscriptions).set({ plan: "canceled", updatedAt: new Date() }).where(
-    metadataUserId ? eq(subscriptions.clerkUserId, metadataUserId) : eq(subscriptions.stripeSubscriptionId, subscription.id),
-  );
-  if (stored?.clerkUserId) await clearCommercialPlanEntitlement(stored.clerkUserId);
+  const [stored] = await db.select({ clerkUserId: subscriptions.clerkUserId }).from(subscriptions).where(eq(subscriptions.stripeSubscriptionId, subscription.id)).limit(1);
+  if (!stored) {
+    console.info("[stripe] ignored cancellation for superseded subscription", { subscriptionId: subscription.id });
+    return false;
+  }
+  await db.update(subscriptions).set({ plan: "canceled", updatedAt: new Date() }).where(eq(subscriptions.stripeSubscriptionId, subscription.id));
+  await clearCommercialPlanEntitlement(stored.clerkUserId);
+  return true;
 }

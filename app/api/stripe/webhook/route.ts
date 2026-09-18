@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import type Stripe from "stripe";
 import { getStripe } from "@/lib/stripe";
-import { activateStripeSubscription, cancelStripeSubscription } from "@/lib/stripe-subscriptions";
+import { activateStripeSubscription, cancelStripeSubscription, refreshStripeSubscription } from "@/lib/stripe-subscriptions";
 
 export async function POST(req: NextRequest) {
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -26,9 +26,9 @@ export async function POST(req: NextRequest) {
           : session.subscription;
         await activateStripeSubscription(subscription, session.metadata ?? {});
       }
-    } else if (event.type === "customer.subscription.created" || event.type === "customer.subscription.updated") {
+    } else if (event.type === "customer.subscription.updated") {
       const subscription = event.data.object;
-      if (subscription.status === "active" || subscription.status === "trialing") await activateStripeSubscription(subscription);
+      if (subscription.status === "active" || subscription.status === "trialing") await refreshStripeSubscription(subscription);
     } else if (event.type === "customer.subscription.deleted") {
       await cancelStripeSubscription(event.data.object);
     }
