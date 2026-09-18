@@ -81,10 +81,10 @@ export async function processInvoiceDocument(documentId: number, runBudget?: Ocr
           runBudget?.remainingPages ?? safety.maxPagesPerCron,
         ));
       }
-      await reserveOcrProviderBudget({ clerkUserId: document.clerkUserId, provider: "mistral", pages: reservedProviderPages, runBudget });
+      const mistralReservation = await reserveOcrProviderBudget({ clerkUserId: document.clerkUserId, provider: "mistral", pages: reservedProviderPages, runBudget });
       result = await recordAttempt(documentId, "mistral", process.env.MISTRAL_OCR_MODEL || "mistral-ocr-latest", async () => readWithMistral(input, reservedProviderPages));
       if (result) {
-        await releaseUnusedOcrProviderBudget({ clerkUserId: document.clerkUserId, provider: "mistral", pages: Number.isFinite(result.pagesProcessed) ? Math.max(0, reservedProviderPages - result.pagesProcessed) : 0, runBudget });
+        await releaseUnusedOcrProviderBudget({ reservation: mistralReservation, pages: Number.isFinite(result.pagesProcessed) ? Math.max(0, reservedProviderPages - result.pagesProcessed) : 0, runBudget });
         result.invoice = await applySupplierMappings(document.clerkUserId, result.invoice);
         validation = validateInvoice(result.invoice);
         const wasHardCapped = isPdfInput(input) && (
@@ -110,10 +110,10 @@ export async function processInvoiceDocument(documentId: number, runBudget?: Ocr
   const mistralInvalid = validation?.status === "failed";
   if (azureConfigured() && azureAllowedForInput(input) && (!result || mistralLow || mistralInvalid)) {
     try {
-      await reserveOcrProviderBudget({ clerkUserId: document.clerkUserId, provider: "azure", pages: reservedProviderPages, runBudget });
+      const azureReservation = await reserveOcrProviderBudget({ clerkUserId: document.clerkUserId, provider: "azure", pages: reservedProviderPages, runBudget });
       const azure = await recordAttempt(documentId, "azure", process.env.AZURE_DOCUMENT_INTELLIGENCE_MODEL || "prebuilt-invoice", async () => readWithAzure(input));
       if (azure) {
-        await releaseUnusedOcrProviderBudget({ clerkUserId: document.clerkUserId, provider: "azure", pages: Number.isFinite(azure.pagesProcessed) ? Math.max(0, reservedProviderPages - azure.pagesProcessed) : 0, runBudget });
+        await releaseUnusedOcrProviderBudget({ reservation: azureReservation, pages: Number.isFinite(azure.pagesProcessed) ? Math.max(0, reservedProviderPages - azure.pagesProcessed) : 0, runBudget });
         azure.invoice = await applySupplierMappings(document.clerkUserId, azure.invoice);
         const azureValidation = validateInvoice(azure.invoice);
         if (!result) {

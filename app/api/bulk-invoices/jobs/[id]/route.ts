@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { bulkSql } from "@/lib/bulk-invoices/service";
-import { createDocumentSignature } from "@/lib/invoice-intelligence/signing";
 export async function GET(_req: Request,{params}:{params:Promise<{id:string}>}) {
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -21,20 +20,9 @@ export async function GET(_req: Request,{params}:{params:Promise<{id:string}>}) 
     WHERE g."jobId"=${id} ORDER BY g."groupIndex"
   `;
   const job:any=jobs[0];
-  // Keep the signed preview URL stable while this page polls job progress so
-  // an open PDF iframe is not reloaded every three seconds.
-  const previewWindowMs=10*60_000;
-  const expires=(Math.floor(Date.now()/previewWindowMs)+1)*previewWindowMs;
-  const groupsWithPreviews=groups.map((group:any)=>{
-    const documentId=group.documentId==null?null:Number(group.documentId);
-    return {
-      ...group,
-      previewUrl:documentId==null?null:`/api/invoice-reader/${documentId}/file?exp=${expires}&sig=${createDocumentSignature(documentId,userId,expires)}`,
-    };
-  });
   return NextResponse.json({
     job:{...job,ranges:parse(job.rangesJson),rangesJson:undefined},
-    groups:groupsWithPreviews
+    groups
   },{headers:{"Cache-Control":"no-store"}});
 }
 function parse(v:any){if(!v)return null;try{return JSON.parse(String(v));}catch{return null;}}

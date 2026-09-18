@@ -3,6 +3,7 @@ import { getOcrUsageSummary, quotaPageError, resolveOcrEntitlement, OcrCommercia
 
 export type OcrProvider = "mistral" | "azure";
 export type OcrRunBudget = { remainingPages: number };
+export type OcrProviderBudgetReservation = { clerkUserId: string; dayStart: Date; monthStart: Date; costPerPage: number };
 
 export class OcrSafetyQuotaError extends Error {
   readonly retryable = true;
@@ -87,6 +88,7 @@ export async function reserveOcrProviderBudget(args: { clerkUserId: string; prov
       quota_count AS (SELECT (SELECT count(*) FROM global_day)+(SELECT count(*) FROM global_month)+(SELECT count(*) FROM user_day)+(SELECT count(*) FROM user_month) AS n)
       SELECT 1 / CASE WHEN n=4 THEN 1 ELSE 0 END AS "quotaGuard" FROM quota_count
     `;
+    return { clerkUserId: args.clerkUserId, dayStart, monthStart, costPerPage } satisfies OcrProviderBudgetReservation;
   } catch (error) {
     if (error instanceof OcrCommercialQuotaError) throw error;
     const message = error instanceof Error ? error.message : String(error);
@@ -100,20 +102,18 @@ export async function reserveOcrProviderBudget(args: { clerkUserId: string; prov
     throw error;
   }
 }
-export async function releaseUnusedOcrProviderBudget(args: { clerkUserId: string; provider: OcrProvider; pages: number; runBudget?: OcrRunBudget }) {
+export async function releaseUnusedOcrProviderBudget(args: { reservation: OcrProviderBudgetReservation; pages: number; runBudget?: OcrRunBudget }) {
   const pages = Number.isFinite(args.pages) ? Math.max(0, Math.trunc(args.pages)) : 0;
   if (pages === 0) return;
   const config = getOcrSafetyConfig();
   const url = process.env.DATABASE_URL; if (!url) throw new Error("DATABASE_URL is not set"); const sql = neon(url);
-  const now = new Date(); const dayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())); const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
-  const costPerPage = args.provider === "mistral" ? envInt("MISTRAL_ANNOTATED_PAGE_COST_MICROS", 5000, 0, 10_000_000) : envInt("AZURE_PAGE_COST_MICROS", 0, 0, 10_000_000);
-  const estimatedCost = pages * costPerPage; const userScope = `user:${args.clerkUserId}`;
+  const estimatedCost = pages * args.reservation.costPerPage; const userScope = `user:${args.reservation.clerkUserId}`;
   await sql`UPDATE "invoiceOcrUsageBuckets"
     SET "reservedPages"=GREATEST(0,"reservedPages"-${pages}),
         "estimatedCostMicros"=GREATEST(0,"estimatedCostMicros"-${estimatedCost}),
         "updatedAt"=now()
     WHERE "scopeKey" IN ('global',${userScope})
-      AND (("bucketType"='day' AND "bucketStart"=${dayStart}) OR ("bucketType"='month' AND "bucketStart"=${monthStart}))`;
+      AND (("bucketType"='day' AND "bucketStart"=${args.reservation.dayStart}) OR ("bucketType"='month' AND "bucketStart"=${args.reservation.monthStart}))`;
   if (args.runBudget) args.runBudget.remainingPages = Math.min(config.maxPagesPerCron, args.runBudget.remainingPages + pages);
 }
 function envInt(name: string, fallback: number, min: number, max: number) { const parsed = Number.parseInt(process.env[name] ?? "", 10); if (!Number.isFinite(parsed)) return fallback; return Math.max(min, Math.min(max, parsed)); }

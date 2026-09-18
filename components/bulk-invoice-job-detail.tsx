@@ -26,7 +26,6 @@ type Group = {
   validationStatus: string | null;
   overallConfidenceBps: number | null;
   documentFilename: string | null;
-  previewUrl: string | null;
 };
 
 type Job = {
@@ -55,6 +54,8 @@ export function BulkInvoiceJobDetail({ id, locale }: { id: number; locale: Local
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [openPreviews, setOpenPreviews] = useState<number[]>([]);
+  const [previewUrls, setPreviewUrls] = useState<Record<number, string>>({});
+  const [previewLoading, setPreviewLoading] = useState<number | null>(null);
   const prefix = locale === "en" ? "/en" : "";
 
   const load = useCallback(async () => {
@@ -130,6 +131,27 @@ export function BulkInvoiceJobDetail({ id, locale }: { id: number; locale: Local
       setMessage(error instanceof Error ? error.message : "Napaka");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function togglePreview(group: Group) {
+    if (openPreviews.includes(group.groupIndex)) {
+      setOpenPreviews((current) => current.filter((index) => index !== group.groupIndex));
+      return;
+    }
+    if (!group.documentId) return;
+    setPreviewLoading(group.groupIndex);
+    setMessage("");
+    try {
+      const response = await fetch(`/api/invoice-reader/${group.documentId}`, { cache: "no-store" });
+      const body = await response.json().catch(() => ({})) as { fileUrl?: string; error?: string };
+      if (!response.ok || !body.fileUrl) throw new Error(body.error ?? (locale === "sl" ? "Predogleda ni mogoče odpreti." : "Could not open preview."));
+      setPreviewUrls((current) => ({ ...current, [group.groupIndex]: body.fileUrl! }));
+      setOpenPreviews((current) => [...current.filter((index) => index !== group.groupIndex), group.groupIndex]);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : (locale === "sl" ? "Predogleda ni mogoče odpreti." : "Could not open preview."));
+    } finally {
+      setPreviewLoading(null);
     }
   }
 
@@ -281,13 +303,14 @@ export function BulkInvoiceJobDetail({ id, locale }: { id: number; locale: Local
                     {group.deliveryError && <div className="mt-1 text-xs text-red-600">{group.deliveryError}</div>}
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {group.previewUrl && (
+                    {group.documentId && (
                       <button
                         type="button"
-                        onClick={() => setOpenPreviews((current) => previewOpen ? current.filter((id) => id !== group.groupIndex) : [...current, group.groupIndex])}
+                        disabled={previewLoading === group.groupIndex}
+                        onClick={() => void togglePreview(group)}
                         className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
                       >
-                        {previewOpen ? (locale === "sl" ? "Skrij predogled" : "Hide preview") : (locale === "sl" ? "Predogled" : "Preview")}
+                        {previewLoading === group.groupIndex ? "…" : previewOpen ? (locale === "sl" ? "Skrij predogled" : "Hide preview") : (locale === "sl" ? "Predogled" : "Preview")}
                       </button>
                     )}
                     {group.documentId ? (
@@ -302,10 +325,10 @@ export function BulkInvoiceJobDetail({ id, locale }: { id: number; locale: Local
                     )}
                   </div>
                 </div>
-                {previewOpen && group.previewUrl && (
+                {previewOpen && previewUrls[group.groupIndex] && (
                   <div className="border-t border-slate-200 bg-slate-100 p-2 dark:border-slate-700 dark:bg-slate-950">
                     <iframe
-                      src={group.previewUrl}
+                      src={previewUrls[group.groupIndex]}
                       title={`${locale === "sl" ? "Predogled računa" : "Invoice preview"} ${group.groupIndex + 1}`}
                       className="h-[62vh] min-h-[420px] w-full rounded-xl bg-white"
                     />
