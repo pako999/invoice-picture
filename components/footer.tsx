@@ -12,7 +12,7 @@ function detectLocale(pathname: string): Locale {
 
 function isAppRoute(pathname: string) {
   const clean = pathname.startsWith("/en/") ? pathname.slice(3) : pathname;
-  return ["/scan", "/invoices", "/settings", "/invoice-review", "/admin", "/upgrade"].some((prefix) => clean === prefix || clean.startsWith(`${prefix}/`));
+  return ["/scan", "/invoices", "/settings", "/invoice-review", "/admin", "/upgrade", "/oddaljena-pomoc", "/remote-support"].some((prefix) => clean === prefix || clean.startsWith(`${prefix}/`));
 }
 
 const faqSl = [
@@ -98,6 +98,7 @@ export function Footer() {
     { label: t.helpFAQ,        href: localeUrl(locale, "pogosta-vprasanja") },
     { label: t.helpContact,    href: localeUrl(locale, "contact") },
     { label: t.helpSetupHelp,  href: localeUrl(locale, "pomoc-pri-nastavitvi") },
+    { label: locale === "sl" ? "Oddaljena pomoč" : "Remote support", href: localeUrl(locale, "oddaljena-pomoc") },
   ];
   const legalLinks = [
     { label: t.legalPrivacy,  href: localeUrl(locale, "zasebnost") },
