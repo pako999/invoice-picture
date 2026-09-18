@@ -43,6 +43,13 @@
       "when": 1789717200000,
       "tag": "0006_async_pdf_upload_queue",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1789717800000,
+      "tag": "0007_binary_pdf_upload_chunks",
+      "breakpoints": true
     }
   ]
 }
