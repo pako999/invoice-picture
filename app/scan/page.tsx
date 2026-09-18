@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { Company } from "@/lib/schema";
 import type { CommercialPlan } from "@/lib/plans";
 import { OcrLimitUpgradeModal } from "@/components/ocr-limit-upgrade-modal";
+import { queuePdfUpload } from "@/lib/client-pdf-upload";
 
 interface SubStatus {
   isFree: boolean;
@@ -108,6 +109,7 @@ export default function ScanPage() {
   const [showLimitModal, setShowLimitModal] = useState(false);
   const [ocrLimit, setOcrLimit] = useState<{ plan: CommercialPlan; message: string | null; originalSent: boolean } | null>(null);
   const [sendProgress, setSendProgress] = useState({ current: 0, total: 0 });
+  const [queuedCount, setQueuedCount] = useState(0);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -194,49 +196,70 @@ export default function ScanPage() {
     if (files.length === 0) return;
     setStatus("sending");
     setErrMsg("");
+    setQueuedCount(0);
     setSendProgress({ current: 0, total: files.length });
     const failed: SelectedFile[] = [];
     let sent = 0;
+    let queued = 0;
 
     for (let index = 0; index < files.length; index += 1) {
       const selected = files[index];
       setSendProgress({ current: index + 1, total: files.length });
+
       try {
-        const encoded = selected.file.type === "application/pdf"
-          ? await readFileAsBase64(selected.file)
-          : await compressImage(selected.file);
-      const body: Record<string, unknown> = {
-        subject: subject || "Račun",
-        imageBase64: encoded.base64,
-        filename: selected.file.name,
-        mime: encoded.mime,
-      };
-      if (selectedCompanyId) body.companyId = selectedCompanyId;
-      const res = await fetch("/api/send", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      const json = await res.json();
-      if (res.status === 402 && json.code === "ocr_plan_limit_reached") {
-        setOcrLimit({ plan: json.plan ?? "free", message: json.error ?? null, originalSent: false });
-        failed.push(...files.slice(index));
-        break;
-      }
-      if (res.status === 402 || json.code === "subscription_required") {
-        window.location.href = "/upgrade";
-        return;
-      }
-      if (res.status === 403 && json.code === "free_limit_reached") {
-        setShowLimitModal(true);
-        failed.push(...files.slice(index));
-        break;
-      }
-      if (!res.ok || !json.success) throw new Error(json.error ?? "Napaka");
+        let responseStatus: number;
+        let json: Record<string, any>;
+
+        if (selected.file.type === "application/pdf") {
+          const queuedPdf = await queuePdfUpload(selected.file, {
+            subject: subject || "Račun",
+            ...(selectedCompanyId ? { companyId: selectedCompanyId } : {}),
+          });
+          responseStatus = queuedPdf.status;
+          json = queuedPdf.json;
+        } else {
+          const encoded = await compressImage(selected.file);
+          const body: Record<string, unknown> = {
+            subject: subject || "Račun",
+            imageBase64: encoded.base64,
+            filename: selected.file.name,
+            mime: encoded.mime,
+          };
+          if (selectedCompanyId) body.companyId = selectedCompanyId;
+
+          const res = await fetch("/api/send", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          });
+          responseStatus = res.status;
+          json = await res.json();
+        }
+
+        if (responseStatus === 402 && json.code === "ocr_plan_limit_reached") {
+          setOcrLimit({ plan: json.plan ?? "free", message: json.error ?? null, originalSent: false });
+          failed.push(...files.slice(index));
+          break;
+        }
+        if (responseStatus === 402 || json.code === "subscription_required") {
+          window.location.href = "/upgrade";
+          return;
+        }
+        if (responseStatus === 403 && json.code === "free_limit_reached") {
+          setShowLimitModal(true);
+          failed.push(...files.slice(index));
+          break;
+        }
+        if (responseStatus < 200 || responseStatus >= 300 || !json.success) {
+          throw new Error(json.error ?? "Napaka");
+        }
+
         if (json.ocrLimitReached) {
           setOcrLimit({ plan: json.ocrPlan ?? "free", message: json.ocrMessage ?? null, originalSent: true });
         }
-        sent += 1;
+        if (json.queued) queued += 1;
+        else sent += 1;
+
         URL.revokeObjectURL(selected.url);
       } catch (err) {
         failed.push(selected);
@@ -244,11 +267,12 @@ export default function ScanPage() {
       }
     }
 
+    setQueuedCount(queued);
     setFiles(failed);
     setSendProgress({ current: 0, total: 0 });
     setStatus(failed.length === 0 ? "ok" : "err");
     if (failed.length === 0) setSubject("Račun");
-    else setErrMsg(`${sent} dokumentov poslanih, ${failed.length} neuspešnih. Poskusite znova.`);
+    else setErrMsg(`${sent + queued} dokumentov sprejetih, ${failed.length} neuspešnih. Poskusite znova.`);
 
     fetch("/api/subscription").then(r => r.ok ? r.json() : null).then(sub => {
       if (sub) setSubStatus({ isFree: sub.isFree, monthlyUsage: sub.monthlyUsage, monthlyLimit: sub.monthlyLimit });
@@ -360,7 +384,7 @@ export default function ScanPage() {
       {/* Notifications */}
       {status === "ok" && (
         <div className="mb-5 flex items-center gap-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 px-4 py-3 rounded-xl text-sm font-medium">
-          ✅ {files.length === 0 ? "Vsi dokumenti so bili poslani" : "Dokument uspešno poslan"}{sentToLabel ? ` — ${sentToLabel}` : ""}!
+          ✅ {queuedCount > 0 ? `${queuedCount} PDF ${queuedCount === 1 ? "je sprejet" : "so sprejeti"} v varno čakalno vrsto za pošiljanje` : (files.length === 0 ? "Vsi dokumenti so bili poslani" : "Dokument uspešno poslan")}{sentToLabel ? ` — ${sentToLabel}` : ""}!
         </div>
       )}
       {status === "err" && (
