@@ -9,14 +9,12 @@ import { FREE_MONTHLY_LIMIT, getStatus } from "@/lib/subscription";
 import { getPlanConfig } from "@/lib/plans";
 import { getCompanyDeliverySettings } from "@/lib/invoice-intelligence/delivery-settings";
 import type { DeliveryMode } from "@/lib/invoice-intelligence/delivery-format";
-
-const MAX_FILE_BYTES = 10 * 1024 * 1024;
-const MAX_TOTAL_CHUNKS = 24;
+import { MAX_PDF_UPLOAD_BYTES, MAX_PDF_UPLOAD_CHUNKS } from "@/lib/pdf-upload-limits";
 
 const schema = z.object({
   uploadId: z.string().uuid(),
-  totalChunks: z.number().int().min(1).max(MAX_TOTAL_CHUNKS),
-  byteSize: z.number().int().positive().max(MAX_FILE_BYTES),
+  totalChunks: z.number().int().min(1).max(MAX_PDF_UPLOAD_CHUNKS),
+  byteSize: z.number().int().positive().max(MAX_PDF_UPLOAD_BYTES),
   subject: z.string().min(1).max(255).default("Račun"),
   filename: z.string().min(1).max(255),
   mime: z.literal("application/pdf"),
@@ -100,7 +98,7 @@ export async function POST(req: NextRequest) {
       }, { status: 409 });
     }
 
-    if (storedBytes !== input.byteSize || storedBytes <= 0 || storedBytes > MAX_FILE_BYTES) {
+    if (storedBytes !== input.byteSize || storedBytes <= 0 || storedBytes > MAX_PDF_UPLOAD_BYTES) {
       return NextResponse.json({
         success: false,
         error: "Velikost naloženega PDF-ja se ne ujema ali presega 10 MB.",
