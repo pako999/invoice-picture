@@ -2,16 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { neon } from "@neondatabase/serverless";
 import { z } from "zod";
+import { MAX_PDF_UPLOAD_CHUNKS, PDF_UPLOAD_CHUNK_BYTES } from "@/lib/pdf-upload-limits";
 
-const MAX_RAW_CHUNK_BYTES = 512 * 1024;
-const MAX_TOTAL_CHUNKS = 24;
 const MAX_ACTIVE_UPLOADS_PER_USER = 3;
 const MAX_ACTIVE_UPLOADS_GLOBAL = 300;
 
 const schema = z.object({
   uploadId: z.string().uuid(),
-  chunkIndex: z.number().int().min(0).max(MAX_TOTAL_CHUNKS - 1),
-  totalChunks: z.number().int().min(1).max(MAX_TOTAL_CHUNKS),
+  chunkIndex: z.number().int().min(0).max(MAX_PDF_UPLOAD_CHUNKS - 1),
+  totalChunks: z.number().int().min(1).max(MAX_PDF_UPLOAD_CHUNKS),
   data: z.string().min(1).max(750_000),
 });
 
@@ -26,7 +25,7 @@ export async function POST(req: NextRequest) {
     }
 
     const bytes = Buffer.from(input.data, "base64");
-    if (!bytes.length || bytes.length > MAX_RAW_CHUNK_BYTES) {
+    if (!bytes.length || bytes.length > PDF_UPLOAD_CHUNK_BYTES) {
       return NextResponse.json({ error: "Del datoteke je prevelik." }, { status: 413 });
     }
 
