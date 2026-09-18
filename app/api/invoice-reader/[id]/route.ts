@@ -107,7 +107,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const estimatedPages = document.originalBase64 && document.mimeType === "application/pdf"
       ? estimateSourcePages({ base64: document.originalBase64, mimeType: document.mimeType, filename: document.filename })
       : null;
-    if (document.bulkJobId == null && document.originalBase64 && document.mimeType === "application/pdf") {
+    if (document.bulkJobId == null && document.originalBase64 && document.mimeType === "application/pdf" && estimatedPages !== 1) {
       const token = await getToken();
       if (!token) return NextResponse.json({ error: "Seja je potekla." }, { status: 401 });
       let sourceRecipientEmail: string | null = null;
