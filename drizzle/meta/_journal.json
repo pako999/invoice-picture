@@ -2,10 +2,47 @@
   "version": "7",
   "dialect": "postgresql",
   "entries": [
-    { "idx": 0, "version": "7", "when": 1788780600000, "tag": "0001_invoice_intelligence", "breakpoints": true },
-    { "idx": 1, "version": "7", "when": 1788784200000, "tag": "0002_ocr_safety_limits", "breakpoints": true },
-    { "idx": 2, "version": "7", "when": 1788790800000, "tag": "0003_invoice_delivery_modes", "breakpoints": true },
-    { "idx": 3, "version": "7", "when": 1789662000000, "tag": "0004_ocr_commercial_plans", "breakpoints": true },
-    { "idx": 4, "version": "7", "when": 1789671600000, "tag": "0005_stripe_billing", "breakpoints": true }
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1788780600000,
+      "tag": "0001_invoice_intelligence",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1788784200000,
+      "tag": "0002_ocr_safety_limits",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1788790800000,
+      "tag": "0003_invoice_delivery_modes",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1789662000000,
+      "tag": "0004_ocr_commercial_plans",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1789671600000,
+      "tag": "0005_stripe_billing",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1789717200000,
+      "tag": "0006_async_pdf_upload_queue",
+      "breakpoints": true
+    }
   ]
 }
