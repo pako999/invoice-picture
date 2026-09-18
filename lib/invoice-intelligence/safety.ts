@@ -3,6 +3,7 @@ import { getOcrUsageSummary, quotaPageError, resolveOcrEntitlement, OcrCommercia
 
 export type OcrProvider = "mistral" | "azure";
 export type OcrRunBudget = { remainingPages: number };
+export type OcrProviderBudgetReservation = { clerkUserId: string; dayStart: Date; monthStart: Date; costPerPage: number };
 
 export class OcrSafetyQuotaError extends Error {
   readonly retryable = true;
@@ -14,9 +15,14 @@ export class OcrRunBudgetError extends Error {
 }
 
 export function getOcrSafetyConfig() {
+  // Commercial plan limits decide how many pages a customer may process. This
+  // is only a technical guardrail matching the largest supported bulk PDF.
+  // Keep it separate from the retired 25-page cost cap so paid/admin accounts
+  // can use the OCR pages they actually have available.
+  const maxPagesPerDocument = envInt("INVOICE_TECHNICAL_MAX_OCR_PAGES_PER_DOCUMENT", 500, 1, 500);
   return {
-    maxPagesPerDocument: envInt("INVOICE_MAX_OCR_PAGES_PER_DOCUMENT", 25, 1, 50),
-    maxPagesPerCron: envInt("INVOICE_MAX_OCR_PAGES_PER_CRON", 40, 1, 500),
+    maxPagesPerDocument,
+    maxPagesPerCron: Math.max(maxPagesPerDocument, envInt("INVOICE_MAX_OCR_PAGES_PER_CRON", 500, 1, 5_000)),
     maxDocumentsPerCron: envInt("INVOICE_MAX_DOCUMENTS_PER_CRON", 5, 1, 25),
     globalDailyPages: envInt("INVOICE_GLOBAL_EMERGENCY_DAILY_OCR_PAGE_LIMIT", 10_000, 1_000, 1_000_000),
     globalMonthlyPages: envInt("INVOICE_GLOBAL_EMERGENCY_MONTHLY_OCR_PAGE_LIMIT", 100_000, 10_000, 10_000_000),
@@ -29,10 +35,10 @@ export function estimateSourcePages(input: { base64: string; mimeType: string; f
   try { const latin = Buffer.from(input.base64, "base64").toString("latin1"); const count = (latin.match(/\/Type\s*\/Page\b/g) || []).length; return count > 0 ? count : null; } catch { return null; }
 }
 export function isPdfInput(input: { mimeType: string; filename?: string }) { return input.mimeType === "application/pdf" || /\.pdf$/i.test(input.filename ?? ""); }
-export function mistralPagesForInput(input: { base64: string; mimeType: string; filename?: string }): number[] | undefined {
-  if (!isPdfInput(input)) return undefined; const cfg = getOcrSafetyConfig(); const estimated = estimateSourcePages(input); const count = Math.max(1, Math.min(estimated ?? cfg.maxPagesPerDocument, cfg.maxPagesPerDocument)); return Array.from({ length: count }, (_, i) => i);
+export function mistralPagesForInput(input: { base64: string; mimeType: string; filename?: string }, unknownPageLimit = 1): number[] | undefined {
+  if (!isPdfInput(input)) return undefined; const cfg = getOcrSafetyConfig(); const estimated = estimateSourcePages(input); const count = Math.max(1, Math.min(estimated ?? unknownPageLimit, cfg.maxPagesPerDocument)); return Array.from({ length: count }, (_, i) => i);
 }
-export function providerReservationPages(input: { base64: string; mimeType: string; filename?: string }) { const cfg = getOcrSafetyConfig(); const estimated = estimateSourcePages(input); return Math.max(1, Math.min(estimated ?? cfg.maxPagesPerDocument, cfg.maxPagesPerDocument)); }
+export function providerReservationPages(input: { base64: string; mimeType: string; filename?: string }, unknownPageLimit = 1) { const cfg = getOcrSafetyConfig(); const estimated = estimateSourcePages(input); return Math.max(1, Math.min(estimated ?? unknownPageLimit, cfg.maxPagesPerDocument)); }
 export function knownDocumentExceedsPageLimit(input: { base64: string; mimeType: string; filename?: string }) { const estimated = estimateSourcePages(input); return estimated != null && estimated > getOcrSafetyConfig().maxPagesPerDocument; }
 export function azureAllowedForInput(input: { base64: string; mimeType: string; filename?: string }) { if (!isPdfInput(input)) return true; const estimated = estimateSourcePages(input); return estimated != null && estimated <= getOcrSafetyConfig().maxPagesPerDocument; }
 export function createOcrRunBudget(): OcrRunBudget { return { remainingPages: getOcrSafetyConfig().maxPagesPerCron }; }
@@ -82,6 +88,7 @@ export async function reserveOcrProviderBudget(args: { clerkUserId: string; prov
       quota_count AS (SELECT (SELECT count(*) FROM global_day)+(SELECT count(*) FROM global_month)+(SELECT count(*) FROM user_day)+(SELECT count(*) FROM user_month) AS n)
       SELECT 1 / CASE WHEN n=4 THEN 1 ELSE 0 END AS "quotaGuard" FROM quota_count
     `;
+    return { clerkUserId: args.clerkUserId, dayStart, monthStart, costPerPage } satisfies OcrProviderBudgetReservation;
   } catch (error) {
     if (error instanceof OcrCommercialQuotaError) throw error;
     const message = error instanceof Error ? error.message : String(error);
@@ -94,5 +101,19 @@ export async function reserveOcrProviderBudget(args: { clerkUserId: string; prov
     console.error("[invoice-ocr] Failed to reserve OCR budget", { error: message, clerkUserId: args.clerkUserId, provider: args.provider, pages });
     throw error;
   }
+}
+export async function releaseUnusedOcrProviderBudget(args: { reservation: OcrProviderBudgetReservation; pages: number; runBudget?: OcrRunBudget }) {
+  const pages = Number.isFinite(args.pages) ? Math.max(0, Math.trunc(args.pages)) : 0;
+  if (pages === 0) return;
+  const config = getOcrSafetyConfig();
+  const url = process.env.DATABASE_URL; if (!url) throw new Error("DATABASE_URL is not set"); const sql = neon(url);
+  const estimatedCost = pages * args.reservation.costPerPage; const userScope = `user:${args.reservation.clerkUserId}`;
+  await sql`UPDATE "invoiceOcrUsageBuckets"
+    SET "reservedPages"=GREATEST(0,"reservedPages"-${pages}),
+        "estimatedCostMicros"=GREATEST(0,"estimatedCostMicros"-${estimatedCost}),
+        "updatedAt"=now()
+    WHERE "scopeKey" IN ('global',${userScope})
+      AND (("bucketType"='day' AND "bucketStart"=${args.reservation.dayStart}) OR ("bucketType"='month' AND "bucketStart"=${args.reservation.monthStart}))`;
+  if (args.runBudget) args.runBudget.remainingPages = Math.min(config.maxPagesPerCron, args.runBudget.remainingPages + pages);
 }
 function envInt(name: string, fallback: number, min: number, max: number) { const parsed = Number.parseInt(process.env[name] ?? "", 10); if (!Number.isFinite(parsed)) return fallback; return Math.max(min, Math.min(max, parsed)); }

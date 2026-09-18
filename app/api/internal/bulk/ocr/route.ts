@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { verifyBulkInternalSecret,BULK_OCR_BATCH_PAGES } from "@/lib/bulk-invoices/config";
 import { bulkSql,ocrBulkPages } from "@/lib/bulk-invoices/service";
+import { OcrCommercialQuotaError } from "@/lib/invoice-intelligence/quota";
 const schema=z.object({jobId:z.number().int().positive(),documentUrl:z.string().url(),startPage:z.number().int().min(0),batchPages:z.number().int().min(1).max(BULK_OCR_BATCH_PAGES)});
 export async function POST(req:Request){
  if(!verifyBulkInternalSecret(req.headers.get("x-bulk-secret")))return NextResponse.json({error:"Unauthorized"},{status:401});
@@ -21,7 +22,8 @@ export async function POST(req:Request){
   return NextResponse.json({success:true,pages:out.pages.length,nextPage:out.nextPage,done:out.done});
  }catch(error){
   const msg=error instanceof Error?error.message:String(error);
-  await sql`UPDATE "bulkInvoiceJobs" SET "lockedAt"=NULL,"lastError"=${msg.slice(0,2000)},"updatedAt"=now() WHERE "id"=${data.jobId}`;
-  const status=/limit|quota/i.test(msg)?402:500;return NextResponse.json({error:msg},{status});
+  const quotaReached=error instanceof OcrCommercialQuotaError;
+  await sql`UPDATE "bulkInvoiceJobs" SET "stage"=${quotaReached?'quota_wait':'ocr'},"lockedAt"=NULL,"lastError"=${msg.slice(0,2000)},"updatedAt"=now() WHERE "id"=${data.jobId}`;
+  const status=quotaReached?402:500;return NextResponse.json({error:msg},{status});
  }
 }

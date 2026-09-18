@@ -79,6 +79,10 @@ export function InvoiceReviewClient({ documentId }: { documentId: number }) {
     const json = await res.json();
     setBusy(null);
     if (!res.ok) { setMessage(json.error ?? "Napaka"); return; }
+    if (action === "reprocess" && Number.isInteger(Number(json.bulkJobId))) {
+      router.push(`/bulk-invoices/${Number(json.bulkJobId)}`);
+      return;
+    }
     setMessage(action === "approve" ? (json.manualOverride ? "Račun je ročno potrjen kljub opozorilom." : "Račun je potrjen.") : action === "reject" ? "Račun je zavrnjen." : action === "reprocess" ? "Račun je ponovno v čakalni vrsti." : "Spremembe so shranjene.");
     await load();
     if (action === "approve" || action === "reject") setTimeout(() => goRelative(1), 250);
@@ -106,11 +110,12 @@ export function InvoiceReviewClient({ documentId }: { documentId: number }) {
   const selectedEvidence = useMemo(() => detail?.evidence.find((e) => e.fieldPath === selectedPath) ?? null, [detail, selectedPath]);
   const latestValidation = detail?.validations?.[0] ?? null;
   const invoice = detail?.document.approved ?? detail?.document.normalized;
+  const needsPdfSplit = detail?.document.mimeType === "application/pdf" && detail.document.warnings.some((warning) => /hard-capped|first 25 pages|technical PDF limit/i.test(warning));
 
-  if (!detail) return <main className="mx-auto max-w-7xl p-8"><div className="flex items-center gap-2 text-slate-500"><Loader2 className="h-5 w-5 animate-spin" /> Nalaganje dokumenta…</div>{message && <p className="mt-4 text-red-600">{message}</p>}</main>;
+  if (!detail) return <main className="mx-auto w-full min-w-0 max-w-7xl overflow-x-hidden p-8"><div className="flex items-center gap-2 text-slate-500"><Loader2 className="h-5 w-5 animate-spin" /> Nalaganje dokumenta…</div>{message && <p className="mt-4 text-red-600">{message}</p>}</main>;
 
   return (
-    <main className="mx-auto max-w-[1600px] px-3 pb-36 pt-5 sm:px-5 md:pb-5 lg:px-7">
+    <main className="mx-auto w-full min-w-0 max-w-[1600px] overflow-x-hidden px-3 pb-36 pt-5 sm:px-5 md:pb-5 lg:px-7">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           <Link href="/invoice-review" className="rounded-lg border border-slate-200 p-2 hover:bg-slate-50"><ChevronLeft className="h-5 w-5" /></Link>
@@ -120,15 +125,15 @@ export function InvoiceReviewClient({ documentId }: { documentId: number }) {
       </div>
 
       {(latestValidation?.errors.length || latestValidation?.warnings.length || detail.duplicates.length > 0) ? (
-        <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+        <div className="mb-4 min-w-0 break-words rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
           <div className="mb-2 flex items-center gap-2 font-bold"><AlertTriangle className="h-4 w-4" /> Potreben je pregled</div>
           <ul className="list-disc space-y-1 pl-5">{latestValidation?.errors.map((x) => <li key={x}>{x}</li>)}{latestValidation?.warnings.map((x) => <li key={x}>{x}</li>)}{detail.duplicates.length > 0 && <li>Možen podvojen račun: {detail.duplicates.map((d) => `#${d.duplicateOfDocumentId}`).join(", ")}</li>}</ul>
         </div>
       ) : null}
 
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1.05fr)_minmax(520px,.95fr)]">
-        <section className="lg:sticky lg:top-4 lg:h-[calc(100vh-2rem)]">
-          <div className="relative h-[70vh] overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 shadow-sm lg:h-full">
+      <div className="grid w-full min-w-0 max-w-full gap-5 lg:grid-cols-[minmax(0,1.05fr)_minmax(520px,.95fr)]">
+        <section className="w-full min-w-0 max-w-full lg:sticky lg:top-4 lg:h-[calc(100vh-2rem)]">
+          <div className="relative h-[70vh] w-full min-w-0 max-w-full overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 shadow-sm lg:h-full">
             {detail.document.mimeType.startsWith("image/") ? (
               <div className="relative h-full w-full overflow-auto bg-slate-900/5 p-4"><img src={detail.fileUrl} alt={detail.document.filename} className="mx-auto max-h-full max-w-full object-contain" />{selectedEvidence && <EvidenceOverlay evidence={selectedEvidence} />}</div>
             ) : detail.document.mimeType === "application/pdf" ? (
@@ -140,7 +145,7 @@ export function InvoiceReviewClient({ documentId }: { documentId: number }) {
           {selectedEvidence && <div className="mt-2 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-900"><strong>Dokaz:</strong> {selectedEvidence.fieldPath} · stran {selectedEvidence.pageNumber ?? "—"} · zanesljivost {selectedEvidence.confidence == null ? "—" : `${Math.round(selectedEvidence.confidence * 100)}%`}</div>}
         </section>
 
-        <section className="space-y-4 pb-28">
+        <section className="w-full min-w-0 max-w-full space-y-4 pb-28">
           {fieldGroups.map((group) => <FieldGroup key={group.title} title={group.title} fields={group.fields} form={form} setForm={setForm} evidence={detail.evidence} selectedPath={selectedPath} setSelectedPath={setSelectedPath} />)}
 
           {invoice?.vatBreakdown?.length ? <DataTable title="DDV razčlenitev" rows={invoice.vatBreakdown} columns={["vatRate", "taxableAmount", "vatAmount", "grossAmount"]} /> : null}
@@ -153,13 +158,13 @@ export function InvoiceReviewClient({ documentId }: { documentId: number }) {
       </div>
 
       <div className="fixed inset-x-0 bottom-0 z-[60] border-t border-slate-200 bg-white/95 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-2xl backdrop-blur dark:border-slate-700 dark:bg-slate-950/95">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
+        <div className="mx-auto flex w-full min-w-0 max-w-7xl items-center justify-between gap-3">
           <div className="hidden text-sm text-slate-500 md:block">{message || "Ctrl/Cmd+S shrani · Alt+A potrdi · Alt+←/→ navigacija"}</div>
-          <div className="grid w-full grid-cols-2 gap-2 md:flex md:w-auto md:flex-wrap">
+          <div className="grid w-full min-w-0 grid-cols-2 gap-2 md:flex md:w-auto md:flex-wrap">
             <Action busy={busy} name="approve" onClick={() => submit("approve")} className="border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700" icon={<Check className="h-5 w-5" />}>Potrdi račun</Action>
             <Action busy={busy} name="save" onClick={() => submit("save")} icon={<Save className="h-5 w-5" />}>Shrani</Action>
             <Action busy={busy} name="reject" onClick={() => submit("reject")} className="border-red-200 text-red-700" icon={<XCircle className="h-5 w-5" />}>Zavrni</Action>
-            <Action busy={busy} name="reprocess" onClick={() => submit("reprocess")} icon={<RefreshCw className="h-5 w-5" />}>Ponovno obdelaj</Action>
+            <Action busy={busy} name="reprocess" onClick={() => submit("reprocess")} icon={<RefreshCw className="h-5 w-5" />}>{needsPdfSplit ? "Razdeli in ponovno obdelaj" : "Ponovno obdelaj"}</Action>
           </div>
         </div>
       </div>
@@ -168,11 +173,11 @@ export function InvoiceReviewClient({ documentId }: { documentId: number }) {
 }
 
 function FieldGroup({ title, fields, form, setForm, evidence, selectedPath, setSelectedPath }: { title: string; fields: Array<[string, string]>; form: Record<string, string>; setForm: React.Dispatch<React.SetStateAction<Record<string, string>>>; evidence: Evidence[]; selectedPath: string | null; setSelectedPath: (path: string) => void }) {
-  return <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900"><h2 className="mb-3 text-lg font-extrabold text-slate-900 dark:text-white">{title}</h2><div className="grid gap-3 sm:grid-cols-2">{fields.map(([path, label]) => { const ev = evidence.find((e) => e.fieldPath === path); const low = ev?.confidence != null && ev.confidence < 0.92; return <label key={path} className={`rounded-xl border p-2 ${selectedPath === path ? "border-blue-400 bg-blue-50/60" : low ? "border-amber-300 bg-amber-50" : "border-slate-200 dark:border-slate-700"}`}><div className="mb-1 flex items-center justify-between gap-2 text-xs font-bold text-slate-600"><span>{label}</span><span className={low ? "text-amber-700" : "text-slate-400"}>{ev?.confidence == null ? "" : `${Math.round(ev.confidence * 100)}%`}</span></div><input value={form[path] ?? ""} onFocus={() => setSelectedPath(path)} onChange={(e) => setForm((f) => ({ ...f, [path]: e.target.value }))} className="w-full bg-transparent text-sm font-medium text-slate-950 outline-none dark:text-white" /></label>; })}</div></div>;
+  return <div className="w-full min-w-0 max-w-full rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900"><h2 className="mb-3 text-lg font-extrabold text-slate-900 dark:text-white">{title}</h2><div className="grid min-w-0 gap-3 sm:grid-cols-2">{fields.map(([path, label]) => { const ev = evidence.find((e) => e.fieldPath === path); const low = ev?.confidence != null && ev.confidence < 0.92; return <label key={path} className={`min-w-0 rounded-xl border p-2 ${selectedPath === path ? "border-blue-400 bg-blue-50/60" : low ? "border-amber-300 bg-amber-50" : "border-slate-200 dark:border-slate-700"}`}><div className="mb-1 flex items-center justify-between gap-2 text-xs font-bold text-slate-600"><span>{label}</span><span className={low ? "text-amber-700" : "text-slate-400"}>{ev?.confidence == null ? "" : `${Math.round(ev.confidence * 100)}%`}</span></div><input value={form[path] ?? ""} onFocus={() => setSelectedPath(path)} onChange={(e) => setForm((f) => ({ ...f, [path]: e.target.value }))} className="w-full min-w-0 bg-transparent text-sm font-medium text-slate-950 outline-none dark:text-white" /></label>; })}</div></div>;
 }
 
 function DataTable({ title, rows, columns }: { title: string; rows: Array<Record<string, string | null>>; columns: string[] }) {
-  return <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900"><div className="p-4 font-extrabold">{title}</div><div className="overflow-x-auto"><table className="min-w-full text-xs"><thead className="bg-slate-50 dark:bg-slate-800"><tr>{columns.map((c) => <th key={c} className="px-3 py-2 text-left">{c}</th>)}</tr></thead><tbody>{rows.map((row, i) => <tr key={i} className="border-t border-slate-100 dark:border-slate-800">{columns.map((c) => <td key={c} className="max-w-[260px] truncate px-3 py-2">{row[c] ?? "—"}</td>)}</tr>)}</tbody></table></div></div>;
+  return <div className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900"><div className="p-4 font-extrabold">{title}</div><div className="max-w-full overflow-x-auto overscroll-x-contain"><table className="w-max min-w-full text-xs"><thead className="bg-slate-50 dark:bg-slate-800"><tr>{columns.map((c) => <th key={c} className="whitespace-nowrap px-3 py-2 text-left">{c}</th>)}</tr></thead><tbody>{rows.map((row, i) => <tr key={i} className="border-t border-slate-100 dark:border-slate-800">{columns.map((c) => <td key={c} className="max-w-[260px] truncate whitespace-nowrap px-3 py-2">{row[c] ?? "—"}</td>)}</tr>)}</tbody></table></div></div>;
 }
 
 function Action({ children, busy, name, onClick, icon, className = "" }: { children: React.ReactNode; busy: string | null; name: string; onClick: () => void; icon: React.ReactNode; className?: string }) {

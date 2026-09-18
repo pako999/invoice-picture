@@ -57,6 +57,13 @@
       "when": 1789720200000,
       "tag": "0008_bulk_pdf_invoices",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1789725720000,
+      "tag": "0009_bulk_job_source",
+      "breakpoints": true
     }
   ]
 }

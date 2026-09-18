@@ -74,7 +74,7 @@ export async function readDeterministically(input: { base64: string; mimeType: s
   return null;
 }
 
-export async function readWithMistral(input: { base64: string; mimeType: string; filename: string }): Promise<ReaderResult> {
+export async function readWithMistral(input: { base64: string; mimeType: string; filename: string }, unknownPageLimit?: number): Promise<ReaderResult> {
   const apiKey = process.env.MISTRAL_API_KEY;
   if (!apiKey) throw new Error("MISTRAL_API_KEY is not configured");
   const model = process.env.MISTRAL_OCR_MODEL || "mistral-ocr-latest";
@@ -82,7 +82,7 @@ export async function readWithMistral(input: { base64: string; mimeType: string;
   const document = input.mimeType.startsWith("image/")
     ? { type: "image_url", image_url: dataUrl }
     : { type: "document_url", document_url: dataUrl };
-  const pages = mistralPagesForInput(input);
+  const pages = mistralPagesForInput(input, unknownPageLimit);
 
   const response = await fetch(MISTRAL_ENDPOINT, {
     method: "POST",
