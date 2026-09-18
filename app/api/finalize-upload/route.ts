@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
         max("chunkIndex")::int AS "maxIndex",
         min("totalChunks")::int AS "minTotal",
         max("totalChunks")::int AS "maxTotal",
-        coalesce(sum(octet_length(decode("data", 'base64'))), 0)::bigint AS "byteSize"
+        coalesce(sum(octet_length("data")), 0)::bigint AS "byteSize"
       FROM "invoiceUploadChunks"
       WHERE "uploadId" = ${input.uploadId}
         AND "clerkUserId" = ${userId}
