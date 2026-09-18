@@ -110,7 +110,7 @@ export function InvoiceReviewClient({ documentId }: { documentId: number }) {
   if (!detail) return <main className="mx-auto max-w-7xl p-8"><div className="flex items-center gap-2 text-slate-500"><Loader2 className="h-5 w-5 animate-spin" /> Nalaganje dokumenta…</div>{message && <p className="mt-4 text-red-600">{message}</p>}</main>;
 
   return (
-    <main className="mx-auto max-w-[1600px] px-3 py-5 sm:px-5 lg:px-7">
+    <main className="mx-auto max-w-[1600px] px-3 pb-36 pt-5 sm:px-5 md:pb-5 lg:px-7">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
           <Link href="/invoice-review" className="rounded-lg border border-slate-200 p-2 hover:bg-slate-50"><ChevronLeft className="h-5 w-5" /></Link>
@@ -152,8 +152,16 @@ export function InvoiceReviewClient({ documentId }: { documentId: number }) {
         </section>
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 p-3 shadow-2xl backdrop-blur dark:border-slate-700 dark:bg-slate-950/95">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-2"><div className="text-sm text-slate-500">{message || "Ctrl/Cmd+S shrani · Alt+A potrdi · Alt+←/→ navigacija"}</div><div className="flex flex-wrap gap-2"><Action busy={busy} name="reprocess" onClick={() => submit("reprocess")} icon={<RefreshCw className="h-4 w-4" />}>Ponovno obdelaj</Action><Action busy={busy} name="reject" onClick={() => submit("reject")} className="border-red-200 text-red-700" icon={<XCircle className="h-4 w-4" />}>Zavrni</Action><Action busy={busy} name="save" onClick={() => submit("save")} icon={<Save className="h-4 w-4" />}>Shrani</Action><Action busy={busy} name="approve" onClick={() => submit("approve")} className="border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700" icon={<Check className="h-4 w-4" />}>Potrdi račun</Action></div></div>
+      <div className="fixed inset-x-0 bottom-0 z-[60] border-t border-slate-200 bg-white/95 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-2xl backdrop-blur dark:border-slate-700 dark:bg-slate-950/95">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
+          <div className="hidden text-sm text-slate-500 md:block">{message || "Ctrl/Cmd+S shrani · Alt+A potrdi · Alt+←/→ navigacija"}</div>
+          <div className="grid w-full grid-cols-2 gap-2 md:flex md:w-auto md:flex-wrap">
+            <Action busy={busy} name="approve" onClick={() => submit("approve")} className="border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700" icon={<Check className="h-5 w-5" />}>Potrdi račun</Action>
+            <Action busy={busy} name="save" onClick={() => submit("save")} icon={<Save className="h-5 w-5" />}>Shrani</Action>
+            <Action busy={busy} name="reject" onClick={() => submit("reject")} className="border-red-200 text-red-700" icon={<XCircle className="h-5 w-5" />}>Zavrni</Action>
+            <Action busy={busy} name="reprocess" onClick={() => submit("reprocess")} icon={<RefreshCw className="h-5 w-5" />}>Ponovno obdelaj</Action>
+          </div>
+        </div>
       </div>
     </main>
   );
@@ -168,7 +176,7 @@ function DataTable({ title, rows, columns }: { title: string; rows: Array<Record
 }
 
 function Action({ children, busy, name, onClick, icon, className = "" }: { children: React.ReactNode; busy: string | null; name: string; onClick: () => void; icon: React.ReactNode; className?: string }) {
-  return <button disabled={busy != null} onClick={onClick} className={`inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-bold hover:bg-slate-50 disabled:opacity-50 ${className}`}>{busy === name ? <Loader2 className="h-4 w-4 animate-spin" /> : icon}{children}</button>;
+  return <button disabled={busy != null} onClick={onClick} className={`inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-bold shadow-sm hover:bg-slate-50 disabled:opacity-50 md:w-auto md:px-4 md:py-2 ${className}`}>{busy === name ? <Loader2 className="h-4 w-4 animate-spin" /> : icon}{children}</button>;
 }
 
 function flatten(invoice: InvoiceData) {

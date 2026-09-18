@@ -68,6 +68,7 @@ export function Nav() {
   ];
   const isApp = appPaths.some((p) => path === p || path.startsWith(p + "/"));
   const isPublic = !isApp;
+  const isInvoiceReview = path === "/invoice-review" || path.startsWith("/invoice-review/");
 
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -350,7 +351,7 @@ export function Nav() {
         ), document.body)}
       </header>
 
-      {isSignedIn && (
+      {isSignedIn && !isInvoiceReview && (
         <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-slate-900 border-t border-gray-200 dark:border-slate-700 flex">
           {appLinks.map((l) => {
             const active = path === l.href;
