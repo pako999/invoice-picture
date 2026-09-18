@@ -14,8 +14,7 @@ export async function POST(req:Request){
  const [group]=await db.select().from(bulkInvoiceGroups).where(and(eq(bulkInvoiceGroups.jobId,data.jobId),eq(bulkInvoiceGroups.groupIndex,data.groupIndex))).limit(1);
  if(!group?.documentId)return NextResponse.json({error:"Bulk child is not extracted yet"},{status:409});
  const [doc]=await db.select().from(invoiceDocuments).where(eq(invoiceDocuments.id,group.documentId)).limit(1);if(!doc?.sourceInvoiceId)return NextResponse.json({error:"Source invoice missing"},{status:409});
- if(!job.companyId)return NextResponse.json({error:"Company is required for bulk email delivery"},{status:409});
- const settings=await getCompanyDeliverySettings(job.companyId,job.clerkUserId);if(settings.mode!=="email_ocr"){await db.update(bulkInvoiceGroups).set({deliveryStatus:"not_required",deliveryError:null,updatedAt:new Date()}).where(eq(bulkInvoiceGroups.id,group.id));return NextResponse.json({success:true,skipped:true});}
+ if(job.companyId){const settings=await getCompanyDeliverySettings(job.companyId,job.clerkUserId);if(settings.mode!=="email_ocr"){await db.update(bulkInvoiceGroups).set({deliveryStatus:"not_required",deliveryError:null,updatedAt:new Date()}).where(eq(bulkInvoiceGroups.id,group.id));return NextResponse.json({success:true,skipped:true});}}
  try{
   const u=new URL(data.objectUrl);if(!u.hostname.endsWith(".storage.c-3.eu-central-1.aws.neon.tech"))throw new Error("Invalid private storage URL");
   const response=await fetch(data.objectUrl,{signal:AbortSignal.timeout(120000)});if(!response.ok)throw new Error(`Child PDF download failed (${response.status})`);
