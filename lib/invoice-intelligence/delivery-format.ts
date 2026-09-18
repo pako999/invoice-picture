@@ -11,7 +11,7 @@ export function buildInvoiceApiPayload(args: {
   companyId: number | null;
   sourceInvoiceId: number | null;
   invoice: NormalizedInvoice;
-  source: { filename: string; mimeType: string; sha256: string; base64: string };
+  source: { filename: string; mimeType: string; sha256: string; base64: string | null; storageObjectKey?: string | null };
 }) {
   return {
     schemaVersion: "1.0",
@@ -26,6 +26,7 @@ export function buildInvoiceApiPayload(args: {
       mimeType: args.source.mimeType,
       sha256: args.source.sha256,
       base64: args.source.base64,
+      storageObjectKey: args.source.storageObjectKey ?? null,
     },
   };
 }
@@ -90,13 +91,13 @@ export function generateUbl21Xml(invoice: NormalizedInvoice) {
 export function resolveXmlDelivery(args: {
   format: XmlDeliveryFormat;
   invoice: NormalizedInvoice;
-  originalBase64: string;
+  originalBase64: string | null;
   originalMimeType: string;
   originalFilename: string;
 }) {
   if (args.format === "eslog_2_0_original") {
     const isXml = /xml/i.test(args.originalMimeType) || /\.xml$/i.test(args.originalFilename);
-    const original = isXml ? Buffer.from(args.originalBase64, "base64").toString("utf8") : "";
+    const original = isXml && args.originalBase64 ? Buffer.from(args.originalBase64, "base64").toString("utf8") : "";
     if (isLikelyEslog20Xml(original)) {
       return {
         xml: original,
