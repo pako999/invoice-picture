@@ -5,6 +5,7 @@ import { invoices } from "@/lib/schema";
 import { sendInvoiceEmail } from "@/lib/resend";
 import { enqueueInvoiceDocument } from "@/lib/invoice-intelligence/queue";
 import { OcrCommercialQuotaError } from "@/lib/invoice-intelligence/quota";
+import { MAX_PDF_UPLOAD_WORKER_CONCURRENCY } from "@/lib/pdf-upload-limits";
 
 type UploadJob = {
   id: number;
@@ -43,7 +44,7 @@ export async function runQueuedUploadJobs(limit = 20, concurrency = 5) {
 
   const pending = [...rows];
   const results: Array<{ jobId: number; invoiceId: number; ok: boolean; error?: string }> = [];
-  const workerCount = Math.max(1, Math.min(5, concurrency, pending.length || 1));
+  const workerCount = Math.max(1, Math.min(MAX_PDF_UPLOAD_WORKER_CONCURRENCY, concurrency, pending.length || 1));
 
   await Promise.all(Array.from({ length: workerCount }, async () => {
     while (pending.length) {
@@ -79,7 +80,7 @@ async function processOneUploadJob(job: UploadJob) {
 
   try {
     const chunks = await sql`
-      SELECT "chunkIndex", "totalChunks", "data"
+      SELECT "chunkIndex", "totalChunks", encode("data", 'base64') AS "data"
       FROM "invoiceUploadChunks"
       WHERE "uploadId" = ${job.uploadId}
         AND "clerkUserId" = ${job.clerkUserId}
