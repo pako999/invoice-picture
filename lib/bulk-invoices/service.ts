@@ -104,7 +104,7 @@ export async function classifyBulkPages(args: {
 }): Promise<BulkPageClassification[]> {
   const input = args.pages.map((p) => ({
     pageNumber: p.pageNumber,
-    markdown: p.markdown.slice(0, 9000),
+    markdown: p.markdown.slice(0, 5000),
   }));
   const previous = args.previousPage
     ? { pageNumber: args.previousPage.pageNumber, markdown: args.previousPage.markdown.slice(-3500) }
@@ -171,23 +171,51 @@ export async function extractBulkInvoice(markdown: string, ocrConfidence: number
 async function mistralStructured(args: { model: string; name: string; schema: unknown; prompt: string }) {
   const apiKey = process.env.MISTRAL_API_KEY;
   if (!apiKey) throw new Error("MISTRAL_API_KEY is not configured");
-  const response = await fetch(CHAT_ENDPOINT, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: args.model,
-      temperature: 0,
-      messages: [{ role: "user", content: args.prompt }],
-      response_format: { type: "json_schema", json_schema: { name: args.name, strict: true, schema: args.schema } },
-    }),
-    signal: AbortSignal.timeout(90_000),
+  const requestBody = JSON.stringify({
+    model: args.model,
+    temperature: 0,
+    messages: [{ role: "user", content: args.prompt }],
+    response_format: { type: "json_schema", json_schema: { name: args.name, strict: true, schema: args.schema } },
   });
-  const body = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(`Mistral structured extraction failed (${response.status}): ${providerError(body)}`);
-  const content = body?.choices?.[0]?.message?.content;
-  if (typeof content === "string") return JSON.parse(content);
-  if (content && typeof content === "object") return content;
-  throw new Error("Mistral returned no structured content");
+
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    const response = await fetch(CHAT_ENDPOINT, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: requestBody,
+      signal: AbortSignal.timeout(90_000),
+    });
+    const body = await response.json().catch(() => ({}));
+    if (response.ok) {
+      const content = body?.choices?.[0]?.message?.content;
+      if (typeof content === "string") return JSON.parse(content);
+      if (content && typeof content === "object") return content;
+      throw new Error("Mistral returned no structured content");
+    }
+
+    const retryable = response.status === 429 || response.status >= 500;
+    if (!retryable || attempt === 3) {
+      throw new Error(`Mistral structured extraction failed (${response.status}): ${providerError(body)}`);
+    }
+
+    const delayMs = retryDelayMs(response.headers.get("Retry-After"), attempt);
+    console.warn(`[bulk-invoices] Mistral request returned ${response.status}; retrying in ${delayMs}ms (attempt ${attempt + 1}/3)`);
+    await new Promise((resolve) => setTimeout(resolve, delayMs));
+  }
+
+  throw new Error("Mistral structured extraction failed after retries");
+}
+
+function retryDelayMs(retryAfter: string | null, attempt: number) {
+  const fallbackMs = attempt === 1 ? 5_000 : 15_000;
+  if (!retryAfter) return fallbackMs;
+
+  const seconds = Number(retryAfter);
+  const parsedMs = Number.isFinite(seconds)
+    ? seconds * 1000
+    : Date.parse(retryAfter) - Date.now();
+  if (!Number.isFinite(parsedMs) || parsedMs <= 0) return fallbackMs;
+  return Math.min(30_000, Math.ceil(parsedMs));
 }
 
 function pageConfidence(page: Record<string, any>) {
