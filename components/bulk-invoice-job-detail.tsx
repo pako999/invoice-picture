@@ -22,6 +22,7 @@ type Group = {
   deliveryStatus: string;
   deliveryError: string | null;
   documentId: number | null;
+  hasPreview: boolean;
   documentStatus: string | null;
   validationStatus: string | null;
   overallConfidenceBps: number | null;
@@ -112,6 +113,7 @@ export function BulkInvoiceJobDetail({ id, locale }: { id: number; locale: Local
       deliveryStatus: "pending",
       deliveryError: null,
       documentId: null,
+      hasPreview: false,
       documentStatus: null,
       validationStatus: null,
       overallConfidenceBps: null,
@@ -159,11 +161,16 @@ export function BulkInvoiceJobDetail({ id, locale }: { id: number; locale: Local
       setOpenPreviews((current) => current.filter((index) => index !== group.groupIndex));
       return;
     }
-    if (!group.documentId) return;
+    if (!group.documentId && !group.hasPreview) return;
     setPreviewLoading(group.groupIndex);
     setMessage("");
     try {
-      const response = await fetch(`/api/invoice-reader/${group.documentId}`, { cache: "no-store" });
+      const response = await fetch(
+        group.documentId
+          ? `/api/invoice-reader/${group.documentId}`
+          : `/api/bulk-invoices/jobs/${id}/groups/${group.groupIndex}/preview`,
+        { cache: "no-store" },
+      );
       const body = await response.json().catch(() => ({})) as { fileUrl?: string; error?: string };
       if (!response.ok || !body.fileUrl) throw new Error(body.error ?? (locale === "sl" ? "Predogleda ni mogoče odpreti." : "Could not open preview."));
       setPreviewUrls((current) => ({ ...current, [group.groupIndex]: body.fileUrl! }));
@@ -323,7 +330,7 @@ export function BulkInvoiceJobDetail({ id, locale }: { id: number; locale: Local
                     {group.deliveryError && <div className="mt-1 text-xs text-red-600">{group.deliveryError}</div>}
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    {group.documentId && (
+                    {(group.documentId || group.hasPreview) && (
                       <button
                         type="button"
                         disabled={previewLoading === group.groupIndex}
