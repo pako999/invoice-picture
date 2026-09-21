@@ -109,6 +109,10 @@ export function InvoiceReviewClient({ documentId }: { documentId: number }) {
 
   const selectedEvidence = useMemo(() => detail?.evidence.find((e) => e.fieldPath === selectedPath) ?? null, [detail, selectedPath]);
   const latestValidation = detail?.validations?.[0] ?? null;
+  const validationIssues = useMemo(() => [...new Set([
+    ...(latestValidation?.errors ?? []),
+    ...(latestValidation?.warnings ?? []),
+  ])], [latestValidation]);
   const invoice = detail?.document.approved ?? detail?.document.normalized;
   const needsPdfSplit = detail?.document.mimeType === "application/pdf" && detail.document.warnings.some((warning) => /hard-capped|first 25 pages|technical PDF limit/i.test(warning));
 
@@ -124,10 +128,10 @@ export function InvoiceReviewClient({ documentId }: { documentId: number }) {
         <div className="flex items-center gap-2"><button onClick={() => goRelative(-1)} className="rounded-lg border p-2" title="Prejšnji (Alt+←)"><ChevronLeft className="h-4 w-4" /></button><button onClick={() => goRelative(1)} className="rounded-lg border p-2" title="Naslednji (Alt+→)"><ChevronRight className="h-4 w-4" /></button></div>
       </div>
 
-      {(latestValidation?.errors.length || latestValidation?.warnings.length || detail.duplicates.length > 0) ? (
+      {(validationIssues.length > 0 || detail.duplicates.length > 0) ? (
         <div className="mb-4 min-w-0 break-words rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
           <div className="mb-2 flex items-center gap-2 font-bold"><AlertTriangle className="h-4 w-4" /> Potreben je pregled</div>
-          <ul className="list-disc space-y-1 pl-5">{latestValidation?.errors.map((x) => <li key={x}>{x}</li>)}{latestValidation?.warnings.map((x) => <li key={x}>{x}</li>)}{detail.duplicates.length > 0 && <li>Možen podvojen račun: {detail.duplicates.map((d) => `#${d.duplicateOfDocumentId}`).join(", ")}</li>}</ul>
+          <ul className="list-disc space-y-1 pl-5">{validationIssues.map((x) => <li key={x}>{x}</li>)}{detail.duplicates.length > 0 && <li>Možen podvojen račun: {detail.duplicates.map((d) => `#${d.duplicateOfDocumentId}`).join(", ")}</li>}</ul>
         </div>
       ) : null}
 

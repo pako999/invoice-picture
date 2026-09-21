@@ -156,6 +156,24 @@ export function BulkInvoiceJobDetail({ id, locale }: { id: number; locale: Local
     }
   }
 
+  async function retryFailedDeliveries() {
+    setBusy(true);
+    setMessage("");
+    try {
+      const response = await fetch(`/api/bulk-invoices/jobs/${id}/retry-delivery`, { method: "POST" });
+      const body = await response.json().catch(() => ({})) as { error?: string; retried?: number };
+      if (!response.ok) throw new Error(body.error ?? "Napaka");
+      setMessage(locale === "sl"
+        ? `${body.retried ?? 0} e-poštnih sporočil je ponovno dodanih v čakalno vrsto.`
+        : `${body.retried ?? 0} email messages were queued again.`);
+      await load();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Napaka");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function togglePreview(group: Group) {
     if (openPreviews.includes(group.groupIndex)) {
       setOpenPreviews((current) => current.filter((index) => index !== group.groupIndex));
@@ -186,6 +204,10 @@ export function BulkInvoiceJobDetail({ id, locale }: { id: number; locale: Local
     return <div className="mx-auto max-w-6xl px-4 py-10 text-slate-500">{message || "…"}</div>;
   }
 
+  const deliveredCount = groups.filter((group) => group.deliveryStatus === "completed").length;
+  const failedDeliveryCount = groups.filter((group) => group.deliveryStatus === "failed").length;
+  const notRequiredCount = groups.filter((group) => group.deliveryStatus === "not_required").length;
+
   return (
     <div className="mx-auto max-w-6xl px-4 py-10">
       <div className="mb-6">
@@ -215,6 +237,29 @@ export function BulkInvoiceJobDetail({ id, locale }: { id: number; locale: Local
           <Stat label={locale === "sl" ? "Obdelano" : "Processed"} value={job.processedInvoices} />
           <Stat label={locale === "sl" ? "Napredek" : "Progress"} value={`${progress}%`} />
         </div>
+
+        {job.stage === "completed" && deliveredCount > 0 && (
+          <div className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-200">
+            {locale === "sl"
+              ? `✓ ${deliveredCount} računov je bilo poslanih na nastavljeni e-mail kot ${deliveredCount} ločenih sporočil.`
+              : `✓ ${deliveredCount} invoices were sent to the configured email as ${deliveredCount} separate messages.`}
+          </div>
+        )}
+        {job.stage === "completed" && notRequiredCount > 0 && (
+          <div className="mt-5 rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-200">
+            {locale === "sl" ? "Dostava je nastavljena na API/XML, zato e-pošta z originalnimi PDF-ji ni potrebna." : "Delivery is configured for API/XML, so original PDF email delivery is not required."}
+          </div>
+        )}
+        {failedDeliveryCount > 0 && (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void retryFailedDeliveries()}
+            className="mt-4 rounded-xl bg-red-600 px-5 py-3 text-sm font-bold text-white hover:bg-red-700 disabled:opacity-50"
+          >
+            {locale === "sl" ? `Ponovno pošlji neuspešne (${failedDeliveryCount})` : `Retry failed emails (${failedDeliveryCount})`}
+          </button>
+        )}
 
         {job.lastError && (
           <div className="mt-5 rounded-xl bg-amber-50 p-4 text-sm text-amber-900 dark:bg-amber-950/30 dark:text-amber-200">

@@ -248,7 +248,7 @@ export function parseInvoiceTextDeterministically(text: string): NormalizedInvoi
   invoice.invoiceNumber = match(text, /(?:invoice\s*(?:number|no\.?|#)|receipt\s*(?:number|no\.?|#)|predra[čc]un\s*(?:[šs]t(?:evilka)?\.?|st\.?|#)?|ra[čc]un\s*(?:[šs]t(?:evilka)?\.?|st\.?|#)|[šs]t\.?\s*ra[čc]una|[šs]tevilka\s+fakture)\s*:?\s*([A-Z0-9][A-Z0-9.\-_/]{2,})/i)
     ?? match(text, /(?:sales\s+quote|quotation|quote|offer|estimate|ponudba|proforma|rechnung|fattura)\s*(?:no\.?|nr\.?|[šs]t\.?|number|[:#])\s*([A-Z0-9][A-Z0-9.\-_/]{2,})/i);
   invoice.purchaseOrderNumber = match(text, /(?:purchase\s+order|order\s+no\.?|naročilnica|narocilnica|ref\.?\s*sales\s*order)\s*[:#]?\s*([A-Z0-9][A-Z0-9\-_/]{1,})/i);
-  invoice.issueDate = match(text, /(?:issue date|document date|quote date|datum izdaje|datum računa|datum racuna|datum dokumenta|rechnungsdatum|data fattura|city,\s*document date)\s*[:]?\s*(\d{1,4}[./-]\d{1,2}[./-]\d{1,4})/i);
+  invoice.issueDate = match(text, /(?:issue date|document date|quote date|datum izdaje|datum računa|datum racuna|datum dokumenta|rechnungsdatum|data fattura|city,\s*document date|\bdatum\b)\s*[:]?\s*(\d{1,4}[./-]\d{1,2}[./-]\d{1,4})/i);
   invoice.serviceDate = match(text, /(?:service date|delivery\/performance date|performance date|delivery date|datum storitve|datum dobave)\s*[:]?\s*(\d{1,4}[./-]\d{1,2}[./-]\d{1,4})/i);
   invoice.dueDate = match(text, /(?:due date|rok plačila|rok placila|fällig|scadenza)\s*[:]?\s*(\d{1,4}[./-]\d{1,2}[./-]\d{1,4})/i);
   invoice.currency = match(text, /\b(EUR|USD|GBP|CHF|HRK|CZK|PLN|HUF|SEK|NOK|DKK|RON|BGN|RSD|BAM|CAD|AUD|JPY)\b/i)?.toUpperCase() ?? null;
@@ -257,6 +257,9 @@ export function parseInvoiceTextDeterministically(text: string): NormalizedInvoi
     ?? null;
   invoice.supplier.iban = match(text, /\b([A-Z]{2}\d{2}(?:\s?[A-Z0-9]){11,30})\b/i)?.replace(/\s/g, "") ?? null;
   invoice.supplier.bic = match(text, /(?:SWIFT\/BIC|BIC)\s*[:#]?\s*([A-Z0-9]{8,11})/i)?.toUpperCase() ?? null;
+  if (!invoice.currency && (invoice.supplier.vatNumber?.startsWith("SI") || invoice.supplier.iban?.startsWith("SI")) && /\b(?:slovenija|slovenia|ljubljana|maribor)\b/i.test(text)) {
+    invoice.currency = "EUR";
+  }
   invoice.paymentReference = match(text, /(?:payment ref(?:erence)?|sklic)\s*[:#]?\s*([A-Z0-9][A-Z0-9\s\-_/]{2,})/i);
   invoice.paymentTerms = match(text, /(?:method of payment|payment terms|način plačila|nacin placila)\s*[:#]?\s*([^\n|]{3,80})/i);
   invoice.totals.amountDue = match(text, /(?:amount\s+due|za\s+plačilo|za\s+placilo|skupaj\s*\(\s*z\s+ddv\s*\)|total\s+in\s+(?:EUR|USD|GBP))[^\d\-]{0,30}(-?[\d.,]+)\s*(?:EUR|USD|GBP|€|\$|£)?/i)

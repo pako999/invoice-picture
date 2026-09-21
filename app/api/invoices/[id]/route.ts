@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { getDb } from "@/lib/db";
-import { invoices } from "@/lib/schema";
-import { and, eq } from "drizzle-orm";
+import { invoiceDocuments, invoices } from "@/lib/schema";
+import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 
 const MAX_PDF_BYTES = 10 * 1024 * 1024;
@@ -28,7 +28,22 @@ export async function GET(
     .limit(1);
 
   if (!invoice) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  return NextResponse.json(invoice);
+
+  const [document] = await db
+    .select({
+      originalBase64: invoiceDocuments.originalBase64,
+      storageObjectKey: invoiceDocuments.storageObjectKey,
+    })
+    .from(invoiceDocuments)
+    .where(and(eq(invoiceDocuments.sourceInvoiceId, invoice.id), eq(invoiceDocuments.clerkUserId, userId)))
+    .orderBy(desc(invoiceDocuments.id))
+    .limit(1);
+
+  const previewAvailable = Boolean(invoice.imageData || document?.originalBase64 || document?.storageObjectKey);
+  return NextResponse.json({
+    ...invoice,
+    previewUrl: previewAvailable ? `/api/invoices/${invoice.id}/file` : null,
+  });
 }
 
 export async function PATCH(

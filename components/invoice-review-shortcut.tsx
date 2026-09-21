@@ -55,7 +55,7 @@ export function InvoiceReviewShortcut({ locale = "sl" }: { locale?: "sl" | "en" 
   if (state.needs.length > 0) {
     const first = state.needs[0];
     return (
-      <aside className="fixed right-4 top-20 z-[70] w-[min(380px,calc(100vw-2rem))] rounded-2xl border border-amber-300 bg-amber-50 p-4 shadow-2xl shadow-amber-900/10 dark:border-amber-700 dark:bg-amber-950">
+      <aside className="mx-auto my-4 w-[min(620px,calc(100%-2rem))] rounded-2xl border border-amber-300 bg-amber-50 p-4 shadow-xl shadow-amber-900/10 dark:border-amber-700 dark:bg-amber-950">
         <div className="flex items-start gap-3">
           <span className="text-2xl">⚠️</span>
           <div className="min-w-0 flex-1">
@@ -74,7 +74,7 @@ export function InvoiceReviewShortcut({ locale = "sl" }: { locale?: "sl" | "en" 
 
   if (state.working.length > 0) {
     return (
-      <aside className="fixed right-4 top-20 z-[70] w-[min(360px,calc(100vw-2rem))] rounded-2xl border border-blue-200 bg-blue-50 p-4 shadow-xl dark:border-blue-800 dark:bg-blue-950">
+      <aside className="mx-auto my-4 w-[min(620px,calc(100%-2rem))] rounded-2xl border border-blue-200 bg-blue-50 p-4 shadow-lg dark:border-blue-800 dark:bg-blue-950">
         <div className="flex items-start gap-3">
           <span className="animate-pulse text-2xl">🤖</span>
           <div className="min-w-0 flex-1">
@@ -95,7 +95,7 @@ export function InvoiceReviewShortcut({ locale = "sl" }: { locale?: "sl" | "en" 
 
   if (state.failed.length > 0) {
     return (
-      <aside className="fixed right-4 top-20 z-[70] w-[min(360px,calc(100vw-2rem))] rounded-2xl border border-red-200 bg-red-50 p-4 shadow-xl dark:border-red-800 dark:bg-red-950">
+      <aside className="mx-auto my-4 w-[min(620px,calc(100%-2rem))] rounded-2xl border border-red-200 bg-red-50 p-4 shadow-lg dark:border-red-800 dark:bg-red-950">
         <p className="font-extrabold text-red-900 dark:text-red-100">{en ? `${state.failed.length} OCR error(s)` : `${state.failed.length} OCR napak`}</p>
         <Link href="/invoice-review" className="mt-2 inline-flex rounded-lg bg-red-600 px-3 py-2 text-xs font-bold text-white">{en ? "Open OCR review" : "Odpri OCR pregled"}</Link>
       </aside>
@@ -103,7 +103,7 @@ export function InvoiceReviewShortcut({ locale = "sl" }: { locale?: "sl" | "en" 
   }
 
   return (
-    <Link href="/invoice-review" className="fixed right-4 top-20 z-[70] rounded-xl border border-emerald-200 bg-white/95 px-3 py-2 text-xs font-bold text-emerald-700 shadow-lg backdrop-blur hover:bg-emerald-50 dark:border-emerald-800 dark:bg-slate-900 dark:text-emerald-400">
+    <Link href="/invoice-review" className="mx-auto my-4 block w-fit rounded-xl border border-emerald-200 bg-white/95 px-3 py-2 text-xs font-bold text-emerald-700 shadow-md backdrop-blur hover:bg-emerald-50 dark:border-emerald-800 dark:bg-slate-900 dark:text-emerald-400">
       {en ? "✓ OCR review" : "✓ OCR pregled"}
     </Link>
   );

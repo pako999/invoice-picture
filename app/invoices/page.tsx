@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { Invoice, Company } from "@/lib/schema";
 
 type FilterMode = "all" | "week" | "month" | "custom";
+type ArchivedInvoice = Invoice & { previewUrl?: string | null };
 
 const FILTER_LABELS: Record<FilterMode, string> = {
   all: "Vse",
@@ -50,7 +51,7 @@ function fileToBase64(file: File): Promise<string> {
 }
 
 function PreviewModal({ inv, onClose, onRestore }: {
-  inv: Invoice;
+  inv: ArchivedInvoice;
   onClose: () => void;
   onRestore: (file: File) => Promise<void>;
 }) {
@@ -92,9 +93,11 @@ function PreviewModal({ inv, onClose, onRestore }: {
 
         {/* Image / PDF */}
         <div className="p-4 flex-1 min-h-0 flex items-center justify-center bg-gray-50 dark:bg-slate-950">
-          {inv.imageMime === "application/pdf" && inv.imageData ? (
+          {inv.imageMime === "application/pdf" && (inv.imageData || inv.previewUrl) ? (
             <iframe
-              src={`data:application/pdf;base64,${inv.imageData}#toolbar=1&navpanes=0&view=FitH`}
+              src={inv.imageData
+                ? `data:application/pdf;base64,${inv.imageData}#toolbar=1&navpanes=0&view=FitH`
+                : `${inv.previewUrl}#toolbar=1&navpanes=0&view=FitH`}
               title={inv.filename ?? "Račun PDF"}
               className="w-full h-full rounded-xl border border-gray-200 dark:border-slate-700 bg-white"
             />
@@ -163,8 +166,8 @@ export default function InvoicesPage() {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState<number | null>(null);
-  const [preview, setPreview] = useState<Invoice | null>(null);
-  const [details, setDetails] = useState<Record<number, Invoice>>({});
+  const [preview, setPreview] = useState<ArchivedInvoice | null>(null);
+  const [details, setDetails] = useState<Record<number, ArchivedInvoice>>({});
   const [detailLoading, setDetailLoading] = useState<Set<number>>(new Set());
   const [filter, setFilter] = useState<FilterMode>("all");
   const [companyFilter, setCompanyFilter] = useState<CompanyFilter>("all");
@@ -193,7 +196,7 @@ export default function InvoicesPage() {
 
   useEffect(() => { load(); }, []);
 
-  async function loadInvoiceDetail(inv: Invoice): Promise<Invoice> {
+  async function loadInvoiceDetail(inv: Invoice): Promise<ArchivedInvoice> {
     if (inv.imageData || details[inv.id]) {
       return details[inv.id] ?? inv;
     }
@@ -202,7 +205,7 @@ export default function InvoicesPage() {
     try {
       const res = await fetch(`/api/invoices/${inv.id}`);
       if (!res.ok) return inv;
-      const full = await res.json() as Invoice;
+      const full = await res.json() as ArchivedInvoice;
       setDetails((current) => ({ ...current, [inv.id]: full }));
       return full;
     } finally {
@@ -507,9 +510,11 @@ export default function InvoicesPage() {
               {/* Thumbnail */}
               {inv.imageMime === "application/pdf" ? (
                 <div className="w-16 h-16 group-hover:w-40 group-hover:h-52 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800 flex flex-col items-center justify-center flex-shrink-0 gap-0.5 overflow-hidden transition-all duration-200">
-                  {displayInv.imageData ? (
+                  {displayInv.imageData || displayInv.previewUrl ? (
                     <iframe
-                      src={`data:application/pdf;base64,${displayInv.imageData}#toolbar=0&navpanes=0&scrollbar=0&view=FitH`}
+                      src={displayInv.imageData
+                        ? `data:application/pdf;base64,${displayInv.imageData}#toolbar=0&navpanes=0&scrollbar=0&view=FitH`
+                        : `${displayInv.previewUrl}#toolbar=0&navpanes=0&scrollbar=0&view=FitH`}
                       title={`Predogled ${displayInv.filename}`}
                       className="hidden group-hover:block w-full h-full bg-white pointer-events-none"
                     />

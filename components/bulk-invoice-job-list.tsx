@@ -16,6 +16,10 @@ type BulkJob = {
   boundaryReviewRequired: boolean;
   totalInvoices: number;
   processedInvoices: number;
+  deliveredInvoices: number;
+  failedDeliveries: number;
+  pendingDeliveries: number;
+  deliveryNotRequired: number;
   lastError: string | null;
   createdAt: string;
   updatedAt: string;
@@ -137,12 +141,26 @@ export function BulkInvoiceJobList({ locale }: { locale: Locale }) {
                   </span>
                 </div>
 
-                <div className="mt-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+                <div className="mt-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-5">
                   <Stat label={locale === "sl" ? "Strani" : "Pages"} value={job.pageCount ?? "—"} />
                   <Stat label={locale === "sl" ? "Najdeni računi" : "Invoices found"} value={job.totalInvoices || "—"} />
                   <Stat label={locale === "sl" ? "Obdelano" : "Processed"} value={job.processedInvoices} />
+                  <Stat
+                    label={locale === "sl" ? "E-pošta" : "Email"}
+                    value={job.deliveryNotRequired > 0
+                      ? (locale === "sl" ? "API/XML" : "API/XML")
+                      : `${job.deliveredInvoices}/${job.totalInvoices || "—"}`}
+                  />
                   <Stat label={locale === "sl" ? "Napredek" : "Progress"} value={progress == null ? "—" : `${progress}%`} />
                 </div>
+
+                {done && job.deliveredInvoices > 0 && (
+                  <div className="mt-3 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300">
+                    {locale === "sl"
+                      ? `${job.deliveredInvoices} računov je bilo poslanih v ${job.deliveredInvoices} ločenih e-poštnih sporočilih.`
+                      : `${job.deliveredInvoices} invoices were sent in ${job.deliveredInvoices} separate email messages.`}
+                  </div>
+                )}
 
                 {job.lastError && (
                   <div className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-xs text-red-700 dark:bg-red-950/30 dark:text-red-300">

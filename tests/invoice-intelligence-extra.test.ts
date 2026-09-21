@@ -3,7 +3,22 @@ import assert from "node:assert/strict";
 import { deflateSync } from "node:zlib";
 import { emptyInvoice } from "../lib/invoice-intelligence/types";
 import { normalizeInvoiceValues, validateInvoice } from "../lib/invoice-intelligence/validation";
-import { readDeterministically } from "../lib/invoice-intelligence/providers";
+import { parseInvoiceTextDeterministically, readDeterministically } from "../lib/invoice-intelligence/providers";
+
+test("Slovenian OCR fallback reads a plain Datum label and infers EUR", () => {
+  const invoice = normalizeInvoiceValues(parseInvoiceTextDeterministically(`
+    SURFSHOP Amdor d.o.o.
+    ID za DDV: SI79907962
+    TRR: SI56 1010 0004 6516 054
+    1000 Ljubljana, Slovenija
+    Račun št.: 1719-FAKT1-197
+    Datum: 29.07.2026
+    Skupaj: 719,39
+  `));
+
+  assert.equal(invoice.issueDate, "2026-07-29");
+  assert.equal(invoice.currency, "EUR");
+});
 
 test("line-item percentage discount reconciles with net amount", () => {
   const invoice = emptyInvoice();
