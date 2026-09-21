@@ -91,10 +91,24 @@ export function InvoiceReviewClient({ documentId }: { documentId: number }) {
       router.push(`/bulk-invoices/${Number(json.bulkJobId)}`);
       return;
     }
-    setMessage(action === "approve" ? (json.manualOverride ? "Račun je ročno potrjen kljub opozorilom." : "Račun je potrjen.") : action === "reject" ? "Račun je zavrnjen." : action === "reprocess" ? "Račun je ponovno v čakalni vrsti." : "Spremembe so shranjene.");
+    if (action === "approve" || action === "reject") {
+      let nextPath = "/invoice-review";
+      try {
+        const pendingRes = await fetch("/api/invoice-reader?status=needs_review", { cache: "no-store" });
+        if (pendingRes.ok) {
+          const pending = await pendingRes.json() as { documents?: Array<{ id: number }> };
+          const nextDocument = pending.documents?.find((document) => document.id !== documentId);
+          if (nextDocument) nextPath = `/invoice-review/${nextDocument.id}`;
+        }
+      } catch {
+        // The queue overview remains a safe fallback when refreshing the queue fails.
+      }
+      router.replace(nextPath);
+      return;
+    }
+    setMessage(action === "reprocess" ? "Račun je ponovno v čakalni vrsti." : "Spremembe so shranjene.");
     await load();
-    if (action === "approve" || action === "reject") setTimeout(() => goRelative(1), 250);
-  }, [documentId, form, initial, reason, load]);
+  }, [documentId, form, initial, reason, load, router]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -180,9 +194,9 @@ export function InvoiceReviewClient({ documentId }: { documentId: number }) {
         <div className="mx-auto flex w-full min-w-0 max-w-7xl items-center justify-between gap-3">
           <div className="hidden text-sm text-slate-500 md:block">{message || "Ctrl/Cmd+S shrani · Alt+A potrdi · Alt+←/→ navigacija"}</div>
           {isProcessing ? <div className="flex min-h-12 items-center gap-2 font-bold text-blue-700"><Loader2 className="h-5 w-5 animate-spin" /> Mistral OCR obdeluje…</div> : <div className="grid w-full min-w-0 grid-cols-2 gap-2 md:flex md:w-auto md:flex-wrap">
-            <Action busy={busy} name="approve" onClick={() => submit("approve")} className="border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700" icon={<Check className="h-5 w-5" />}>Potrdi račun</Action>
-            <Action busy={busy} name="save" onClick={() => submit("save")} icon={<Save className="h-5 w-5" />}>Shrani</Action>
-            <Action busy={busy} name="reject" onClick={() => submit("reject")} className="border-red-200 text-red-700" icon={<XCircle className="h-5 w-5" />}>Zavrni</Action>
+            <Action busy={busy} name="approve" onClick={() => submit("approve")} icon={<Check className="h-5 w-5" />}>Potrdi in nadaljuj</Action>
+            <Action busy={busy} name="save" onClick={() => submit("save")} icon={<Save className="h-5 w-5" />}>Shrani osnutek</Action>
+            <Action busy={busy} name="reject" onClick={() => submit("reject")} icon={<XCircle className="h-5 w-5" />}>Zavrni</Action>
             <Action busy={busy} name="reprocess" onClick={() => submit("reprocess")} icon={<RefreshCw className="h-5 w-5" />}>{needsPdfSplit ? "Razdeli in ponovno obdelaj" : "Ponovno obdelaj"}</Action>
           </div>}
         </div>
@@ -199,8 +213,13 @@ function DataTable({ title, rows, columns }: { title: string; rows: Array<Record
   return <div className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900"><div className="p-4 font-extrabold">{title}</div><div className="max-w-full overflow-x-auto overscroll-x-contain"><table className="w-max min-w-full text-xs"><thead className="bg-slate-50 dark:bg-slate-800"><tr>{columns.map((c) => <th key={c} className="whitespace-nowrap px-3 py-2 text-left">{c}</th>)}</tr></thead><tbody>{rows.map((row, i) => <tr key={i} className="border-t border-slate-100 dark:border-slate-800">{columns.map((c) => <td key={c} className="max-w-[260px] truncate whitespace-nowrap px-3 py-2">{row[c] ?? "—"}</td>)}</tr>)}</tbody></table></div></div>;
 }
 
-function Action({ children, busy, name, onClick, icon, className = "" }: { children: React.ReactNode; busy: string | null; name: string; onClick: () => void; icon: React.ReactNode; className?: string }) {
-  return <button disabled={busy != null} onClick={onClick} className={`inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm font-bold shadow-sm hover:bg-slate-50 disabled:opacity-50 md:w-auto md:px-4 md:py-2 ${className}`}>{busy === name ? <Loader2 className="h-4 w-4 animate-spin" /> : icon}{children}</button>;
+function Action({ children, busy, name, onClick, icon }: { children: React.ReactNode; busy: string | null; name: "save" | "approve" | "reject" | "reprocess"; onClick: () => void; icon: React.ReactNode }) {
+  const appearance = name === "approve"
+    ? "min-w-[9.5rem] border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700"
+    : name === "reject"
+      ? "border-red-200 bg-white text-red-700 hover:bg-red-50"
+      : "border-slate-200 bg-white text-slate-900 hover:bg-slate-50";
+  return <button data-action={name} disabled={busy != null} onClick={onClick} className={`inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border px-3 py-3 text-sm font-bold shadow-sm disabled:opacity-50 md:w-auto md:px-4 md:py-2 ${appearance}`}>{busy === name ? <Loader2 className="h-4 w-4 animate-spin" /> : icon}{children}</button>;
 }
 
 function flatten(invoice: InvoiceData) {
