@@ -289,6 +289,71 @@ export async function extractBulkInvoice(markdown: string, ocrConfidence: number
   }
 }
 
+export async function extractBulkInvoiceFromDocument(documentUrl: string, ocrConfidence: number | null): Promise<{
+  invoice: NormalizedInvoice;
+  validation: ReturnType<typeof validateInvoice>;
+  raw: unknown;
+  provider: "mistral";
+  model: string;
+}> {
+  const apiKey = process.env.MISTRAL_API_KEY;
+  if (!apiKey) throw new Error("MISTRAL_API_KEY is not configured");
+  const parsedUrl = new URL(documentUrl);
+  if (parsedUrl.protocol !== "https:") throw new Error("Bulk OCR document URL must use HTTPS");
+  const model = process.env.MISTRAL_OCR_MODEL || "mistral-ocr-latest";
+  const requestBody = JSON.stringify({
+    model,
+    document: { type: "document_url", document_url: documentUrl },
+    include_blocks: true,
+    confidence_scores_granularity: "block",
+    table_format: "html",
+    document_annotation_prompt: [
+      "Extract exactly one accounting document from this PDF using OCR and return the complete structured invoice.",
+      "Never invent missing values. Supplier is the issuer/seller and buyer is the recipient/customer.",
+      "Read invoiceNumber only from a labelled invoice-number field, never from a logo or brand.",
+      "Extract all labelled issue, service and due dates, including written English month formats, and normalize them to YYYY-MM-DD.",
+      "Extract every line item/product row with description, code when present, quantity, unit, unit price, discount, VAT rate and amounts.",
+      "Extract currency, totals, VAT breakdown, IBAN, BIC, payment reference and payment terms whenever visible.",
+      "Read tax IDs only from explicitly labelled tax fields and never from city names or ordinary words.",
+      "Normalize currencies to ISO 4217 and monetary values to decimal strings without currency symbols.",
+      "Set validationStatus to pending; deterministic validation runs after extraction.",
+    ].join(" "),
+    document_annotation_format: {
+      type: "json_schema",
+      json_schema: { name: "normalized_invoice", strict: true, schema: invoiceJsonSchema },
+    },
+  });
+
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    const response = await fetch(OCR_ENDPOINT, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: requestBody,
+      signal: AbortSignal.timeout(180_000),
+    });
+    const raw = await response.json().catch(() => ({}));
+    if (response.ok) {
+      const annotationRaw = raw.document_annotation;
+      const annotation = typeof annotationRaw === "string" ? JSON.parse(annotationRaw) : annotationRaw;
+      const pages = Array.isArray(raw.pages) ? raw.pages : [];
+      const markdown = pages.map((page: Record<string, unknown>) => typeof page.markdown === "string" ? page.markdown : "").join("\n\n");
+      const invoice = normalizeInvoiceValues(reconcileMistralInvoiceWithOcrText(normalizedInvoiceSchema.parse(annotation), markdown));
+      if (ocrConfidence != null) invoice.confidence.overall = Math.min(invoice.confidence.overall ?? 1, ocrConfidence);
+      const validation = validateInvoice(invoice);
+      invoice.validationStatus = validation.status === "failed" ? "needs_review" : validation.status;
+      return { invoice, validation, raw, provider: "mistral", model: String(raw.model || model) };
+    }
+    if (response.status !== 429 && response.status < 500) {
+      throw new Error(`Mistral OCR annotation failed (${response.status}): ${providerError(raw)}`);
+    }
+    if (attempt === 3) throw new Error(`Mistral OCR annotation failed (${response.status}): ${providerError(raw)}`);
+    const delayMs = retryDelayMs(response.headers.get("Retry-After"), attempt);
+    console.warn(`[bulk-invoices] Mistral OCR annotation returned ${response.status}; retrying in ${delayMs}ms (attempt ${attempt + 1}/3)`);
+    await new Promise((resolve) => setTimeout(resolve, delayMs));
+  }
+  throw new Error("Mistral OCR annotation failed after retries");
+}
+
 async function mistralStructured(args: { model: string; name: string; schema: unknown; prompt: string; retryRateLimit?: boolean }) {
   const apiKey = process.env.MISTRAL_API_KEY;
   if (!apiKey) throw new Error("MISTRAL_API_KEY is not configured");

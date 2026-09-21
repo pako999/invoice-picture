@@ -7,7 +7,7 @@ import { PDFDocument } from "pdf-lib";
 const MAX_BYTES = 200 * 1024 * 1024;
 const MAX_PAGES = 500;
 const OCR_BATCH_PAGES = 25;
-const EXTRACT_BATCH_SIZE = 5;
+const EXTRACT_BATCH_SIZE = 1;
 const SPLIT_BATCH_SIZE = 20;
 const SIGNED_URL_SECONDS = 30 * 60;
 const BUCKET = process.env.BULK_BUCKET || "bulk-invoices";
@@ -184,10 +184,17 @@ async function work(request: Request) {
     }
 
     if (job.stage === "extract") {
+      const targetResult = await appPost<{
+        targets?: Array<{ groupIndex: number; objectKey: string }>;
+      }>("/api/internal/bulk/extract-targets", { jobId: job.id, limit: EXTRACT_BATCH_SIZE });
+      const documents = await Promise.all((targetResult.targets || []).map(async (target) => ({
+        groupIndex: Number(target.groupIndex),
+        documentUrl: await signedDownloadUrl(String(target.objectKey)),
+      })));
       const result = await appPost<{
         deliveryItems?: Array<{ groupIndex: number; objectKey: string; documentId: number }>;
         [key: string]: unknown;
-      }>("/api/internal/bulk/extract", { jobId: job.id, batchSize: EXTRACT_BATCH_SIZE });
+      }>("/api/internal/bulk/extract", { jobId: job.id, batchSize: EXTRACT_BATCH_SIZE, documents });
       const deliveries = [] as Array<{ groupIndex: number; ok: boolean }>;
       for (const item of result.deliveryItems || []) {
         const objectUrl = await signedDownloadUrl(item.objectKey);

@@ -7,10 +7,14 @@ import {
   companies, invoiceAuditLogs, invoiceDocuments, invoiceProcessingAttempts, invoiceValidationResults, invoices, userSettings
 } from "@/lib/schema";
 import { verifyBulkInternalSecret,BULK_EXTRACT_BATCH_SIZE } from "@/lib/bulk-invoices/config";
-import { bulkSql,extractBulkInvoice } from "@/lib/bulk-invoices/service";
+import { bulkSql,extractBulkInvoice,extractBulkInvoiceFromDocument } from "@/lib/bulk-invoices/service";
 import { getCompanyDeliverySettings } from "@/lib/invoice-intelligence/delivery-settings";
 
-const schema=z.object({jobId:z.number().int().positive(),batchSize:z.number().int().min(1).max(BULK_EXTRACT_BATCH_SIZE).default(BULK_EXTRACT_BATCH_SIZE)});
+const schema=z.object({
+ jobId:z.number().int().positive(),
+ batchSize:z.number().int().min(1).max(BULK_EXTRACT_BATCH_SIZE).default(BULK_EXTRACT_BATCH_SIZE),
+ documents:z.array(z.object({groupIndex:z.number().int().min(0),documentUrl:z.string().url()})).max(BULK_EXTRACT_BATCH_SIZE).optional()
+});
 
 export async function POST(req:Request){
  if(!verifyBulkInternalSecret(req.headers.get("x-bulk-secret")))return NextResponse.json({error:"Unauthorized"},{status:401});
@@ -33,13 +37,17 @@ export async function POST(req:Request){
   // request-per-minute limit. The worker may still send the historical batch
   // size, so clamp here instead of rejecting its request.
   const groups=await sql`SELECT * FROM "bulkInvoiceGroups" WHERE "jobId"=${data.jobId} AND "status" IN ('pending','reprocess') ORDER BY "groupIndex" LIMIT ${Math.min(data.batchSize,1)}`;
+  const documentUrls=new Map((data.documents??[]).map(item=>[item.groupIndex,item.documentUrl]));
   for(const group of groups as any[]){
     const pages=await sql`SELECT "pageNumber","markdown","ocrConfidenceBps" FROM "bulkInvoicePages"
       WHERE "jobId"=${data.jobId} AND "pageNumber">=${group.startPage} AND "pageNumber"<=${group.endPage} ORDER BY "pageNumber"`;
     const markdown=(pages as any[]).map(p=>`--- PAGE ${Number(p.pageNumber)+1} ---\n${String(p.markdown??"")}`).join("\n\n");
     const confidences=(pages as any[]).map(p=>p.ocrConfidenceBps==null?null:Number(p.ocrConfidenceBps)/10000).filter((n):n is number=>n!=null&&Number.isFinite(n));
     const avg=confidences.length?confidences.reduce((a,b)=>a+b,0)/confidences.length:null;
-    const started=Date.now();const extracted=await extractBulkInvoice(markdown,avg);
+    const documentUrl=documentUrls.get(Number(group.groupIndex));
+    const started=Date.now();const extracted=documentUrl
+      ? await extractBulkInvoiceFromDocument(documentUrl,avg)
+      : await extractBulkInvoice(markdown,avg);
     const autoApprove=canAutoApprove(extracted.invoice,extracted.validation.status,avg,Boolean(group.needsBoundaryReview));
     const normalizedJson=JSON.stringify(extracted.invoice);
     const warningList=[...extracted.invoice.warnings,...extracted.validation.warnings,...extracted.validation.errors];
