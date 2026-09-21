@@ -58,7 +58,10 @@ export default {
       }
       if (request.method === "POST" && url.pathname === "/sign-upload") return signUpload(request);
       if (request.method === "POST" && url.pathname === "/sign-download") return signDownload(request);
-      if (request.method === "POST" && url.pathname === "/work") return work(request);
+      if ((request.method === "GET" || request.method === "POST") && url.pathname === "/work") {
+        console.log(`[bulkpdf] /work ${request.method} trigger=${Boolean(request.headers.get("x-neon-trigger-invocation-id"))}`);
+        return work(request);
+      }
       return new Response("Not found", { status: 404 });
     } catch (error) {
       console.error("[bulkpdf] request failed", messageOf(error));
