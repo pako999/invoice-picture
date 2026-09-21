@@ -99,6 +99,26 @@ export function BulkInvoiceJobDetail({ id, locale }: { id: number; locale: Local
     return 5;
   }, [job]);
 
+  const displayedGroups = useMemo(() => {
+    if (!job?.ranges?.length || job.stage === "boundary_review") return groups;
+    const existing = new Map(groups.map((group) => [group.groupIndex, group]));
+    return job.ranges.map((range, groupIndex) => existing.get(groupIndex) ?? {
+      groupIndex,
+      startPage: range.startPage,
+      endPage: range.endPage,
+      boundaryConfidenceBps: range.boundaryConfidence == null ? null : Math.round(range.boundaryConfidence * 10000),
+      needsBoundaryReview: range.needsBoundaryReview,
+      status: "pending",
+      deliveryStatus: "pending",
+      deliveryError: null,
+      documentId: null,
+      documentStatus: null,
+      validationStatus: null,
+      overallConfidenceBps: null,
+      documentFilename: null,
+    });
+  }, [groups, job]);
+
   async function saveRanges() {
     setBusy(true);
     setMessage("");
@@ -278,13 +298,13 @@ export function BulkInvoiceJobDetail({ id, locale }: { id: number; locale: Local
         </section>
       )}
 
-      {groups.length > 0 && (
+      {displayedGroups.length > 0 && (
         <section className="mt-6">
           <h2 className="mb-3 text-xl font-extrabold text-slate-950 dark:text-white">
-            {locale === "sl" ? "Posamezni računi" : "Individual invoices"} ({groups.length})
+            {locale === "sl" ? "Posamezni računi" : "Individual invoices"} ({displayedGroups.length})
           </h2>
           <div className="space-y-2">
-            {groups.map((group) => {
+            {displayedGroups.map((group) => {
               const previewOpen = openPreviews.includes(group.groupIndex);
               return (
               <article
