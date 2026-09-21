@@ -110,23 +110,29 @@ export async function classifyBulkPages(args: {
     ? { pageNumber: args.previousPage.pageNumber, markdown: args.previousPage.markdown.slice(-3500) }
     : null;
 
-  const raw = await mistralStructured({
-    model: process.env.MISTRAL_BULK_CLASSIFIER_MODEL || "mistral-small-latest",
-    name: "invoice_page_boundaries",
-    schema: classificationSchema,
-    prompt: [
-      "You split a scanned PDF containing multiple accounting documents into invoice groups.",
-      "For EACH supplied page decide whether that page starts a new invoice/document or continues the previous page.",
-      "Invoices can have multiple pages. Never assume one page equals one invoice.",
-      "A new invoice is likely when invoice number, supplier/issuer, title (Invoice/Račun/Rechnung/Fattura/Credit note/Proforma) or document identity clearly changes.",
-      "Continuation pages often repeat headers, carry line items, totals, terms or attachments belonging to the same invoice.",
-      "If uncertain, prefer continuation and lower confidence rather than creating a false split.",
-      "Page numbers are zero-based and MUST match the supplied pageNumber values.",
-      "Page 0 of the complete document must start a new invoice.",
-      previous ? `Previous context before this batch: ${JSON.stringify(previous)}` : "There is no previous page before this batch.",
-      `Pages to classify: ${JSON.stringify(input)}`,
-    ].join("\n"),
-  });
+  let raw: any;
+  try {
+    raw = await mistralStructured({
+      model: process.env.MISTRAL_BULK_CLASSIFIER_MODEL || "mistral-small-latest",
+      name: "invoice_page_boundaries",
+      schema: classificationSchema,
+      prompt: [
+        "You split a scanned PDF containing multiple accounting documents into invoice groups.",
+        "For EACH supplied page decide whether that page starts a new invoice/document or continues the previous page.",
+        "Invoices can have multiple pages. Never assume one page equals one invoice.",
+        "A new invoice is likely when invoice number, supplier/issuer, title (Invoice/Račun/Rechnung/Fattura/Credit note/Proforma) or document identity clearly changes.",
+        "Continuation pages often repeat headers, carry line items, totals, terms or attachments belonging to the same invoice.",
+        "If uncertain, prefer continuation and lower confidence rather than creating a false split.",
+        "Page numbers are zero-based and MUST match the supplied pageNumber values.",
+        "Page 0 of the complete document must start a new invoice.",
+        previous ? `Previous context before this batch: ${JSON.stringify(previous)}` : "There is no previous page before this batch.",
+        `Pages to classify: ${JSON.stringify(input)}`,
+      ].join("\n"),
+    });
+  } catch (error) {
+    console.warn(`[bulk-invoices] Mistral classification unavailable; using deterministic boundaries: ${error instanceof Error ? error.message : String(error)}`);
+    return classifyBulkPagesDeterministically(args);
+  }
   const rows = Array.isArray(raw.pages) ? raw.pages : [];
   return rows.map((row: Record<string, any>) => ({
     pageNumber: Number(row.pageNumber),
@@ -137,6 +143,107 @@ export async function classifyBulkPages(args: {
     confidence: clamp01(Number(row.confidence)),
     reason: String(row.reason || ""),
   }));
+}
+
+export function classifyBulkPagesDeterministically(args: {
+  pages: Array<{ pageNumber: number; markdown: string }>;
+  previousPage?: { pageNumber: number; markdown: string } | null;
+}): BulkPageClassification[] {
+  let previous = args.previousPage ?? null;
+  return args.pages.map((page) => {
+    const currentText = normalizeBoundaryText(page.markdown);
+    const previousText = previous ? normalizeBoundaryText(previous.markdown) : "";
+    const currentMarker = pageMarker(currentText);
+    const previousMarker = pageMarker(previousText);
+    const currentKind = documentKind(currentText);
+    const previousKind = documentKind(previousText);
+    const currentId = documentIdentifier(currentText, currentKind);
+    const previousId = documentIdentifier(previousText, previousKind);
+
+    let startsNewInvoice = false;
+    let confidence = 0.45;
+    let reason = "No reliable boundary marker; treated as a continuation for manual review.";
+
+    if (page.pageNumber === 0) {
+      startsNewInvoice = true;
+      confidence = 1;
+      reason = "First page of the PDF.";
+    } else if (currentMarker && currentMarker.current > 1) {
+      confidence = 0.99;
+      reason = `Explicit page ${currentMarker.current} of ${currentMarker.total} marker.`;
+    } else if (currentMarker?.current === 1) {
+      startsNewInvoice = true;
+      confidence = 0.99;
+      reason = `Explicit first-page marker (1 of ${currentMarker.total}).`;
+    } else if (currentId && previousId && currentId !== previousId) {
+      startsNewInvoice = true;
+      confidence = 0.98;
+      reason = `Document identifier changed from ${previousId} to ${currentId}.`;
+    } else if (currentId && previousId && currentId === previousId) {
+      startsNewInvoice = Boolean(currentKind && previousKind && currentKind !== previousKind);
+      confidence = startsNewInvoice ? 0.94 : 0.97;
+      reason = startsNewInvoice
+        ? `Document type changed from ${previousKind} to ${currentKind}.`
+        : `Document identifier ${currentId} continues from the previous page.`;
+    } else if (currentId) {
+      startsNewInvoice = true;
+      confidence = currentKind ? 0.86 : 0.78;
+      reason = `Found a new document identifier (${currentId}).`;
+    } else if (previousMarker && previousMarker.current < previousMarker.total) {
+      confidence = 0.92;
+      reason = `Previous page indicates a ${previousMarker.total}-page document.`;
+    } else if (currentKind && currentKind !== previousKind) {
+      startsNewInvoice = true;
+      confidence = 0.68;
+      reason = `Found a new ${currentKind} heading without a reliable identifier; manual review required.`;
+    }
+
+    const row: BulkPageClassification = {
+      pageNumber: page.pageNumber,
+      startsNewInvoice,
+      continuationOfPrevious: !startsNewInvoice,
+      invoiceNumber: currentId,
+      supplierName: null,
+      confidence,
+      reason: `Deterministic fallback: ${reason}`,
+    };
+    previous = page;
+    return row;
+  });
+}
+
+function normalizeBoundaryText(markdown: string) {
+  return markdown
+    .replace(/[\*_`#]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function pageMarker(text: string) {
+  const match = text.match(/(?:page|stran|[šs]tevilo\s+strani|tevilo\s+strani)\s*:?\s*(\d+)\s*(?:of|od|\/)\s*(\d+)/iu)
+    ?? text.match(/\bstran\s*:?\s*(\d+)\b/iu);
+  if (!match) return null;
+  const current = Number(match[1]);
+  const total = Number(match[2] ?? current);
+  return Number.isInteger(current) && current > 0 && Number.isInteger(total) && total >= current
+    ? { current, total }
+    : null;
+}
+
+function documentKind(text: string) {
+  const front = text.slice(0, 400);
+  if (/\breceipt\b/iu.test(front)) return "receipt";
+  if (/\b(?:credit\s+note|dobropis)\b/iu.test(front)) return "credit_note";
+  if (/\b(?:predra[čc]un|proforma)\b/iu.test(front)) return "proforma";
+  if (/\b(?:invoice|ra\s*[čc]\s*un|rechnung|fattura)\b/iu.test(front)) return "invoice";
+  return null;
+}
+
+function documentIdentifier(text: string, kind: string | null) {
+  const receipt = text.match(/\breceipt\s*(?:number|no\.?|#)\s*:?\s*([\p{L}\d][\p{L}\d._/–—-]{2,})/iu)?.[1];
+  if (kind === "receipt" && receipt) return receipt.toUpperCase();
+  const match = text.match(/(?:invoice\s*(?:number|no\.?|#)|predra[čc]un\s*(?:[šs]t(?:evilka)?\.?|#)?|ra[čc]un\s*(?:[šs]t(?:evilka)?\.?|st\.?|#)|[šs]t\.?\s*ra[čc]una|[šs]tevilka\s+fakture)\s*:?\s*([\p{L}\d][\p{L}\d._/–—-]{2,})/iu);
+  return (receipt ?? match?.[1] ?? null)?.toUpperCase() ?? null;
 }
 
 export async function extractBulkInvoice(markdown: string, ocrConfidence: number | null): Promise<{
