@@ -3,6 +3,7 @@ import { invoiceJsonSchema, normalizedInvoiceSchema, type NormalizedInvoice } fr
 import { normalizeInvoiceValues, validateInvoice } from "@/lib/invoice-intelligence/validation";
 import { reserveOcrProviderBudget } from "@/lib/invoice-intelligence/safety";
 import { getOcrUsageSummary, quotaPageError } from "@/lib/invoice-intelligence/quota";
+import { parseInvoiceTextDeterministically } from "@/lib/invoice-intelligence/providers";
 
 const OCR_ENDPOINT = "https://api.mistral.ai/v1/ocr";
 const CHAT_ENDPOINT = "https://api.mistral.ai/v1/chat/completions";
@@ -102,14 +103,9 @@ export async function classifyBulkPages(args: {
   pages: Array<{ pageNumber: number; markdown: string }>;
   previousPage?: { pageNumber: number; markdown: string } | null;
 }): Promise<BulkPageClassification[]> {
-  const deterministic = classifyBulkPagesDeterministically(args);
-  // Most invoices expose a page marker or document number. In that common case
-  // there is no reason to spend another provider request on the same pages.
-  if (deterministic.every((page) => page.confidence >= 0.72)) return deterministic;
-
   const input = args.pages.map((p) => ({
     pageNumber: p.pageNumber,
-    markdown: p.markdown.slice(0, 3000),
+    markdown: p.markdown.slice(0, 5000),
   }));
   const previous = args.previousPage
     ? { pageNumber: args.previousPage.pageNumber, markdown: args.previousPage.markdown.slice(-3500) }
@@ -133,31 +129,21 @@ export async function classifyBulkPages(args: {
         previous ? `Previous context before this batch: ${JSON.stringify(previous)}` : "There is no previous page before this batch.",
         `Pages to classify: ${JSON.stringify(input)}`,
       ].join("\n"),
-      maxAttempts: 1,
     });
   } catch (error) {
     console.warn(`[bulk-invoices] Mistral classification unavailable; using deterministic boundaries: ${error instanceof Error ? error.message : String(error)}`);
-    return deterministic;
+    return classifyBulkPagesDeterministically(args);
   }
   const rows = Array.isArray(raw.pages) ? raw.pages : [];
-  const expected = new Set(args.pages.map((page) => page.pageNumber));
-  const aiRows = new Map<number, BulkPageClassification>();
-  for (const row of rows as Array<Record<string, any>>) {
-    const pageNumber = Number(row.pageNumber);
-    if (!Number.isInteger(pageNumber) || !expected.has(pageNumber)) continue;
-    aiRows.set(pageNumber, {
-      pageNumber,
-      startsNewInvoice: Boolean(row.startsNewInvoice),
-      continuationOfPrevious: Boolean(row.continuationOfPrevious),
-      invoiceNumber: row.invoiceNumber == null ? null : String(row.invoiceNumber),
-      supplierName: row.supplierName == null ? null : String(row.supplierName),
-      confidence: clamp01(Number(row.confidence)),
-      reason: String(row.reason || ""),
-    });
-  }
-  // Preserve order and never lose a page if the provider returns an incomplete
-  // array. High-confidence local results are also more deterministic than AI.
-  return deterministic.map((local) => local.confidence >= 0.72 ? local : aiRows.get(local.pageNumber) ?? local);
+  return rows.map((row: Record<string, any>) => ({
+    pageNumber: Number(row.pageNumber),
+    startsNewInvoice: Boolean(row.startsNewInvoice),
+    continuationOfPrevious: Boolean(row.continuationOfPrevious),
+    invoiceNumber: row.invoiceNumber == null ? null : String(row.invoiceNumber),
+    supplierName: row.supplierName == null ? null : String(row.supplierName),
+    confidence: clamp01(Number(row.confidence)),
+    reason: String(row.reason || ""),
+  }));
 }
 
 export function classifyBulkPagesDeterministically(args: {
@@ -265,32 +251,58 @@ export async function extractBulkInvoice(markdown: string, ocrConfidence: number
   invoice: NormalizedInvoice;
   validation: ReturnType<typeof validateInvoice>;
   raw: unknown;
+  provider: "mistral" | "deterministic";
+  model: string;
 }> {
-  const raw = await mistralStructured({
-    model: process.env.MISTRAL_BULK_EXTRACT_MODEL || "mistral-small-latest",
-    name: "normalized_invoice",
-    schema: invoiceJsonSchema,
-    prompt: [
-      "Extract one accounting document from the OCR markdown below.",
-      "The page group has already been split and should represent exactly one invoice, credit note, receipt, proforma or quotation.",
-      "Never invent missing values. Return null when genuinely absent.",
-      "Normalize dates to YYYY-MM-DD, currency to ISO 4217 and monetary values to decimal strings without currency symbols.",
-      "Supplier is the issuer/seller; buyer is the recipient/customer.",
-      "Preserve line items, discounts, VAT breakdown, totals, IBAN, BIC, payment reference and terms when visible.",
-      "Set validationStatus to pending. Deterministic validation runs after extraction.",
-      `OCR page confidence available to the system: ${ocrConfidence == null ? "unknown" : ocrConfidence.toFixed(4)}.`,
-      "OCR markdown:",
-      markdown.slice(0, 120_000),
-    ].join("\n"),
-  });
-  const invoice = normalizeInvoiceValues(normalizedInvoiceSchema.parse(raw));
-  if (ocrConfidence != null) invoice.confidence.overall = Math.min(invoice.confidence.overall ?? 1, ocrConfidence);
-  const validation = validateInvoice(invoice);
-  invoice.validationStatus = validation.status === "failed" ? "needs_review" : validation.status;
-  return { invoice, validation, raw };
+  const model = process.env.MISTRAL_BULK_EXTRACT_MODEL || "mistral-small-latest";
+  try {
+    const raw = await mistralStructured({
+      model,
+      name: "normalized_invoice",
+      schema: invoiceJsonSchema,
+      retryRateLimit: false,
+      prompt: [
+        "Extract one accounting document from the OCR markdown below.",
+        "The page group has already been split and should represent exactly one invoice, credit note, receipt, proforma or quotation.",
+        "Never invent missing values. Return null when genuinely absent.",
+        "Normalize dates to YYYY-MM-DD, currency to ISO 4217 and monetary values to decimal strings without currency symbols.",
+        "Supplier is the issuer/seller; buyer is the recipient/customer.",
+        "Preserve line items, discounts, VAT breakdown, totals, IBAN, BIC, payment reference and terms when visible.",
+        "Set validationStatus to pending. Deterministic validation runs after extraction.",
+        `OCR page confidence available to the system: ${ocrConfidence == null ? "unknown" : ocrConfidence.toFixed(4)}.`,
+        "OCR markdown:",
+        markdown.slice(0, 120_000),
+      ].join("\n"),
+    });
+    const invoice = normalizeInvoiceValues(normalizedInvoiceSchema.parse(raw));
+    if (ocrConfidence != null) invoice.confidence.overall = Math.min(invoice.confidence.overall ?? 1, ocrConfidence);
+    const validation = validateInvoice(invoice);
+    invoice.validationStatus = validation.status === "failed" ? "needs_review" : validation.status;
+    return { invoice, validation, raw, provider: "mistral", model };
+  } catch (error) {
+    const warning = "AI structured extraction was unavailable. Fields were recovered deterministically from OCR text and require review.";
+    console.warn(`[bulk-invoices] ${warning} ${error instanceof Error ? error.message : String(error)}`);
+    const invoice = normalizeInvoiceValues(parseInvoiceTextDeterministically(markdown));
+    invoice.confidence.overall = Math.min(invoice.confidence.overall ?? 0.55, ocrConfidence ?? 0.55, 0.55);
+    invoice.warnings.push(warning);
+    invoice.validationStatus = "needs_review";
+    const checked = validateInvoice(invoice);
+    const validation: ReturnType<typeof validateInvoice> = {
+      ...checked,
+      status: "needs_review",
+      warnings: [...checked.warnings, warning],
+    };
+    return {
+      invoice,
+      validation,
+      raw: { source: "deterministic_ocr_fallback", providerError: error instanceof Error ? error.message : String(error) },
+      provider: "deterministic",
+      model: "ocr-text-fallback-v1",
+    };
+  }
 }
 
-async function mistralStructured(args: { model: string; name: string; schema: unknown; prompt: string; maxAttempts?: number }) {
+async function mistralStructured(args: { model: string; name: string; schema: unknown; prompt: string; retryRateLimit?: boolean }) {
   const apiKey = process.env.MISTRAL_API_KEY;
   if (!apiKey) throw new Error("MISTRAL_API_KEY is not configured");
   const requestBody = JSON.stringify({
@@ -300,8 +312,7 @@ async function mistralStructured(args: { model: string; name: string; schema: un
     response_format: { type: "json_schema", json_schema: { name: args.name, strict: true, schema: args.schema } },
   });
 
-  const maxAttempts = Math.max(1, Math.min(args.maxAttempts ?? 3, 3));
-  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
     const response = await fetch(CHAT_ENDPOINT, {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
@@ -316,13 +327,13 @@ async function mistralStructured(args: { model: string; name: string; schema: un
       throw new Error("Mistral returned no structured content");
     }
 
-    const retryable = response.status === 429 || response.status >= 500;
-    if (!retryable || attempt === maxAttempts) {
+    const retryable = (response.status === 429 && args.retryRateLimit !== false) || response.status >= 500;
+    if (!retryable || attempt === 3) {
       throw new Error(`Mistral structured extraction failed (${response.status}): ${providerError(body)}`);
     }
 
     const delayMs = retryDelayMs(response.headers.get("Retry-After"), attempt);
-    console.warn(`[bulk-invoices] Mistral request returned ${response.status}; retrying in ${delayMs}ms (attempt ${attempt + 1}/${maxAttempts})`);
+    console.warn(`[bulk-invoices] Mistral request returned ${response.status}; retrying in ${delayMs}ms (attempt ${attempt + 1}/3)`);
     await new Promise((resolve) => setTimeout(resolve, delayMs));
   }
 
