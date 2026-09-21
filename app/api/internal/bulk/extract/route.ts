@@ -56,7 +56,7 @@ export async function POST(req:Request){
       clerkUserId:String(job.clerkUserId),companyId:job.companyId==null?null:Number(job.companyId),sourceInvoiceId,filename:sourceFilename,mimeType:"application/pdf",
       originalBase64:null,storageObjectKey:String(group.objectKey),bulkJobId:data.jobId,bulkGroupIndex:Number(group.groupIndex),sourcePageStart:Number(group.startPage),sourcePageEnd:Number(group.endPage),
       sha256:String(group.sha256),byteSize:Number(group.byteSize),idempotencyKey,status:(autoApprove?"approved":"needs_review") as "approved"|"needs_review",
-      documentType:extracted.invoice.documentType,documentLanguage:extracted.invoice.documentLanguage,provider:"mistral" as const,model:process.env.MISTRAL_BULK_EXTRACT_MODEL||"mistral-small-latest",
+      documentType:extracted.invoice.documentType,documentLanguage:extracted.invoice.documentLanguage,provider:extracted.provider,model:extracted.model,
       rawText:markdown,rawProviderResponse:JSON.stringify(extracted.raw),normalizedJson,approvedJson:autoApprove?normalizedJson:null,
       overallConfidenceBps:avg==null?null:Math.round(avg*10000),validationStatus:(autoApprove?"valid":"needs_review") as "valid"|"needs_review",
       warningsJson:JSON.stringify(warningList),processingCostMicros:null,processingStartedAt:new Date(started),processedAt:new Date(),approvedAt:autoApprove?new Date():null,retentionUntil,updatedAt:new Date()
@@ -69,7 +69,7 @@ export async function POST(req:Request){
     }
     if(!documentId)throw new Error("Could not create bulk child invoice document");
     await db.insert(invoiceValidationResults).values({documentId,status:autoApprove?"valid":"needs_review",warningsJson:JSON.stringify(extracted.validation.warnings),errorsJson:JSON.stringify(extracted.validation.errors),differencesJson:JSON.stringify(extracted.validation.differences)});
-    await db.insert(invoiceProcessingAttempts).values({documentId,provider:"mistral",model:process.env.MISTRAL_BULK_EXTRACT_MODEL||"mistral-small-latest",status:"succeeded",durationMs:Date.now()-started,pagesProcessed:Number(group.endPage)-Number(group.startPage)+1,costMicros:null,completedAt:new Date()});
+    await db.insert(invoiceProcessingAttempts).values({documentId,provider:extracted.provider,model:extracted.model,status:"succeeded",durationMs:Date.now()-started,pagesProcessed:Number(group.endPage)-Number(group.startPage)+1,costMicros:null,completedAt:new Date()});
     await db.insert(invoiceAuditLogs).values({documentId,clerkUserId:String(job.clerkUserId),action:autoApprove?"auto_approved":"sent_to_review",metadataJson:JSON.stringify({bulkJobId:data.jobId,groupIndex:Number(group.groupIndex),pages:[Number(group.startPage),Number(group.endPage)]})});
     await sql`UPDATE "bulkInvoiceGroups" SET "documentId"=${documentId},"status"='extracted',"deliveryStatus"=${deliveryMode==='email_ocr'?'pending':'not_required'},"deliveryError"=NULL,"updatedAt"=now() WHERE "id"=${group.id}`;
   }
