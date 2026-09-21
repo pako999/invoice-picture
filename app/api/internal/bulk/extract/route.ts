@@ -29,7 +29,10 @@ export async function POST(req:Request){
   }
   if(!recipientEmail)throw new Error("Recipient email is not configured");
 
-  const groups=await sql`SELECT * FROM "bulkInvoiceGroups" WHERE "jobId"=${data.jobId} AND "status" IN ('pending','reprocess') ORDER BY "groupIndex" LIMIT ${data.batchSize}`;
+  // One structured request per worker tick keeps bulk packages below Mistral's
+  // request-per-minute limit. The worker may still send the historical batch
+  // size, so clamp here instead of rejecting its request.
+  const groups=await sql`SELECT * FROM "bulkInvoiceGroups" WHERE "jobId"=${data.jobId} AND "status" IN ('pending','reprocess') ORDER BY "groupIndex" LIMIT ${Math.min(data.batchSize,1)}`;
   for(const group of groups as any[]){
     const pages=await sql`SELECT "pageNumber","markdown","ocrConfidenceBps" FROM "bulkInvoicePages"
       WHERE "jobId"=${data.jobId} AND "pageNumber">=${group.startPage} AND "pageNumber"<=${group.endPage} ORDER BY "pageNumber"`;
@@ -80,7 +83,15 @@ export async function POST(req:Request){
   if(processed>=total&&total>0&&pendingDelivery===0)await complete(sql,data.jobId,total);
   else await sql`UPDATE "bulkInvoiceJobs" SET "processedInvoices"=${processed},"lockedAt"=NULL,"lastError"=NULL,"updatedAt"=now() WHERE "id"=${data.jobId}`;
   return NextResponse.json({success:true,processed,total,deliveryItems,done:processed>=total&&pendingDelivery===0});
- }catch(error){const msg=error instanceof Error?error.message:String(error);await sql`UPDATE "bulkInvoiceJobs" SET "lockedAt"=NULL,"lastError"=${msg.slice(0,2000)},"updatedAt"=now() WHERE "id"=${data.jobId}`;return NextResponse.json({error:msg},{status:500});}
+ }catch(error){
+  const msg=error instanceof Error?error.message:String(error);
+  if(/\b429\b|rate limit/i.test(msg)){
+   await sql`UPDATE "bulkInvoiceJobs" SET "lockedAt"=NULL,"lastError"=NULL,"updatedAt"=now() WHERE "id"=${data.jobId}`;
+   return NextResponse.json({success:true,retrying:true,reason:"mistral_rate_limit"});
+  }
+  await sql`UPDATE "bulkInvoiceJobs" SET "lockedAt"=NULL,"lastError"=${msg.slice(0,2000)},"updatedAt"=now() WHERE "id"=${data.jobId}`;
+  return NextResponse.json({error:msg},{status:500});
+ }
 }
 function childFilename(filename:string,index:number){const base=filename.replace(/\.pdf$/i,"").slice(0,180);return `${base}-racun-${String(index+1).padStart(3,"0")}.pdf`;}
 function canAutoApprove(invoice:any,status:string,confidence:number|null,boundaryReview:boolean){const t=Number(process.env.INVOICE_CONFIDENCE_THRESHOLD??0.92);return !boundaryReview&&status==="valid"&&(confidence??0)>=t&&Boolean(invoice.supplier?.name&&invoice.invoiceNumber&&invoice.issueDate&&invoice.currency&&invoice.totals?.netAmount&&invoice.totals?.vatAmount&&invoice.totals?.grossAmount);}

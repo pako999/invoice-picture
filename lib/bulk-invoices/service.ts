@@ -260,7 +260,6 @@ export async function extractBulkInvoice(markdown: string, ocrConfidence: number
       model,
       name: "normalized_invoice",
       schema: invoiceJsonSchema,
-      retryRateLimit: false,
       prompt: [
         "Extract one accounting document from the OCR markdown below.",
         "The page group has already been split and should represent exactly one invoice, credit note, receipt, proforma or quotation.",
@@ -329,7 +328,7 @@ async function mistralStructured(args: { model: string; name: string; schema: un
 }
 
 function retryDelayMs(retryAfter: string | null, attempt: number) {
-  const fallbackMs = attempt === 1 ? 5_000 : 15_000;
+  const fallbackMs = attempt === 1 ? 10_000 : 30_000;
   if (!retryAfter) return fallbackMs;
 
   const seconds = Number(retryAfter);
@@ -337,7 +336,7 @@ function retryDelayMs(retryAfter: string | null, attempt: number) {
     ? seconds * 1000
     : Date.parse(retryAfter) - Date.now();
   if (!Number.isFinite(parsedMs) || parsedMs <= 0) return fallbackMs;
-  return Math.min(30_000, Math.ceil(parsedMs));
+  return Math.min(60_000, Math.ceil(parsedMs));
 }
 
 function pageConfidence(page: Record<string, any>) {
