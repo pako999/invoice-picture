@@ -102,9 +102,14 @@ export async function classifyBulkPages(args: {
   pages: Array<{ pageNumber: number; markdown: string }>;
   previousPage?: { pageNumber: number; markdown: string } | null;
 }): Promise<BulkPageClassification[]> {
+  const deterministic = classifyBulkPagesDeterministically(args);
+  // Most invoices expose a page marker or document number. In that common case
+  // there is no reason to spend another provider request on the same pages.
+  if (deterministic.every((page) => page.confidence >= 0.72)) return deterministic;
+
   const input = args.pages.map((p) => ({
     pageNumber: p.pageNumber,
-    markdown: p.markdown.slice(0, 5000),
+    markdown: p.markdown.slice(0, 3000),
   }));
   const previous = args.previousPage
     ? { pageNumber: args.previousPage.pageNumber, markdown: args.previousPage.markdown.slice(-3500) }
@@ -128,21 +133,31 @@ export async function classifyBulkPages(args: {
         previous ? `Previous context before this batch: ${JSON.stringify(previous)}` : "There is no previous page before this batch.",
         `Pages to classify: ${JSON.stringify(input)}`,
       ].join("\n"),
+      maxAttempts: 1,
     });
   } catch (error) {
     console.warn(`[bulk-invoices] Mistral classification unavailable; using deterministic boundaries: ${error instanceof Error ? error.message : String(error)}`);
-    return classifyBulkPagesDeterministically(args);
+    return deterministic;
   }
   const rows = Array.isArray(raw.pages) ? raw.pages : [];
-  return rows.map((row: Record<string, any>) => ({
-    pageNumber: Number(row.pageNumber),
-    startsNewInvoice: Boolean(row.startsNewInvoice),
-    continuationOfPrevious: Boolean(row.continuationOfPrevious),
-    invoiceNumber: row.invoiceNumber == null ? null : String(row.invoiceNumber),
-    supplierName: row.supplierName == null ? null : String(row.supplierName),
-    confidence: clamp01(Number(row.confidence)),
-    reason: String(row.reason || ""),
-  }));
+  const expected = new Set(args.pages.map((page) => page.pageNumber));
+  const aiRows = new Map<number, BulkPageClassification>();
+  for (const row of rows as Array<Record<string, any>>) {
+    const pageNumber = Number(row.pageNumber);
+    if (!Number.isInteger(pageNumber) || !expected.has(pageNumber)) continue;
+    aiRows.set(pageNumber, {
+      pageNumber,
+      startsNewInvoice: Boolean(row.startsNewInvoice),
+      continuationOfPrevious: Boolean(row.continuationOfPrevious),
+      invoiceNumber: row.invoiceNumber == null ? null : String(row.invoiceNumber),
+      supplierName: row.supplierName == null ? null : String(row.supplierName),
+      confidence: clamp01(Number(row.confidence)),
+      reason: String(row.reason || ""),
+    });
+  }
+  // Preserve order and never lose a page if the provider returns an incomplete
+  // array. High-confidence local results are also more deterministic than AI.
+  return deterministic.map((local) => local.confidence >= 0.72 ? local : aiRows.get(local.pageNumber) ?? local);
 }
 
 export function classifyBulkPagesDeterministically(args: {
@@ -275,7 +290,7 @@ export async function extractBulkInvoice(markdown: string, ocrConfidence: number
   return { invoice, validation, raw };
 }
 
-async function mistralStructured(args: { model: string; name: string; schema: unknown; prompt: string }) {
+async function mistralStructured(args: { model: string; name: string; schema: unknown; prompt: string; maxAttempts?: number }) {
   const apiKey = process.env.MISTRAL_API_KEY;
   if (!apiKey) throw new Error("MISTRAL_API_KEY is not configured");
   const requestBody = JSON.stringify({
@@ -285,7 +300,8 @@ async function mistralStructured(args: { model: string; name: string; schema: un
     response_format: { type: "json_schema", json_schema: { name: args.name, strict: true, schema: args.schema } },
   });
 
-  for (let attempt = 1; attempt <= 3; attempt += 1) {
+  const maxAttempts = Math.max(1, Math.min(args.maxAttempts ?? 3, 3));
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     const response = await fetch(CHAT_ENDPOINT, {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
@@ -301,12 +317,12 @@ async function mistralStructured(args: { model: string; name: string; schema: un
     }
 
     const retryable = response.status === 429 || response.status >= 500;
-    if (!retryable || attempt === 3) {
+    if (!retryable || attempt === maxAttempts) {
       throw new Error(`Mistral structured extraction failed (${response.status}): ${providerError(body)}`);
     }
 
     const delayMs = retryDelayMs(response.headers.get("Retry-After"), attempt);
-    console.warn(`[bulk-invoices] Mistral request returned ${response.status}; retrying in ${delayMs}ms (attempt ${attempt + 1}/3)`);
+    console.warn(`[bulk-invoices] Mistral request returned ${response.status}; retrying in ${delayMs}ms (attempt ${attempt + 1}/${maxAttempts})`);
     await new Promise((resolve) => setTimeout(resolve, delayMs));
   }
 

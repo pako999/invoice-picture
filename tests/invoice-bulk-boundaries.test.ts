@@ -40,3 +40,18 @@ test("bulk boundary fallback recognizes continuation pages with a simple page nu
   assert.equal(rows[0].startsNewInvoice, false);
   assert.match(rows[0].reason, /Explicit page 2/);
 });
+
+test("bulk boundary fallback keeps every input page and its original order", () => {
+  const rows = classifyBulkPagesDeterministically({
+    previousPage: { pageNumber: 39, markdown: "Invoice no. A-39\nPage 1 of 2" },
+    pages: Array.from({ length: 25 }, (_, index) => ({
+      pageNumber: 40 + index,
+      markdown: index === 0 ? "Invoice no. A-39\nPage 2 of 2" : `Invoice no. B-${index}\nPage 1 of 1`,
+    })),
+  });
+
+  assert.equal(rows.length, 25);
+  assert.deepEqual(rows.map((row) => row.pageNumber), Array.from({ length: 25 }, (_, index) => 40 + index));
+  assert.equal(rows[0].startsNewInvoice, false);
+  assert.equal(rows[1].startsNewInvoice, true);
+});

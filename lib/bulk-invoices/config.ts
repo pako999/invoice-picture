@@ -4,7 +4,7 @@ export const BULK_PDF_GATEWAY_URL = "https://br-weathered-frog-alr3b4zn-bulkpdf.
 export const BULK_PDF_MAX_BYTES = 200 * 1024 * 1024;
 export const BULK_PDF_MAX_PAGES = 500;
 export const BULK_OCR_BATCH_PAGES = 25;
-export const BULK_CLASSIFY_BATCH_PAGES = 5;
+export const BULK_CLASSIFY_BATCH_PAGES = 25;
 export const BULK_EXTRACT_BATCH_SIZE = 5;
 export const BULK_BOUNDARY_CONFIDENCE_THRESHOLD = 0.72;
 
