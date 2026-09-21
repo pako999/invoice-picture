@@ -15,6 +15,7 @@ export async function GET(_req: Request,{params}:{params:Promise<{id:string}>}) 
   const groups=await sql`
     SELECT g."groupIndex",g."startPage",g."endPage",g."boundaryConfidenceBps",g."needsBoundaryReview",
            g."status",g."deliveryStatus",g."deliveryError",g."documentId",
+           (g."objectKey" IS NOT NULL) AS "hasPreview",
            d."status" AS "documentStatus",d."validationStatus",d."overallConfidenceBps",d."filename" AS "documentFilename"
     FROM "bulkInvoiceGroups" g LEFT JOIN "invoiceDocuments" d ON d."id"=g."documentId"
     WHERE g."jobId"=${id} ORDER BY g."groupIndex"
