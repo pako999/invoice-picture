@@ -8,5 +8,6 @@ export async function POST(req:Request){if(!verifyBulkInternalSecret(req.headers
  if(!rows.length||rows[0].stage!=='split')return NextResponse.json({error:"Bulk job is not ready to split"},{status:409});
  let ranges:any[]=[];try{ranges=JSON.parse(String(rows[0].rangesJson||"[]"));}catch{}
  if(!validateBulkRanges(ranges,Number(rows[0].pageCount??0)))return NextResponse.json({error:"Invalid invoice page ranges"},{status:400});
- return NextResponse.json({ranges});
+ const existing=await sql`SELECT "groupIndex" FROM "bulkInvoiceGroups" WHERE "jobId"=${jobId} ORDER BY "groupIndex"`;
+ return NextResponse.json({ranges,existingGroupIndexes:existing.map((row:any)=>Number(row.groupIndex))});
 }
