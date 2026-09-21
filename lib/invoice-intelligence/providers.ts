@@ -250,11 +250,13 @@ export function parseInvoiceTextDeterministically(text: string): NormalizedInvoi
     ?? match(plainText, /(?:sales\s+quote|quotation|quote|offer|estimate|ponudba|proforma|rechnung|fattura)\s*(?:no\.?|nr\.?|[šs]t\.?|number|[:#])\s*([A-Z0-9][A-Z0-9.\-_/]{2,})/i);
   invoice.purchaseOrderNumber = match(plainText, /(?:purchase\s+order|order\s+no\.?|naročilnica|narocilnica|ref\.?\s*sales\s*order)\s*[:#]?\s*([A-Z0-9][A-Z0-9\-_/]{1,})/i);
   invoice.issueDate = match(plainText, /(?:issue date|document date|quote date|datum izdaje|datum računa|datum racuna|datum dokumenta|rechnungsdatum|data fattura|city,\s*document date|\bdatum\b)\s*:?\s*(\d{1,4}[./-]\d{1,2}[./-]\d{1,4})/i);
+  invoice.issueDate ??= matchEnglishDate(plainText, /(?:date\s+of\s+issue|issue\s+date|invoice\s+date)/i);
   invoice.serviceDate = match(plainText, /(?:service date|delivery\/performance date|performance date|delivery date|datum storitve|datum dobave)\s*:?\s*(\d{1,4}[./-]\d{1,2}[./-]\d{1,4})/i);
   invoice.dueDate = match(plainText, /(?:due date|rok plačila|rok placila|fällig|scadenza)\s*:?\s*(\d{1,4}[./-]\d{1,2}[./-]\d{1,4})/i);
+  invoice.dueDate ??= matchEnglishDate(plainText, /(?:date\s+due|due\s+date)/i);
   invoice.currency = match(plainText, /\b(EUR|USD|GBP|CHF|HRK|CZK|PLN|HUF|SEK|NOK|DKK|RON|BGN|RSD|BAM|CAD|AUD|JPY)\b/i)?.toUpperCase() ?? null;
-  invoice.supplier.vatNumber = match(plainText, /(?:VAT\s*ID|VAT\s*No\.?|ID\s*za\s*DDV|Davčna\s*številka|Davcna\s*stevilka)\s*[:#]?\s*((?:SI|HR|DE|ATU|IT|FR)?[A-Z0-9]{7,14})/i)
-    ?? match(plainText, /\b((?:SI|HR|DE|ATU|IT|FR)[A-Z0-9]{7,13})\b/i)?.toUpperCase()
+  invoice.supplier.vatNumber = match(plainText, /(?:VAT\s*ID|VAT\s*No\.?|ID\s*za\s*DDV|Davčna\s*številka|Davcna\s*stevilka)\s*[:#]?\s*((?:SI\d{8}|HR\d{11}|DE\d{9}|ATU\d{8}|IT\d{11}|FR[A-Z0-9]{2}\d{9}|[A-Z0-9]{7,14}))/i)
+    ?? match(plainText, /\b((?:SI\d{8}|HR\d{11}|DE\d{9}|ATU\d{8}|IT\d{11}|FR[A-Z0-9]{2}\d{9}))\b/i)?.toUpperCase()
     ?? null;
   invoice.supplier.iban = match(plainText, /\b([A-Z]{2}\d{2}(?:\s?[A-Z0-9]){11,30})\b/i)?.replace(/\s/g, "") ?? null;
   invoice.supplier.bic = match(plainText, /(?:SWIFT\/BIC|BIC)\s*[:#]?\s*([A-Z0-9]{8,11})/i)?.toUpperCase() ?? null;
@@ -273,7 +275,7 @@ export function parseInvoiceTextDeterministically(text: string): NormalizedInvoi
   invoice.totals.amountDue ??= invoice.totals.grossAmount;
   const supplierLines = lines.filter((line) => !/^(?:\||---\s*PAGE\s+\d+\s*---|!\[|\[.+\]\(.+\)|#+\s*(?:invoice|receipt|ra[čc]un|predra[čc]un)|(?:invoice|receipt)\s+(?:number|no\.?|#))/i.test(line));
   invoice.supplier.name = match(plainText, /(?:company|seller|supplier|dobavitelj)\s*[:#]?\s*([^\n|]{3,120})/i)
-    ?? lines.find((line) => /\b(d\.?o\.?o\.?|s\.?p\.?)\b/i.test(line) && line.length <= 120)
+    ?? lines.find((line) => /\b(?:d\.?o\.?o\.?|s\.?p\.?|inc\.?|llc|ltd\.?|gmbh|ag|s\.?a\.?)\b/i.test(line) && line.length <= 120)
     ?? supplierLines.find((line) => line.length >= 3 && line.length <= 100 && !/invoice|račun|racun|rechnung|fattura|quote|quotation|offer|ponudba|predračun|predracun/i.test(line))
     ?? null;
   invoice.buyer.name = match(plainText, /(?:buyer|customer|recipient|kupec|prejemnik)\s*[:#]?\s*([^\n|]{3,120})/i);
@@ -282,6 +284,51 @@ export function parseInvoiceTextDeterministically(text: string): NormalizedInvoi
   invoice.confidence = { overall: 0.72, fields: {} };
   invoice.validationStatus = "pending";
   return invoice;
+}
+
+/**
+ * Keep Mistral as the primary extractor while correcting high-confidence OCR
+ * labels that a language model can occasionally confuse with logos or page
+ * markers. This never turns a Mistral result into a deterministic result.
+ */
+export function reconcileMistralInvoiceWithOcrText(invoice: NormalizedInvoice, text: string) {
+  const fallback = normalizeInvoiceValues(parseInvoiceTextDeterministically(text));
+  const labelledNumber = fallback.invoiceNumber;
+  if (labelledNumber && invoice.invoiceNumber !== labelledNumber) invoice.invoiceNumber = labelledNumber;
+  if (fallback.issueDate && invoice.issueDate !== fallback.issueDate) invoice.issueDate = fallback.issueDate;
+  if (fallback.dueDate && invoice.dueDate !== fallback.dueDate) invoice.dueDate = fallback.dueDate;
+
+  const fallbackHasLegalSuffix = /\b(?:d\.?o\.?o\.?|s\.?p\.?|inc\.?|llc|ltd\.?|gmbh|ag|s\.?a\.?)\b/i.test(fallback.supplier.name ?? "");
+  const mistralSupplierLooksInvalid = !invoice.supplier.name
+    || /^[-\s]*page\s+\d+[-\s]*$/i.test(invoice.supplier.name)
+    || /^\*+|\*+$/.test(invoice.supplier.name);
+  if (fallback.supplier.name && (fallbackHasLegalSuffix || mistralSupplierLooksInvalid)) {
+    invoice.supplier.name = fallback.supplier.name;
+  }
+
+  if (invoice.supplier.vatNumber && !isPlausibleVatNumber(invoice.supplier.vatNumber)) {
+    invoice.supplier.vatNumber = null;
+  }
+  if (!invoice.supplier.vatNumber && fallback.supplier.vatNumber && isPlausibleVatNumber(fallback.supplier.vatNumber)) {
+    invoice.supplier.vatNumber = fallback.supplier.vatNumber;
+  }
+
+  mergeMissingInvoiceFields(invoice, fallback);
+  return invoice;
+}
+
+function isPlausibleVatNumber(value: string) {
+  const compact = value.replace(/[\s.-]/g, "").toUpperCase();
+  if (/^SI\d{8}$|^HR\d{11}$|^DE\d{9}$|^ATU\d{8}$|^IT\d{11}$|^FR[A-Z0-9]{2}\d{9}$/.test(compact)) return true;
+  return /\d/.test(compact) && /^[A-Z0-9]{7,16}$/.test(compact);
+}
+
+function matchEnglishDate(text: string, label: RegExp) {
+  const month = "January|February|March|April|May|June|July|August|September|October|November|December";
+  const found = text.match(new RegExp(`${label.source}\\s*:?\\s*(${month})\\s+(\\d{1,2}),?\\s+(\\d{4})`, "i"));
+  if (!found) return null;
+  const monthIndex = ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"].indexOf(found[1].toLowerCase()) + 1;
+  return `${found[3]}-${String(monthIndex).padStart(2, "0")}-${String(Number(found[2])).padStart(2, "0")}`;
 }
 
 function stripMarkdownFormatting(value: string) {

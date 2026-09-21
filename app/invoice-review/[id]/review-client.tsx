@@ -56,7 +56,8 @@ export function InvoiceReviewClient({ documentId }: { documentId: number }) {
     if (!detailRes.ok) throw new Error("Dokumenta ni mogoče odpreti");
     const json = await detailRes.json() as Detail;
     const list = await listRes.json();
-    const invoice = json.document.approved ?? json.document.normalized;
+    const isProcessing = json.document.status === "queued" || json.document.status === "processing";
+    const invoice = isProcessing ? null : json.document.approved ?? json.document.normalized;
     const flat = invoice ? flatten(invoice) : {};
     setDetail(json);
     setForm(flat);
@@ -65,6 +66,13 @@ export function InvoiceReviewClient({ documentId }: { documentId: number }) {
   }, [documentId]);
 
   useEffect(() => { load().catch((e) => setMessage(e.message)); }, [load]);
+
+  useEffect(() => {
+    const status = detail?.document.status;
+    if (status !== "queued" && status !== "processing") return;
+    const timer = window.setInterval(() => void load().catch((e) => setMessage(e.message)), 3000);
+    return () => window.clearInterval(timer);
+  }, [detail?.document.status, load]);
 
   const submit = useCallback(async (action: "save" | "approve" | "reject" | "reprocess") => {
     setBusy(action);
@@ -114,6 +122,7 @@ export function InvoiceReviewClient({ documentId }: { documentId: number }) {
     ...(latestValidation?.warnings ?? []),
   ])], [latestValidation]);
   const invoice = detail?.document.approved ?? detail?.document.normalized;
+  const isProcessing = detail?.document.status === "queued" || detail?.document.status === "processing";
   const needsPdfSplit = detail?.document.mimeType === "application/pdf" && detail.document.warnings.some((warning) => /hard-capped|first 25 pages|technical PDF limit/i.test(warning));
 
   if (!detail) return <main className="mx-auto w-full min-w-0 max-w-7xl overflow-x-hidden p-8"><div className="flex items-center gap-2 text-slate-500"><Loader2 className="h-5 w-5 animate-spin" /> Nalaganje dokumenta…</div>{message && <p className="mt-4 text-red-600">{message}</p>}</main>;
@@ -128,7 +137,7 @@ export function InvoiceReviewClient({ documentId }: { documentId: number }) {
         <div className="flex items-center gap-2"><button onClick={() => goRelative(-1)} className="rounded-lg border p-2" title="Prejšnji (Alt+←)"><ChevronLeft className="h-4 w-4" /></button><button onClick={() => goRelative(1)} className="rounded-lg border p-2" title="Naslednji (Alt+→)"><ChevronRight className="h-4 w-4" /></button></div>
       </div>
 
-      {(validationIssues.length > 0 || detail.duplicates.length > 0) ? (
+      {!isProcessing && (validationIssues.length > 0 || detail.duplicates.length > 0) ? (
         <div className="mb-4 min-w-0 break-words rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
           <div className="mb-2 flex items-center gap-2 font-bold"><AlertTriangle className="h-4 w-4" /> Potreben je pregled</div>
           <ul className="list-disc space-y-1 pl-5">{validationIssues.map((x) => <li key={x}>{x}</li>)}{detail.duplicates.length > 0 && <li>Možen podvojen račun: {detail.duplicates.map((d) => `#${d.duplicateOfDocumentId}`).join(", ")}</li>}</ul>
@@ -150,26 +159,32 @@ export function InvoiceReviewClient({ documentId }: { documentId: number }) {
         </section>
 
         <section className="w-full min-w-0 max-w-full space-y-4 pb-28">
-          {fieldGroups.map((group) => <FieldGroup key={group.title} title={group.title} fields={group.fields} form={form} setForm={setForm} evidence={detail.evidence} selectedPath={selectedPath} setSelectedPath={setSelectedPath} />)}
+          {isProcessing ? (
+            <div className="flex min-h-64 flex-col items-center justify-center rounded-2xl border border-blue-200 bg-blue-50 p-8 text-center text-blue-950">
+              <Loader2 className="mb-4 h-10 w-10 animate-spin text-blue-600" />
+              <h2 className="text-xl font-extrabold">Mistral OCR obdeluje račun</h2>
+              <p className="mt-2 max-w-lg text-sm text-blue-800">Prejšnji podatki so skriti, da jih ne zamenjate z novim rezultatom. Stran se samodejno osveži, ko je obdelava končana.</p>
+            </div>
+          ) : fieldGroups.map((group) => <FieldGroup key={group.title} title={group.title} fields={group.fields} form={form} setForm={setForm} evidence={detail.evidence} selectedPath={selectedPath} setSelectedPath={setSelectedPath} />)}
 
-          {invoice?.vatBreakdown?.length ? <DataTable title="DDV razčlenitev" rows={invoice.vatBreakdown} columns={["vatRate", "taxableAmount", "vatAmount", "grossAmount"]} /> : null}
-          {invoice?.lineItems?.length ? <DataTable title={`Postavke (${invoice.lineItems.length})`} rows={invoice.lineItems} columns={["description", "quantity", "unitPriceNet", "vatRate", "netAmount", "vatAmount", "grossAmount"]} /> : null}
+          {!isProcessing && invoice?.vatBreakdown?.length ? <DataTable title="DDV razčlenitev" rows={invoice.vatBreakdown} columns={["vatRate", "taxableAmount", "vatAmount", "grossAmount"]} /> : null}
+          {!isProcessing && invoice?.lineItems?.length ? <DataTable title={`Postavke (${invoice.lineItems.length})`} rows={invoice.lineItems} columns={["description", "quantity", "unitPriceNet", "vatRate", "netAmount", "vatAmount", "grossAmount"]} /> : null}
 
-          {detail.corrections.length > 0 && <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900"><h2 className="font-bold">Revizijska sled popravkov</h2><div className="mt-3 max-h-48 space-y-2 overflow-auto text-xs text-slate-600">{detail.corrections.map((c) => <div key={c.id} className="rounded-lg bg-slate-50 p-2"><strong>{c.fieldPath}</strong>: {c.oldValue ?? "∅"} → {c.newValue ?? "∅"} · {new Date(c.createdAt).toLocaleString("sl-SI")}</div>)}</div></div>}
+          {!isProcessing && detail.corrections.length > 0 && <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900"><h2 className="font-bold">Revizijska sled popravkov</h2><div className="mt-3 max-h-48 space-y-2 overflow-auto text-xs text-slate-600">{detail.corrections.map((c) => <div key={c.id} className="rounded-lg bg-slate-50 p-2"><strong>{c.fieldPath}</strong>: {c.oldValue ?? "∅"} → {c.newValue ?? "∅"} · {new Date(c.createdAt).toLocaleString("sl-SI")}</div>)}</div></div>}
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900"><label className="text-sm font-bold">Razlog / opomba (neobvezno)</label><textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={2} className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950" placeholder="Npr. preverjeno z originalom…" /></div>
+          {!isProcessing && <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900"><label className="text-sm font-bold">Razlog / opomba (neobvezno)</label><textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={2} className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm dark:border-slate-700 dark:bg-slate-950" placeholder="Npr. preverjeno z originalom…" /></div>}
         </section>
       </div>
 
       <div className="fixed inset-x-0 bottom-0 z-[60] border-t border-slate-200 bg-white/95 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-2xl backdrop-blur dark:border-slate-700 dark:bg-slate-950/95">
         <div className="mx-auto flex w-full min-w-0 max-w-7xl items-center justify-between gap-3">
           <div className="hidden text-sm text-slate-500 md:block">{message || "Ctrl/Cmd+S shrani · Alt+A potrdi · Alt+←/→ navigacija"}</div>
-          <div className="grid w-full min-w-0 grid-cols-2 gap-2 md:flex md:w-auto md:flex-wrap">
+          {isProcessing ? <div className="flex min-h-12 items-center gap-2 font-bold text-blue-700"><Loader2 className="h-5 w-5 animate-spin" /> Mistral OCR obdeluje…</div> : <div className="grid w-full min-w-0 grid-cols-2 gap-2 md:flex md:w-auto md:flex-wrap">
             <Action busy={busy} name="approve" onClick={() => submit("approve")} className="border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700" icon={<Check className="h-5 w-5" />}>Potrdi račun</Action>
             <Action busy={busy} name="save" onClick={() => submit("save")} icon={<Save className="h-5 w-5" />}>Shrani</Action>
             <Action busy={busy} name="reject" onClick={() => submit("reject")} className="border-red-200 text-red-700" icon={<XCircle className="h-5 w-5" />}>Zavrni</Action>
             <Action busy={busy} name="reprocess" onClick={() => submit("reprocess")} icon={<RefreshCw className="h-5 w-5" />}>{needsPdfSplit ? "Razdeli in ponovno obdelaj" : "Ponovno obdelaj"}</Action>
-          </div>
+          </div>}
         </div>
       </div>
     </main>

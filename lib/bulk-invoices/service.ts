@@ -3,6 +3,7 @@ import { invoiceJsonSchema, normalizedInvoiceSchema, type NormalizedInvoice } fr
 import { normalizeInvoiceValues, validateInvoice } from "@/lib/invoice-intelligence/validation";
 import { reserveOcrProviderBudget } from "@/lib/invoice-intelligence/safety";
 import { getOcrUsageSummary, quotaPageError } from "@/lib/invoice-intelligence/quota";
+import { reconcileMistralInvoiceWithOcrText } from "@/lib/invoice-intelligence/providers";
 
 const OCR_ENDPOINT = "https://api.mistral.ai/v1/ocr";
 const CHAT_ENDPOINT = "https://api.mistral.ai/v1/chat/completions";
@@ -264,6 +265,10 @@ export async function extractBulkInvoice(markdown: string, ocrConfidence: number
         "Extract one accounting document from the OCR markdown below.",
         "The page group has already been split and should represent exactly one invoice, credit note, receipt, proforma or quotation.",
         "Never invent missing values. Return null when genuinely absent.",
+        "Ignore OCR page separators such as --- PAGE 1 ---; they are never supplier names or invoice data.",
+        "Read invoiceNumber only from a labelled invoice-number field, never from a logo, brand name or supplier name.",
+        "Read VAT/tax IDs only from explicitly labelled tax-ID fields; never derive them from city names or ordinary words.",
+        "Dates may use numeric or written English month formats. Extract all labelled issue and due dates.",
         "Normalize dates to YYYY-MM-DD, currency to ISO 4217 and monetary values to decimal strings without currency symbols.",
         "Supplier is the issuer/seller; buyer is the recipient/customer.",
         "Preserve line items, discounts, VAT breakdown, totals, IBAN, BIC, payment reference and terms when visible.",
@@ -273,7 +278,7 @@ export async function extractBulkInvoice(markdown: string, ocrConfidence: number
         markdown.slice(0, 120_000),
       ].join("\n"),
     });
-    const invoice = normalizeInvoiceValues(normalizedInvoiceSchema.parse(raw));
+    const invoice = normalizeInvoiceValues(reconcileMistralInvoiceWithOcrText(normalizedInvoiceSchema.parse(raw), markdown));
     if (ocrConfidence != null) invoice.confidence.overall = Math.min(invoice.confidence.overall ?? 1, ocrConfidence);
     const validation = validateInvoice(invoice);
     invoice.validationStatus = validation.status === "failed" ? "needs_review" : validation.status;

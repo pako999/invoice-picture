@@ -50,6 +50,30 @@ test("Slovenian OCR markdown fallback removes formatting and extracts product ro
   assert.equal(invoice.lineItems[0].netAmount, "100.70");
 });
 
+test("English invoice labels are not confused with logos, page markers or city names", () => {
+  const invoice = normalizeInvoiceValues(parseInvoiceTextDeterministically(`
+--- PAGE 1 ---
+# Invoice
+tailscale
+Invoice number  QTJE1DQO-0006
+Date of issue  July 1, 2026
+Date due  July 1, 2026
+
+Tailscale US Inc.
+447 Sutter St
+San Francisco, California 94108
+United States
+
+$5.00 USD due July 1, 2026
+  `));
+
+  assert.equal(invoice.invoiceNumber, "QTJE1DQO-0006");
+  assert.equal(invoice.issueDate, "2026-07-01");
+  assert.equal(invoice.dueDate, "2026-07-01");
+  assert.equal(invoice.supplier.name, "Tailscale US Inc.");
+  assert.equal(invoice.supplier.vatNumber, null);
+});
+
 test("line-item percentage discount reconciles with net amount", () => {
   const invoice = emptyInvoice();
   invoice.documentType = "invoice";
