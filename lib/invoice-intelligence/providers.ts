@@ -55,7 +55,7 @@ export async function readDeterministically(input: { base64: string; mimeType: s
 
     const pdfText = extractSimplePdfText(bytes);
     if (pdfText.length >= 250 && /(invoice|račun|racun|rechnung|fattura|račun broj|ddv|vat|sales\s+quote|quotation|quote|offer|estimate|ponudba|predračun|predracun|proforma)/i.test(pdfText)) {
-      const invoice = parseTextLayer(pdfText);
+      const invoice = parseInvoiceTextDeterministically(pdfText);
       if (criticalCount(invoice) >= 5) {
         return {
           provider: "deterministic",
@@ -123,7 +123,7 @@ export async function readWithMistral(input: { base64: string; mimeType: string;
   const rawText = responsePages.map((p: Record<string, unknown>) => typeof p.markdown === "string" ? p.markdown : "").join("\n\n");
 
   if (criticalCount(invoice) < 5 && rawText.trim()) {
-    const fallback = normalizeInvoiceValues(parseTextLayer(rawText));
+    const fallback = normalizeInvoiceValues(parseInvoiceTextDeterministically(rawText));
     const recovered = mergeMissingInvoiceFields(invoice, fallback);
     if (recovered > 0) invoice.warnings.push(`Recovered ${recovered} missing field${recovered === 1 ? "" : "s"} from OCR text fallback.`);
   }
@@ -240,7 +240,7 @@ function parseStructuredXml(xml: string): NormalizedInvoice | null {
   return criticalCount(invoice) >= 4 ? invoice : null;
 }
 
-function parseTextLayer(text: string): NormalizedInvoice {
+export function parseInvoiceTextDeterministically(text: string): NormalizedInvoice {
   const invoice = emptyInvoice();
   const lines = text.split(/\r?\n/).map((x) => x.trim()).filter(Boolean);
   const isQuote = /sales\s+quote|quotation|\bquote\b|\boffer\b|estimate|ponudba|predračun|predracun|proforma/i.test(text);
