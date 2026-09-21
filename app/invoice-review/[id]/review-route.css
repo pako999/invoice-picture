@@ -11,18 +11,3 @@
   min-width: 0;
   max-width: 100%;
 }
-
-.invoice-review-route > main > div.fixed.inset-x-0.bottom-0 button:last-child {
-  min-width: 9.5rem;
-  border-color: rgb(5 150 105) !important;
-  background-color: rgb(5 150 105) !important;
-  color: #fff !important;
-}
-
-.invoice-review-route > main > div.fixed.inset-x-0.bottom-0 button:last-child:hover {
-  background-color: rgb(4 120 87) !important;
-}
-
-.invoice-review-route > main > div.fixed.inset-x-0.bottom-0 button:last-child svg {
-  color: #fff !important;
-}
