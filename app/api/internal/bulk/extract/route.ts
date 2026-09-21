@@ -63,6 +63,7 @@ export async function POST(req:Request){
     }
     const idempotencyKey=createHash("sha256").update(`bulk:${job.clerkUserId}:${data.jobId}:${group.groupIndex}:${group.sha256}`).digest("hex");
     const retentionDays=Number(process.env.INVOICE_RETENTION_DAYS??365);const retentionUntil=retentionDays>0?new Date(Date.now()+retentionDays*86400000):null;
+    const isReprocess=String(group.status)==="reprocess";
     const values={
       clerkUserId:String(job.clerkUserId),companyId:job.companyId==null?null:Number(job.companyId),sourceInvoiceId,filename:sourceFilename,mimeType:"application/pdf",
       originalBase64:null,storageObjectKey:String(group.objectKey),bulkJobId:data.jobId,bulkGroupIndex:Number(group.groupIndex),sourcePageStart:Number(group.startPage),sourcePageEnd:Number(group.endPage),
@@ -82,9 +83,12 @@ export async function POST(req:Request){
     await db.insert(invoiceValidationResults).values({documentId,status:autoApprove?"valid":"needs_review",warningsJson:JSON.stringify(extracted.validation.warnings),errorsJson:JSON.stringify(extracted.validation.errors),differencesJson:JSON.stringify(extracted.validation.differences)});
     await db.insert(invoiceProcessingAttempts).values({documentId,provider:extracted.provider,model:extracted.model,status:"succeeded",durationMs:Date.now()-started,pagesProcessed:Number(group.endPage)-Number(group.startPage)+1,costMicros:null,completedAt:new Date()});
     await db.insert(invoiceAuditLogs).values({documentId,clerkUserId:String(job.clerkUserId),action:autoApprove?"auto_approved":"sent_to_review",metadataJson:JSON.stringify({bulkJobId:data.jobId,groupIndex:Number(group.groupIndex),pages:[Number(group.startPage),Number(group.endPage)]})});
-    await sql`UPDATE "bulkInvoiceGroups" SET "documentId"=${documentId},"status"='extracted',"deliveryStatus"=${deliveryMode==='email_ocr'?'pending':'not_required'},"deliveryError"=NULL,"updatedAt"=now() WHERE "id"=${group.id}`;
+    const nextDeliveryStatus=isReprocess
+      ? String(group.deliveryStatus)
+      : deliveryMode==='email_ocr'?'pending':'not_required';
+    await sql`UPDATE "bulkInvoiceGroups" SET "documentId"=${documentId},"status"='extracted',"deliveryStatus"=${nextDeliveryStatus},"deliveryError"=NULL,"updatedAt"=now() WHERE "id"=${group.id}`;
   }
-  const [progress]=await sql`SELECT count(*) FILTER (WHERE "documentId" IS NOT NULL)::int AS processed,count(*)::int AS total,
+  const [progress]=await sql`SELECT count(*) FILTER (WHERE "status" = 'extracted')::int AS processed,count(*)::int AS total,
     count(*) FILTER (WHERE "deliveryStatus" IN ('pending','failed'))::int AS pending_delivery FROM "bulkInvoiceGroups" WHERE "jobId"=${data.jobId}`;
   const processed=Number(progress?.processed??0),total=Number(progress?.total??0),pendingDelivery=Number(progress?.pending_delivery??0);
   const deliveryItems=await sql`SELECT "groupIndex","objectKey","documentId" FROM "bulkInvoiceGroups" WHERE "jobId"=${data.jobId} AND "documentId" IS NOT NULL AND "deliveryStatus" IN ('pending','failed') ORDER BY "groupIndex" LIMIT 5`;
