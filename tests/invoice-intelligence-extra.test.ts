@@ -20,6 +20,36 @@ test("Slovenian OCR fallback reads a plain Datum label and infers EUR", () => {
   assert.equal(invoice.currency, "EUR");
 });
 
+test("Slovenian OCR markdown fallback removes formatting and extracts product rows", () => {
+  const invoice = normalizeInvoiceValues(parseInvoiceTextDeterministically(`
+**SURFSHOP**
+**Amodor d.o.o.**
+**ID za DDV:** SI79907962
+**TRR:** SI56 1010 0004 6516 054
+1000 Ljubljana, Slovenija
+
+**Račun št.:1719-FAKT1-251**
+**Datum:** 16.09.2026
+**Datum valute:** 16.09.2026
+**Sklic:** 2512026
+
+| Zap. | Šifra | Opis blaga oz. opravljene storitve | Količina | EM | Cena | Rabat | Cena brez DDV | DDV | Vr. brez DDV |
+| --- | --- | --- | ---: | --- | ---: | ---: | ---: | ---: | ---: |
+| 1. | 1301260014 | GA TEAM CARBON SDM 32cm | 1,000 | Kos | 154,918 | 35% | 100,6967 | 22,0 | 100,70 |
+| 2. | TRANSPORT | Transport | 1,000 | Kos | 34,00 | 0% | 34,00 | 22,0 | 34,00 |
+  `));
+
+  assert.equal(invoice.supplier.name, "Amodor d.o.o.");
+  assert.equal(invoice.issueDate, "2026-09-16");
+  assert.equal(invoice.lineItems.length, 2);
+  assert.equal(invoice.lineItems[0].description, "1301260014 – GA TEAM CARBON SDM 32cm");
+  assert.equal(invoice.lineItems[0].quantity, "1.000");
+  assert.equal(invoice.lineItems[0].unitPriceNet, "154.918");
+  assert.equal(invoice.lineItems[0].discountPercent, "35");
+  assert.equal(invoice.lineItems[0].vatRate, "22.0");
+  assert.equal(invoice.lineItems[0].netAmount, "100.70");
+});
+
 test("line-item percentage discount reconciles with net amount", () => {
   const invoice = emptyInvoice();
   invoice.documentType = "invoice";

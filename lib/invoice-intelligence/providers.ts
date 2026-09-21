@@ -242,44 +242,113 @@ function parseStructuredXml(xml: string): NormalizedInvoice | null {
 
 export function parseInvoiceTextDeterministically(text: string): NormalizedInvoice {
   const invoice = emptyInvoice();
-  const lines = text.split(/\r?\n/).map((x) => x.trim()).filter(Boolean);
-  const isQuote = /sales\s+quote|quotation|\bquote\b|\boffer\b|estimate|ponudba|predračun|predracun|proforma/i.test(text);
-  invoice.documentType = /credit note|dobropis|gutschrift/i.test(text) ? "credit_note" : isQuote ? "proforma" : "invoice";
-  invoice.invoiceNumber = match(text, /(?:invoice\s*(?:number|no\.?|#)|receipt\s*(?:number|no\.?|#)|predra[čc]un\s*(?:[šs]t(?:evilka)?\.?|st\.?|#)?|ra[čc]un\s*(?:[šs]t(?:evilka)?\.?|st\.?|#)|[šs]t\.?\s*ra[čc]una|[šs]tevilka\s+fakture)\s*:?\s*([A-Z0-9][A-Z0-9.\-_/]{2,})/i)
-    ?? match(text, /(?:sales\s+quote|quotation|quote|offer|estimate|ponudba|proforma|rechnung|fattura)\s*(?:no\.?|nr\.?|[šs]t\.?|number|[:#])\s*([A-Z0-9][A-Z0-9.\-_/]{2,})/i);
-  invoice.purchaseOrderNumber = match(text, /(?:purchase\s+order|order\s+no\.?|naročilnica|narocilnica|ref\.?\s*sales\s*order)\s*[:#]?\s*([A-Z0-9][A-Z0-9\-_/]{1,})/i);
-  invoice.issueDate = match(text, /(?:issue date|document date|quote date|datum izdaje|datum računa|datum racuna|datum dokumenta|rechnungsdatum|data fattura|city,\s*document date|\bdatum\b)\s*[:]?\s*(\d{1,4}[./-]\d{1,2}[./-]\d{1,4})/i);
-  invoice.serviceDate = match(text, /(?:service date|delivery\/performance date|performance date|delivery date|datum storitve|datum dobave)\s*[:]?\s*(\d{1,4}[./-]\d{1,2}[./-]\d{1,4})/i);
-  invoice.dueDate = match(text, /(?:due date|rok plačila|rok placila|fällig|scadenza)\s*[:]?\s*(\d{1,4}[./-]\d{1,2}[./-]\d{1,4})/i);
-  invoice.currency = match(text, /\b(EUR|USD|GBP|CHF|HRK|CZK|PLN|HUF|SEK|NOK|DKK|RON|BGN|RSD|BAM|CAD|AUD|JPY)\b/i)?.toUpperCase() ?? null;
-  invoice.supplier.vatNumber = match(text, /(?:VAT\s*ID|VAT\s*No\.?|ID\s*za\s*DDV|Davčna\s*številka|Davcna\s*stevilka)\s*[:#]?\s*((?:SI|HR|DE|ATU|IT|FR)?[A-Z0-9]{7,14})/i)
-    ?? match(text, /\b((?:SI|HR|DE|ATU|IT|FR)[A-Z0-9]{7,13})\b/i)?.toUpperCase()
+  const plainText = stripMarkdownFormatting(text);
+  const lines = plainText.split(/\r?\n/).map((x) => x.trim()).filter(Boolean);
+  const isQuote = /sales\s+quote|quotation|\bquote\b|\boffer\b|estimate|ponudba|predračun|predracun|proforma/i.test(plainText);
+  invoice.documentType = /credit note|dobropis|gutschrift/i.test(plainText) ? "credit_note" : isQuote ? "proforma" : "invoice";
+  invoice.invoiceNumber = match(plainText, /(?:invoice\s*(?:number|no\.?|#)|receipt\s*(?:number|no\.?|#)|predra[čc]un\s*(?:[šs]t(?:evilka)?\.?|st\.?|#)?|ra[čc]un\s*(?:[šs]t(?:evilka)?\.?|st\.?|#)|[šs]t\.?\s*ra[čc]una|[šs]tevilka\s+fakture)\s*:?\s*([A-Z0-9][A-Z0-9.\-_/]{2,})/i)
+    ?? match(plainText, /(?:sales\s+quote|quotation|quote|offer|estimate|ponudba|proforma|rechnung|fattura)\s*(?:no\.?|nr\.?|[šs]t\.?|number|[:#])\s*([A-Z0-9][A-Z0-9.\-_/]{2,})/i);
+  invoice.purchaseOrderNumber = match(plainText, /(?:purchase\s+order|order\s+no\.?|naročilnica|narocilnica|ref\.?\s*sales\s*order)\s*[:#]?\s*([A-Z0-9][A-Z0-9\-_/]{1,})/i);
+  invoice.issueDate = match(plainText, /(?:issue date|document date|quote date|datum izdaje|datum računa|datum racuna|datum dokumenta|rechnungsdatum|data fattura|city,\s*document date|\bdatum\b)\s*:?\s*(\d{1,4}[./-]\d{1,2}[./-]\d{1,4})/i);
+  invoice.serviceDate = match(plainText, /(?:service date|delivery\/performance date|performance date|delivery date|datum storitve|datum dobave)\s*:?\s*(\d{1,4}[./-]\d{1,2}[./-]\d{1,4})/i);
+  invoice.dueDate = match(plainText, /(?:due date|rok plačila|rok placila|fällig|scadenza)\s*:?\s*(\d{1,4}[./-]\d{1,2}[./-]\d{1,4})/i);
+  invoice.currency = match(plainText, /\b(EUR|USD|GBP|CHF|HRK|CZK|PLN|HUF|SEK|NOK|DKK|RON|BGN|RSD|BAM|CAD|AUD|JPY)\b/i)?.toUpperCase() ?? null;
+  invoice.supplier.vatNumber = match(plainText, /(?:VAT\s*ID|VAT\s*No\.?|ID\s*za\s*DDV|Davčna\s*številka|Davcna\s*stevilka)\s*[:#]?\s*((?:SI|HR|DE|ATU|IT|FR)?[A-Z0-9]{7,14})/i)
+    ?? match(plainText, /\b((?:SI|HR|DE|ATU|IT|FR)[A-Z0-9]{7,13})\b/i)?.toUpperCase()
     ?? null;
-  invoice.supplier.iban = match(text, /\b([A-Z]{2}\d{2}(?:\s?[A-Z0-9]){11,30})\b/i)?.replace(/\s/g, "") ?? null;
-  invoice.supplier.bic = match(text, /(?:SWIFT\/BIC|BIC)\s*[:#]?\s*([A-Z0-9]{8,11})/i)?.toUpperCase() ?? null;
-  if (!invoice.currency && (invoice.supplier.vatNumber?.startsWith("SI") || invoice.supplier.iban?.startsWith("SI")) && /\b(?:slovenija|slovenia|ljubljana|maribor)\b/i.test(text)) {
+  invoice.supplier.iban = match(plainText, /\b([A-Z]{2}\d{2}(?:\s?[A-Z0-9]){11,30})\b/i)?.replace(/\s/g, "") ?? null;
+  invoice.supplier.bic = match(plainText, /(?:SWIFT\/BIC|BIC)\s*[:#]?\s*([A-Z0-9]{8,11})/i)?.toUpperCase() ?? null;
+  if (!invoice.currency && (invoice.supplier.vatNumber?.startsWith("SI") || invoice.supplier.iban?.startsWith("SI")) && /\b(?:slovenija|slovenia|ljubljana|maribor)\b/i.test(plainText)) {
     invoice.currency = "EUR";
   }
-  invoice.paymentReference = match(text, /(?:payment ref(?:erence)?|sklic)\s*[:#]?\s*([A-Z0-9][A-Z0-9\s\-_/]{2,})/i);
-  invoice.paymentTerms = match(text, /(?:method of payment|payment terms|način plačila|nacin placila)\s*[:#]?\s*([^\n|]{3,80})/i);
-  invoice.totals.amountDue = match(text, /(?:amount\s+due|za\s+plačilo|za\s+placilo|skupaj\s*\(\s*z\s+ddv\s*\)|total\s+in\s+(?:EUR|USD|GBP))[^\d\-]{0,30}(-?[\d.,]+)\s*(?:EUR|USD|GBP|€|\$|£)?/i)
-    ?? match(text, /(?:[$€£]\s*)(-?[\d.,]+)\s*(?:USD|EUR|GBP)?\s*(?:due|paid)/i);
+  invoice.paymentReference = match(plainText, /(?:payment ref(?:erence)?|sklic)\s*[:#]?\s*([A-Z0-9][A-Z0-9\s\-_/]{2,})/i);
+  invoice.paymentTerms = match(plainText, /(?:method of payment|payment terms|način plačila|nacin placila)\s*[:#]?\s*([^\n|]{3,80})/i);
+  invoice.totals.amountDue = match(plainText, /(?:amount\s+due|za\s+plačilo|za\s+placilo|skupaj\s*(?:\(\s*z\s+ddv\s*\)|z\s+ddv)|total\s+in\s+(?:EUR|USD|GBP))[^\d\-]{0,30}(-?[\d.,]+)\s*(?:EUR|USD|GBP|€|\$|£)?/i)
+    ?? match(plainText, /(?:[$€£]\s*)(-?[\d.,]+)\s*(?:USD|EUR|GBP)?\s*(?:due|paid)/i);
   invoice.totals.grossAmount = invoice.totals.amountDue
-    ?? match(text, /(?:total\s+amount(?:\s+(?:EUR|USD|GBP))?|total\s+amount\s+due|grand\s+total|gesamt|totale)[^\d\-]{0,30}(-?[\d.,]+)\s*(?:EUR|USD|GBP|€|\$|£)?/i);
-  invoice.totals.vatAmount = match(text, /(?:VAT(?:\s+amount)?|DDV|MwSt|IVA)[^\d\-]{0,25}(-?[\d.,]+)/i);
-  invoice.totals.netAmount = match(text, /(?:net amount|net total|osnova|neto|netto|imponibile)[^\d\-]{0,25}(-?[\d.,]+)/i);
-  invoice.totals.discountAmount = match(text, /(?:discount|popust)[^\d\-]{0,25}(-?[\d.,]+)/i);
+    ?? match(plainText, /(?:total\s+amount(?:\s+(?:EUR|USD|GBP))?|total\s+amount\s+due|grand\s+total|gesamt|totale)[^\d\-]{0,30}(-?[\d.,]+)\s*(?:EUR|USD|GBP|€|\$|£)?/i);
+  invoice.totals.vatAmount = match(plainText, /(?:VAT(?:\s+amount)?|DDV|MwSt|IVA)[^\d\-]{0,25}(-?[\d.,]+)/i);
+  invoice.totals.netAmount = match(plainText, /(?:net amount|net total|osnova|neto|netto|imponibile|prodajna\s+vrednost)[^\d\-]{0,25}(-?[\d.,]+)/i);
+  invoice.totals.discountAmount = match(plainText, /(?:discount|popust|rabat)[^\d\-]{0,25}(-?[\d.,]+)/i);
   invoice.totals.amountDue ??= invoice.totals.grossAmount;
-  const supplierLines = lines.filter((line) => !/^(?:---\s*PAGE\s+\d+\s*---|!\[|\[.+\]\(.+\)|#+\s*(?:invoice|receipt|ra[čc]un|predra[čc]un)|(?:invoice|receipt)\s+(?:number|no\.?|#))/i.test(line));
-  invoice.supplier.name = match(text, /(?:company|seller|supplier|dobavitelj)\s*[:#]?\s*([^\n|]{3,120})/i)
+  const supplierLines = lines.filter((line) => !/^(?:\||---\s*PAGE\s+\d+\s*---|!\[|\[.+\]\(.+\)|#+\s*(?:invoice|receipt|ra[čc]un|predra[čc]un)|(?:invoice|receipt)\s+(?:number|no\.?|#))/i.test(line));
+  invoice.supplier.name = match(plainText, /(?:company|seller|supplier|dobavitelj)\s*[:#]?\s*([^\n|]{3,120})/i)
     ?? lines.find((line) => /\b(d\.?o\.?o\.?|s\.?p\.?)\b/i.test(line) && line.length <= 120)
     ?? supplierLines.find((line) => line.length >= 3 && line.length <= 100 && !/invoice|račun|racun|rechnung|fattura|quote|quotation|offer|ponudba|predračun|predracun/i.test(line))
     ?? null;
-  invoice.buyer.name = match(text, /(?:buyer|customer|recipient|kupec|prejemnik)\s*[:#]?\s*([^\n|]{3,120})/i);
+  invoice.buyer.name = match(plainText, /(?:buyer|customer|recipient|kupec|prejemnik)\s*[:#]?\s*([^\n|]{3,120})/i);
+  invoice.lineItems = parseMarkdownLineItems(text);
   if (isQuote) invoice.warnings.push("Quotation/proforma document requires manual review before delivery.");
   invoice.confidence = { overall: 0.72, fields: {} };
   invoice.validationStatus = "pending";
   return invoice;
+}
+
+function stripMarkdownFormatting(value: string) {
+  return value
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, " ")
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+    .replace(/\*\*|__|`/g, "")
+    .replace(/^\s{0,3}#{1,6}\s*/gm, "")
+    .replace(/^\s*>\s?/gm, "");
+}
+
+function parseMarkdownLineItems(text: string): NormalizedInvoice["lineItems"] {
+  const rows = text.split(/\r?\n/).filter((line) => line.includes("|")).map(markdownCells).filter((cells) => cells.length >= 3);
+  const headerIndex = rows.findIndex((cells) => cells.some((cell) => /(?:opis|description|izdelek|artikel|product|storitev)/i.test(cell)) && cells.some((cell) => /(?:koli[čc]ina|qty|quantity)/i.test(cell)));
+  if (headerIndex < 0) return [];
+
+  const headers = rows[headerIndex].map(normalizeHeader);
+  const index = (patterns: RegExp[], excluded: RegExp[] = []) => headers.findIndex((header) => patterns.some((pattern) => pattern.test(header)) && !excluded.some((pattern) => pattern.test(header)));
+  const description = index([/opis/, /description/, /izdelek/, /artikel/, /product/, /storit/]);
+  const code = index([/^sifra$/, /^sku$/, /productcode/, /articlecode/]);
+  const quantity = index([/kolicina/, /^qty$/, /quantity/]);
+  const unit = index([/^em$/, /^enota$/, /^unit$/]);
+  const discount = index([/rabat/, /popust/, /discount/]);
+  const vatRate = index([/^ddv$/, /ddvstopnja/, /^vat$/, /vatrate/], [/znesek/, /amount/]);
+  const netAmount = index([/vrbrezddv/, /vrednostbrezddv/, /netamount/, /lineamount/]);
+  const unitPrice = index([/^cena$/, /cenazaenoto/, /unitprice/, /^price$/], [/brezddv/, /vrednost/, /amount/]);
+  if (description < 0 || quantity < 0) return [];
+
+  const output: NormalizedInvoice["lineItems"] = [];
+  for (const cells of rows.slice(headerIndex + 1)) {
+    if (cells.every((cell) => /^:?-{3,}:?$/.test(cell.replace(/\s/g, "")))) continue;
+    if (cells.length < headers.length - 1) continue;
+    const descriptionText = cleanCell(cells[description]);
+    if (!descriptionText || /^(?:skupaj|total|osnova|ddv)$/i.test(descriptionText)) break;
+    const productCode = code >= 0 ? cleanCell(cells[code]) : "";
+    const quantityValue = cleanDecimalCell(cells[quantity]);
+    if (!quantityValue) continue;
+    output.push({
+      description: [productCode, descriptionText].filter(Boolean).join(" – "),
+      quantity: quantityValue,
+      unit: unit >= 0 ? cleanCell(cells[unit]) || null : null,
+      unitPriceNet: unitPrice >= 0 ? cleanDecimalCell(cells[unitPrice]) : null,
+      discountPercent: discount >= 0 ? cleanDecimalCell(cells[discount]) : null,
+      discountAmount: null,
+      vatRate: vatRate >= 0 ? cleanDecimalCell(cells[vatRate]) : null,
+      netAmount: netAmount >= 0 ? cleanDecimalCell(cells[netAmount]) : null,
+      vatAmount: null,
+      grossAmount: null,
+    });
+  }
+  return output;
+}
+
+function markdownCells(line: string) {
+  return line.replace(/^\s*\||\|\s*$/g, "").split("|").map(cleanCell);
+}
+
+function cleanCell(value: string) {
+  return stripMarkdownFormatting(value).replace(/<br\s*\/?>/gi, " ").replace(/\s+/g, " ").trim();
+}
+
+function cleanDecimalCell(value: string) {
+  return cleanCell(value).replace(/%/g, "").match(/-?\d[\d.,\s]*/)?.[0]?.trim() ?? null;
+}
+
+function normalizeHeader(value: string) {
+  return cleanCell(value).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
 }
 
 function mergeMissingInvoiceFields(target: NormalizedInvoice, fallback: NormalizedInvoice) {

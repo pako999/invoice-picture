@@ -3,7 +3,6 @@ import { invoiceJsonSchema, normalizedInvoiceSchema, type NormalizedInvoice } fr
 import { normalizeInvoiceValues, validateInvoice } from "@/lib/invoice-intelligence/validation";
 import { reserveOcrProviderBudget } from "@/lib/invoice-intelligence/safety";
 import { getOcrUsageSummary, quotaPageError } from "@/lib/invoice-intelligence/quota";
-import { parseInvoiceTextDeterministically } from "@/lib/invoice-intelligence/providers";
 
 const OCR_ENDPOINT = "https://api.mistral.ai/v1/ocr";
 const CHAT_ENDPOINT = "https://api.mistral.ai/v1/chat/completions";
@@ -280,25 +279,9 @@ export async function extractBulkInvoice(markdown: string, ocrConfidence: number
     invoice.validationStatus = validation.status === "failed" ? "needs_review" : validation.status;
     return { invoice, validation, raw, provider: "mistral", model };
   } catch (error) {
-    const warning = "AI structured extraction was unavailable. Fields were recovered deterministically from OCR text and require review.";
-    console.warn(`[bulk-invoices] ${warning} ${error instanceof Error ? error.message : String(error)}`);
-    const invoice = normalizeInvoiceValues(parseInvoiceTextDeterministically(markdown));
-    invoice.confidence.overall = Math.min(invoice.confidence.overall ?? 0.55, ocrConfidence ?? 0.55, 0.55);
-    invoice.warnings.push(warning);
-    invoice.validationStatus = "needs_review";
-    const checked = validateInvoice(invoice);
-    const validation: ReturnType<typeof validateInvoice> = {
-      ...checked,
-      status: "needs_review",
-      warnings: [...checked.warnings, warning],
-    };
-    return {
-      invoice,
-      validation,
-      raw: { source: "deterministic_ocr_fallback", providerError: error instanceof Error ? error.message : String(error) },
-      provider: "deterministic",
-      model: "ocr-text-fallback-v1",
-    };
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(`[bulk-invoices] Mistral structured extraction is temporarily unavailable; invoice remains queued. ${message}`);
+    throw new Error(`Mistral OCR extraction is required and will be retried: ${message}`);
   }
 }
 
