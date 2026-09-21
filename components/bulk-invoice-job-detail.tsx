@@ -255,7 +255,9 @@ export function BulkInvoiceJobDetail({ id, locale }: { id: number; locale: Local
         )}
         {awaitingApprovalCount > 0 && (
           <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
-            {locale === "sl" ? `${awaitingApprovalCount} računov čaka na potrditev. Ko račun potrdite, bo samodejno dodan v vrsto in poslan ločeno.` : `${awaitingApprovalCount} invoices await approval. After approval, each is automatically queued and delivered separately.`}
+            {locale === "sl"
+              ? `${awaitingApprovalCount} računov čaka na potrditev. Pri vsakem računu kliknite »Preglej in potrdi«, preverite podatke in nato spodaj izberite »Potrdi račun«. Potrjeni račun bo samodejno dodan v vrsto in poslan ločeno.`
+              : `${awaitingApprovalCount} invoices await approval. Click “Review and confirm” for each invoice, verify the data, then select “Confirm invoice” at the bottom. Each approved invoice is automatically queued and delivered separately.`}
           </div>
         )}
         {failedDeliveryCount > 0 && (
@@ -399,7 +401,9 @@ export function BulkInvoiceJobDetail({ id, locale }: { id: number; locale: Local
                         href={`/invoice-review/${group.documentId}`}
                         className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700"
                       >
-                        {locale === "sl" ? "Odpri račun" : "Open invoice"}
+                        {group.documentStatus === "approved"
+                          ? (locale === "sl" ? "Odpri potrjen račun" : "Open approved invoice")
+                          : (locale === "sl" ? "Preglej in potrdi" : "Review and confirm")}
                       </Link>
                     ) : (
                       <span className="text-xs font-semibold text-slate-400">{locale === "sl" ? "V obdelavi…" : "Processing…"}</span>
