@@ -150,8 +150,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (document.bulkJobId != null && document.bulkGroupIndex != null && document.storageObjectKey) {
       await db.update(bulkInvoiceGroups).set({
         status: "reprocess",
-        deliveryStatus: "pending",
-        deliveryError: null,
         updatedAt: new Date(),
       }).where(and(
         eq(bulkInvoiceGroups.jobId, document.bulkJobId),
