@@ -23,6 +23,7 @@ import { normalizeInvoiceValues, validateInvoice } from "@/lib/invoice-intellige
 import { estimateSourcePages } from "@/lib/invoice-intelligence/safety";
 import { enqueueExistingPdfAsBulkJob } from "@/lib/bulk-invoices/enqueue-existing-pdf";
 import { BulkAdmissionError } from "@/lib/bulk-invoices/admission";
+import { queueInvoiceDelivery } from "@/lib/invoice-intelligence/delivery";
 
 const allowedPaths = new Set([
   "documentType", "documentLanguage", "supplier.name", "supplier.address", "supplier.postalCode", "supplier.city", "supplier.countryCode",
@@ -223,6 +224,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     approvedAt: approved ? new Date() : document.approvedAt,
     updatedAt: new Date(),
   }).where(eq(invoiceDocuments.id, documentId));
+  if (approved) await queueInvoiceDelivery(documentId);
   await db.insert(invoiceAuditLogs).values({ documentId, clerkUserId: userId, action: approved ? "approve" : "edit", metadataJson: JSON.stringify({ reason: approvalReason, changedFields: Object.keys(data.changes ?? {}) }) });
   return NextResponse.json({
     success: true,

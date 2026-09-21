@@ -8,14 +8,27 @@ export async function GET() {
   const rows = await sql`
     SELECT j."id",j."filename",j."byteSize",j."status",j."stage",j."pageCount",j."ocrNextPage",
            j."boundaryReviewRequired",j."totalInvoices",j."processedInvoices",j."lastError",j."createdAt",j."updatedAt",j."completedAt",
-           count(g."id") FILTER (WHERE g."deliveryStatus"='completed')::int AS "deliveredInvoices",
-           count(g."id") FILTER (WHERE g."deliveryStatus"='failed')::int AS "failedDeliveries",
-           count(g."id") FILTER (WHERE g."deliveryStatus"='pending')::int AS "pendingDeliveries",
-           count(g."id") FILTER (WHERE g."deliveryStatus"='not_required')::int AS "deliveryNotRequired"
+           COALESCE(s."mode",'email_ocr') AS "deliveryMode",
+           count(g."id") FILTER (WHERE
+             (COALESCE(s."mode",'email_ocr')='email_ocr' AND g."deliveryStatus"='completed') OR
+             (COALESCE(s."mode",'email_ocr') IN ('xml_email','api_json') AND dj."status"='completed')
+           )::int AS "deliveredInvoices",
+           count(g."id") FILTER (WHERE
+             (COALESCE(s."mode",'email_ocr')='email_ocr' AND g."deliveryStatus"='failed') OR
+             (COALESCE(s."mode",'email_ocr') IN ('xml_email','api_json') AND dj."status"='failed')
+           )::int AS "failedDeliveries",
+           count(g."id") FILTER (WHERE
+             (COALESCE(s."mode",'email_ocr')='email_ocr' AND g."deliveryStatus"='pending') OR
+             (COALESCE(s."mode",'email_ocr') IN ('xml_email','api_json') AND d."status"='approved' AND COALESCE(dj."status",'queued') IN ('queued','processing'))
+           )::int AS "pendingDeliveries",
+           count(g."id") FILTER (WHERE COALESCE(s."mode",'email_ocr') IN ('xml_email','api_json') AND d."status" IS DISTINCT FROM 'approved')::int AS "awaitingApproval"
     FROM "bulkInvoiceJobs" j
     LEFT JOIN "bulkInvoiceGroups" g ON g."jobId"=j."id"
+    LEFT JOIN "invoiceDocuments" d ON d."id"=g."documentId"
+    LEFT JOIN "invoiceDeliveryJobs" dj ON dj."documentId"=d."id"
+    LEFT JOIN "companyDeliverySettings" s ON s."companyId"=j."companyId" AND s."clerkUserId"=j."clerkUserId"
     WHERE j."clerkUserId"=${userId}
-    GROUP BY j."id"
+    GROUP BY j."id",s."mode"
     ORDER BY j."createdAt" DESC LIMIT 100
   `;
   return NextResponse.json({ jobs: rows }, { headers: { "Cache-Control": "no-store" } });

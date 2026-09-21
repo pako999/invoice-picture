@@ -16,10 +16,11 @@ type BulkJob = {
   boundaryReviewRequired: boolean;
   totalInvoices: number;
   processedInvoices: number;
+  deliveryMode: "email_ocr" | "xml_email" | "api_json";
   deliveredInvoices: number;
   failedDeliveries: number;
   pendingDeliveries: number;
-  deliveryNotRequired: number;
+  awaitingApproval: number;
   lastError: string | null;
   createdAt: string;
   updatedAt: string;
@@ -146,19 +147,22 @@ export function BulkInvoiceJobList({ locale }: { locale: Locale }) {
                   <Stat label={locale === "sl" ? "Najdeni računi" : "Invoices found"} value={job.totalInvoices || "—"} />
                   <Stat label={locale === "sl" ? "Obdelano" : "Processed"} value={job.processedInvoices} />
                   <Stat
-                    label={locale === "sl" ? "E-pošta" : "Email"}
-                    value={job.deliveryNotRequired > 0
-                      ? (locale === "sl" ? "API/XML" : "API/XML")
-                      : `${job.deliveredInvoices}/${job.totalInvoices || "—"}`}
+                    label={job.deliveryMode === "api_json" ? "API" : job.deliveryMode === "xml_email" ? "XML e-mail" : (locale === "sl" ? "E-pošta" : "Email")}
+                    value={`${job.deliveredInvoices}/${job.totalInvoices || "—"}`}
                   />
                   <Stat label={locale === "sl" ? "Napredek" : "Progress"} value={progress == null ? "—" : `${progress}%`} />
                 </div>
 
-                {done && job.deliveredInvoices > 0 && (
+                {job.deliveredInvoices > 0 && (
                   <div className="mt-3 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300">
+                    {deliveryMessage(job, locale)}
+                  </div>
+                )}
+                {job.awaitingApproval > 0 && (
+                  <div className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900 dark:bg-amber-950/30 dark:text-amber-300">
                     {locale === "sl"
-                      ? `${job.deliveredInvoices} računov je bilo poslanih v ${job.deliveredInvoices} ločenih e-poštnih sporočilih.`
-                      : `${job.deliveredInvoices} invoices were sent in ${job.deliveredInvoices} separate email messages.`}
+                      ? `${job.awaitingApproval} računov čaka na potrditev. Po potrditvi bo vsak poslan ločeno.`
+                      : `${job.awaitingApproval} invoices await approval. Each will be delivered separately after approval.`}
                   </div>
                 )}
 
@@ -184,6 +188,16 @@ function progressFor(job: BulkJob) {
   if (job.stage === "split") return 75;
   if (job.stage === "boundary_review") return 70;
   return 5;
+}
+
+function deliveryMessage(job: BulkJob, locale: Locale) {
+  if (job.deliveryMode === "api_json") {
+    return locale === "sl" ? `${job.deliveredInvoices} računov je bilo ločeno poslanih v API.` : `${job.deliveredInvoices} invoices were delivered separately to the API.`;
+  }
+  if (job.deliveryMode === "xml_email") {
+    return locale === "sl" ? `${job.deliveredInvoices} potrjenih računov je bilo poslanih v ${job.deliveredInvoices} ločenih XML e-poštnih sporočilih.` : `${job.deliveredInvoices} approved invoices were sent in ${job.deliveredInvoices} separate XML emails.`;
+  }
+  return locale === "sl" ? `${job.deliveredInvoices} računov je bilo poslanih v ${job.deliveredInvoices} ločenih e-poštnih sporočilih.` : `${job.deliveredInvoices} invoices were sent in ${job.deliveredInvoices} separate email messages.`;
 }
 
 function Stat({ label, value }: { label: string; value: string | number }) {

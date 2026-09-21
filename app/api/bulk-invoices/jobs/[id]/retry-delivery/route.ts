@@ -18,12 +18,19 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
     WHERE "jobId"=${jobId} AND "deliveryStatus"='failed' AND "documentId" IS NOT NULL
     RETURNING "id"
   `;
-  if (!retried.length) return NextResponse.json({ error: "No failed email deliveries to retry" }, { status: 409 });
+  const structuredRetried = await sql`
+    UPDATE "invoiceDeliveryJobs" dj
+    SET "status"='queued',"attempts"=0,"availableAt"=now(),"lockedAt"=NULL,"lastError"=NULL,"updatedAt"=now()
+    FROM "invoiceDocuments" d
+    WHERE dj."documentId"=d."id" AND d."bulkJobId"=${jobId} AND dj."status"='failed'
+    RETURNING dj."id"
+  `;
+  if (!retried.length && !structuredRetried.length) return NextResponse.json({ error: "No failed deliveries to retry" }, { status: 409 });
 
-  await sql`
+  if (retried.length) await sql`
     UPDATE "bulkInvoiceJobs"
     SET "status"='processing',"stage"='extract',"lockedAt"=NULL,"lastError"=NULL,"completedAt"=NULL,"updatedAt"=now()
     WHERE "id"=${jobId}
   `;
-  return NextResponse.json({ success: true, retried: retried.length });
+  return NextResponse.json({ success: true, retried: retried.length + structuredRetried.length });
 }

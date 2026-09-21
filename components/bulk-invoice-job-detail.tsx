@@ -27,6 +27,8 @@ type Group = {
   validationStatus: string | null;
   overallConfidenceBps: number | null;
   documentFilename: string | null;
+  structuredDeliveryStatus: string | null;
+  structuredDeliveryError: string | null;
 };
 
 type Job = {
@@ -46,6 +48,7 @@ type Job = {
   createdAt: string;
   updatedAt: string;
   completedAt: string | null;
+  deliveryMode: "email_ocr" | "xml_email" | "api_json";
 };
 
 export function BulkInvoiceJobDetail({ id, locale }: { id: number; locale: Locale }) {
@@ -118,6 +121,8 @@ export function BulkInvoiceJobDetail({ id, locale }: { id: number; locale: Local
       validationStatus: null,
       overallConfidenceBps: null,
       documentFilename: null,
+      structuredDeliveryStatus: null,
+      structuredDeliveryError: null,
     });
   }, [groups, job]);
 
@@ -204,9 +209,10 @@ export function BulkInvoiceJobDetail({ id, locale }: { id: number; locale: Local
     return <div className="mx-auto max-w-6xl px-4 py-10 text-slate-500">{message || "…"}</div>;
   }
 
-  const deliveredCount = groups.filter((group) => group.deliveryStatus === "completed").length;
-  const failedDeliveryCount = groups.filter((group) => group.deliveryStatus === "failed").length;
-  const notRequiredCount = groups.filter((group) => group.deliveryStatus === "not_required").length;
+  const structuredDelivery = job.deliveryMode !== "email_ocr";
+  const deliveredCount = groups.filter((group) => structuredDelivery ? group.structuredDeliveryStatus === "completed" : group.deliveryStatus === "completed").length;
+  const failedDeliveryCount = groups.filter((group) => structuredDelivery ? group.structuredDeliveryStatus === "failed" : group.deliveryStatus === "failed").length;
+  const awaitingApprovalCount = groups.filter((group) => structuredDelivery && group.documentStatus !== "approved").length;
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10">
@@ -240,14 +246,16 @@ export function BulkInvoiceJobDetail({ id, locale }: { id: number; locale: Local
 
         {job.stage === "completed" && deliveredCount > 0 && (
           <div className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-200">
-            {locale === "sl"
-              ? `✓ ${deliveredCount} računov je bilo poslanih na nastavljeni e-mail kot ${deliveredCount} ločenih sporočil.`
-              : `✓ ${deliveredCount} invoices were sent to the configured email as ${deliveredCount} separate messages.`}
+            {job.deliveryMode === "api_json"
+              ? (locale === "sl" ? `✓ ${deliveredCount} računov je bilo ločeno poslanih v API.` : `✓ ${deliveredCount} invoices were delivered separately to the API.`)
+              : job.deliveryMode === "xml_email"
+                ? (locale === "sl" ? `✓ ${deliveredCount} potrjenih računov je bilo poslanih kot ${deliveredCount} ločenih XML e-poštnih sporočil.` : `✓ ${deliveredCount} approved invoices were sent as ${deliveredCount} separate XML emails.`)
+                : (locale === "sl" ? `✓ ${deliveredCount} računov je bilo poslanih na nastavljeni e-mail kot ${deliveredCount} ločenih sporočil.` : `✓ ${deliveredCount} invoices were sent to the configured email as ${deliveredCount} separate messages.`)}
           </div>
         )}
-        {job.stage === "completed" && notRequiredCount > 0 && (
-          <div className="mt-5 rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-200">
-            {locale === "sl" ? "Dostava je nastavljena na API/XML, zato e-pošta z originalnimi PDF-ji ni potrebna." : "Delivery is configured for API/XML, so original PDF email delivery is not required."}
+        {awaitingApprovalCount > 0 && (
+          <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200">
+            {locale === "sl" ? `${awaitingApprovalCount} računov čaka na potrditev. Ko račun potrdite, bo samodejno dodan v vrsto in poslan ločeno.` : `${awaitingApprovalCount} invoices await approval. After approval, each is automatically queued and delivered separately.`}
           </div>
         )}
         {failedDeliveryCount > 0 && (
@@ -369,10 +377,11 @@ export function BulkInvoiceJobDetail({ id, locale }: { id: number; locale: Local
                       {locale === "sl" ? "Račun" : "Invoice"} {group.groupIndex + 1} · {locale === "sl" ? "strani" : "pages"} {group.startPage + 1}–{group.endPage + 1}
                     </div>
                     <div className="mt-1 text-xs text-slate-500">
-                      {group.documentStatus ?? group.status} · {group.deliveryStatus}
+                      {group.documentStatus ?? group.status} · {structuredDelivery ? (group.structuredDeliveryStatus ?? (group.documentStatus === "approved" ? "queued" : "awaiting approval")) : group.deliveryStatus}
                       {group.overallConfidenceBps != null ? ` · ${Math.round(group.overallConfidenceBps / 100)}%` : ""}
                     </div>
                     {group.deliveryError && <div className="mt-1 text-xs text-red-600">{group.deliveryError}</div>}
+                    {group.structuredDeliveryError && <div className="mt-1 text-xs text-red-600">{group.structuredDeliveryError}</div>}
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {(group.documentId || group.hasPreview) && (

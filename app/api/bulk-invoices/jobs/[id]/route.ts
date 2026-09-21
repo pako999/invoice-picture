@@ -8,7 +8,8 @@ export async function GET(_req: Request,{params}:{params:Promise<{id:string}>}) 
   const sql=bulkSql();
   const jobs=await sql`
     SELECT "id","filename","byteSize","status","stage","pageCount","ocrNextPage","classifyCursor","rangesJson",
-           "boundaryReviewRequired","totalInvoices","processedInvoices","lastError","createdAt","updatedAt","completedAt"
+           "boundaryReviewRequired","totalInvoices","processedInvoices","lastError","createdAt","updatedAt","completedAt",
+           COALESCE((SELECT s."mode" FROM "companyDeliverySettings" s WHERE s."companyId"="bulkInvoiceJobs"."companyId" AND s."clerkUserId"="bulkInvoiceJobs"."clerkUserId" LIMIT 1),'email_ocr') AS "deliveryMode"
     FROM "bulkInvoiceJobs" WHERE "id"=${id} AND "clerkUserId"=${userId} LIMIT 1
   `;
   if(!jobs.length)return NextResponse.json({error:"Not found"},{status:404});
@@ -16,8 +17,11 @@ export async function GET(_req: Request,{params}:{params:Promise<{id:string}>}) 
     SELECT g."groupIndex",g."startPage",g."endPage",g."boundaryConfidenceBps",g."needsBoundaryReview",
            g."status",g."deliveryStatus",g."deliveryError",g."documentId",
            (g."objectKey" IS NOT NULL) AS "hasPreview",
-           d."status" AS "documentStatus",d."validationStatus",d."overallConfidenceBps",d."filename" AS "documentFilename"
-    FROM "bulkInvoiceGroups" g LEFT JOIN "invoiceDocuments" d ON d."id"=g."documentId"
+           d."status" AS "documentStatus",d."validationStatus",d."overallConfidenceBps",d."filename" AS "documentFilename",
+           dj."status" AS "structuredDeliveryStatus",dj."lastError" AS "structuredDeliveryError"
+    FROM "bulkInvoiceGroups" g
+    LEFT JOIN "invoiceDocuments" d ON d."id"=g."documentId"
+    LEFT JOIN "invoiceDeliveryJobs" dj ON dj."documentId"=d."id"
     WHERE g."jobId"=${id} ORDER BY g."groupIndex"
   `;
   const job:any=jobs[0];
