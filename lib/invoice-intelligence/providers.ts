@@ -245,7 +245,8 @@ export function parseInvoiceTextDeterministically(text: string): NormalizedInvoi
   const lines = text.split(/\r?\n/).map((x) => x.trim()).filter(Boolean);
   const isQuote = /sales\s+quote|quotation|\bquote\b|\boffer\b|estimate|ponudba|predračun|predracun|proforma/i.test(text);
   invoice.documentType = /credit note|dobropis|gutschrift/i.test(text) ? "credit_note" : isQuote ? "proforma" : "invoice";
-  invoice.invoiceNumber = match(text, /(?:sales\s+quote|quotation|quote|offer|estimate|ponudba|predračun|predracun|proforma|invoice|račun|racun|rechnung|fattura)(?:\s*(?:no\.?|nr\.?|št\.?|st\.?|number))?\s*[:#]?\s*([A-Z0-9][A-Z0-9\-_/]{2,})/i);
+  invoice.invoiceNumber = match(text, /(?:invoice\s*(?:number|no\.?|#)|receipt\s*(?:number|no\.?|#)|predra[čc]un\s*(?:[šs]t(?:evilka)?\.?|st\.?|#)?|ra[čc]un\s*(?:[šs]t(?:evilka)?\.?|st\.?|#)|[šs]t\.?\s*ra[čc]una|[šs]tevilka\s+fakture)\s*:?\s*([A-Z0-9][A-Z0-9.\-_/]{2,})/i)
+    ?? match(text, /(?:sales\s+quote|quotation|quote|offer|estimate|ponudba|proforma|rechnung|fattura)\s*(?:no\.?|nr\.?|[šs]t\.?|number|[:#])\s*([A-Z0-9][A-Z0-9.\-_/]{2,})/i);
   invoice.purchaseOrderNumber = match(text, /(?:purchase\s+order|order\s+no\.?|naročilnica|narocilnica|ref\.?\s*sales\s*order)\s*[:#]?\s*([A-Z0-9][A-Z0-9\-_/]{1,})/i);
   invoice.issueDate = match(text, /(?:issue date|document date|quote date|datum izdaje|datum računa|datum racuna|datum dokumenta|rechnungsdatum|data fattura|city,\s*document date)\s*[:]?\s*(\d{1,4}[./-]\d{1,2}[./-]\d{1,4})/i);
   invoice.serviceDate = match(text, /(?:service date|delivery\/performance date|performance date|delivery date|datum storitve|datum dobave)\s*[:]?\s*(\d{1,4}[./-]\d{1,2}[./-]\d{1,4})/i);
@@ -258,14 +259,18 @@ export function parseInvoiceTextDeterministically(text: string): NormalizedInvoi
   invoice.supplier.bic = match(text, /(?:SWIFT\/BIC|BIC)\s*[:#]?\s*([A-Z0-9]{8,11})/i)?.toUpperCase() ?? null;
   invoice.paymentReference = match(text, /(?:payment ref(?:erence)?|sklic)\s*[:#]?\s*([A-Z0-9][A-Z0-9\s\-_/]{2,})/i);
   invoice.paymentTerms = match(text, /(?:method of payment|payment terms|način plačila|nacin placila)\s*[:#]?\s*([^\n|]{3,80})/i);
-  invoice.totals.grossAmount = match(text, /(?:total amount(?:\s+EUR)?|total\s+amount\s+due|total|skupaj|za plačilo|za placilo|gesamt|totale)[^\d\-]{0,30}(-?[\d.,]+)\s*(?:EUR|€)?/i);
+  invoice.totals.amountDue = match(text, /(?:amount\s+due|za\s+plačilo|za\s+placilo|skupaj\s*\(\s*z\s+ddv\s*\)|total\s+in\s+(?:EUR|USD|GBP))[^\d\-]{0,30}(-?[\d.,]+)\s*(?:EUR|USD|GBP|€|\$|£)?/i)
+    ?? match(text, /(?:[$€£]\s*)(-?[\d.,]+)\s*(?:USD|EUR|GBP)?\s*(?:due|paid)/i);
+  invoice.totals.grossAmount = invoice.totals.amountDue
+    ?? match(text, /(?:total\s+amount(?:\s+(?:EUR|USD|GBP))?|total\s+amount\s+due|grand\s+total|gesamt|totale)[^\d\-]{0,30}(-?[\d.,]+)\s*(?:EUR|USD|GBP|€|\$|£)?/i);
   invoice.totals.vatAmount = match(text, /(?:VAT(?:\s+amount)?|DDV|MwSt|IVA)[^\d\-]{0,25}(-?[\d.,]+)/i);
   invoice.totals.netAmount = match(text, /(?:net amount|net total|osnova|neto|netto|imponibile)[^\d\-]{0,25}(-?[\d.,]+)/i);
   invoice.totals.discountAmount = match(text, /(?:discount|popust)[^\d\-]{0,25}(-?[\d.,]+)/i);
-  invoice.totals.amountDue = invoice.totals.grossAmount;
+  invoice.totals.amountDue ??= invoice.totals.grossAmount;
+  const supplierLines = lines.filter((line) => !/^(?:---\s*PAGE\s+\d+\s*---|!\[|\[.+\]\(.+\)|#+\s*(?:invoice|receipt|ra[čc]un|predra[čc]un)|(?:invoice|receipt)\s+(?:number|no\.?|#))/i.test(line));
   invoice.supplier.name = match(text, /(?:company|seller|supplier|dobavitelj)\s*[:#]?\s*([^\n|]{3,120})/i)
     ?? lines.find((line) => /\b(d\.?o\.?o\.?|s\.?p\.?)\b/i.test(line) && line.length <= 120)
-    ?? lines.find((line) => line.length >= 3 && line.length <= 100 && !/invoice|račun|racun|rechnung|fattura|quote|quotation|offer|ponudba|predračun|predracun/i.test(line))
+    ?? supplierLines.find((line) => line.length >= 3 && line.length <= 100 && !/invoice|račun|racun|rechnung|fattura|quote|quotation|offer|ponudba|predračun|predracun/i.test(line))
     ?? null;
   invoice.buyer.name = match(text, /(?:buyer|customer|recipient|kupec|prejemnik)\s*[:#]?\s*([^\n|]{3,120})/i);
   if (isQuote) invoice.warnings.push("Quotation/proforma document requires manual review before delivery.");

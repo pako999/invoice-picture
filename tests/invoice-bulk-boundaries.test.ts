@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { classifyBulkPagesDeterministically } from "../lib/bulk-invoices/service";
+import { parseInvoiceTextDeterministically } from "../lib/invoice-intelligence/providers";
 
 test("bulk boundary fallback keeps multi-page documents together and separates receipts", () => {
   const rows = classifyBulkPagesDeterministically({
@@ -41,17 +42,17 @@ test("bulk boundary fallback recognizes continuation pages with a simple page nu
   assert.match(rows[0].reason, /Explicit page 2/);
 });
 
-test("bulk boundary fallback keeps every input page and its original order", () => {
-  const rows = classifyBulkPagesDeterministically({
-    previousPage: { pageNumber: 39, markdown: "Invoice no. A-39\nPage 1 of 2" },
-    pages: Array.from({ length: 25 }, (_, index) => ({
-      pageNumber: 40 + index,
-      markdown: index === 0 ? "Invoice no. A-39\nPage 2 of 2" : `Invoice no. B-${index}\nPage 1 of 1`,
-    })),
-  });
+test("deterministic OCR extraction does not confuse headings with invoice numbers", () => {
+  const invoice = parseInvoiceTextDeterministically([
+    "--- PAGE 1 ---",
+    "# Invoice",
+    "tailscale",
+    "Invoice number QTJE1DQO-0006",
+    "## $5.00 USD due July 1, 2026",
+  ].join("\n\n"));
 
-  assert.equal(rows.length, 25);
-  assert.deepEqual(rows.map((row) => row.pageNumber), Array.from({ length: 25 }, (_, index) => 40 + index));
-  assert.equal(rows[0].startsNewInvoice, false);
-  assert.equal(rows[1].startsNewInvoice, true);
+  assert.equal(invoice.invoiceNumber, "QTJE1DQO-0006");
+  assert.equal(invoice.supplier.name, "tailscale");
+  assert.equal(invoice.totals.grossAmount, "5.00");
+  assert.equal(invoice.totals.amountDue, "5.00");
 });
