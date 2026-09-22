@@ -1,9 +1,14 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { getDb } from "@/lib/db";
 import { invoices } from "@/lib/schema";
-import { desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { z } from "zod";
 import { backfillInvoiceCompanyIds } from "@/lib/backfill-invoice-company";
+
+const bulkDeleteSchema = z.object({
+  ids: z.array(z.number().int().positive()).min(1).max(100),
+});
 
 export async function GET() {
   const { userId } = await auth();
@@ -39,5 +44,30 @@ export async function GET() {
     return NextResponse.json(rows);
   } catch {
     return NextResponse.json([]);
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  const { userId } = await auth();
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  try {
+    const body = bulkDeleteSchema.parse(await req.json());
+    const ids = [...new Set(body.ids)];
+    const db = getDb();
+    const deleted = await db
+      .delete(invoices)
+      .where(and(eq(invoices.clerkUserId, userId), inArray(invoices.id, ids)))
+      .returning({ id: invoices.id });
+
+    return NextResponse.json({ success: true, deleted: deleted.length });
+  } catch (error) {
+    if (error instanceof z.ZodError || error instanceof SyntaxError) {
+      return NextResponse.json(
+        { error: "Invalid invoice selection. Choose between 1 and 100 invoices." },
+        { status: 400 },
+      );
+    }
+    return NextResponse.json({ error: "Failed to delete invoices." }, { status: 500 });
   }
 }
