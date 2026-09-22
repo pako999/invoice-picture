@@ -23,7 +23,19 @@ export async function POST(req:Request){
  }catch(error){
   const msg=error instanceof Error?error.message:String(error);
   const quotaReached=error instanceof OcrCommercialQuotaError;
+  if(!quotaReached&&(/\b429\b|rate limit/i.test(msg))){
+   const previous=await sql`SELECT "lastError" FROM "bulkInvoiceJobs" WHERE "id"=${data.jobId} LIMIT 1`;
+   const rateLimitAttempt=nextRateLimitAttempt(previous[0]?.lastError);
+   const exhausted=rateLimitAttempt>=3;
+   const storedError=`[rate-limit:${rateLimitAttempt}] ${msg}`.slice(0,2000);
+   await sql`UPDATE "bulkInvoiceJobs" SET "status"=${exhausted?'failed':'processing'},"stage"=${exhausted?'failed':'ocr'},"lockedAt"=NULL,"lastError"=${storedError},"completedAt"=${exhausted?new Date():null},"updatedAt"=now() WHERE "id"=${data.jobId}`;
+   return NextResponse.json({error:exhausted?"OCR provider is temporarily unavailable. Retry the PDF package later.":msg,code:"ocr_rate_limited",retrying:!exhausted},{status:exhausted?503:429});
+  }
   await sql`UPDATE "bulkInvoiceJobs" SET "stage"=${quotaReached?'quota_wait':'ocr'},"lockedAt"=NULL,"lastError"=${msg.slice(0,2000)},"updatedAt"=now() WHERE "id"=${data.jobId}`;
   const status=quotaReached?402:500;return NextResponse.json({error:msg},{status});
  }
+}
+function nextRateLimitAttempt(lastError: unknown) {
+ const match=String(lastError??"").match(/^\[rate-limit:(\d+)\]/);
+ return Number(match?.[1]??0)+1;
 }
