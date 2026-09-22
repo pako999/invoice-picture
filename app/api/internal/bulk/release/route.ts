@@ -16,7 +16,10 @@ export async function POST(req: Request) {
   const sql = bulkSql();
   const rows = await sql`
     UPDATE "bulkInvoiceJobs"
-    SET "lockedAt"=NULL,"lastError"=${data.error},"updatedAt"=now()
+    SET "lockedAt"=NULL,"lastError"=CASE
+      WHEN "lastError" LIKE '[rate-limit:%' THEN "lastError"
+      ELSE ${data.error}
+    END,"updatedAt"=now()
     WHERE "id"=${data.jobId} AND "status"='processing'
     RETURNING "id"
   `;
