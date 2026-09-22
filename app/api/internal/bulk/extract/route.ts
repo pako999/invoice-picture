@@ -98,8 +98,12 @@ export async function POST(req:Request){
  }catch(error){
   const msg=error instanceof Error?error.message:String(error);
   if(/\b429\b|rate limit/i.test(msg)){
-   await sql`UPDATE "bulkInvoiceJobs" SET "lockedAt"=NULL,"lastError"=NULL,"updatedAt"=now() WHERE "id"=${data.jobId}`;
-   return NextResponse.json({success:true,retrying:true,reason:"mistral_rate_limit"});
+   const previous=await sql`SELECT "lastError" FROM "bulkInvoiceJobs" WHERE "id"=${data.jobId} LIMIT 1`;
+   const rateLimitAttempt=nextRateLimitAttempt(previous[0]?.lastError);
+   const exhausted=rateLimitAttempt>=3;
+   const storedError=`[rate-limit:${rateLimitAttempt}] ${msg}`.slice(0,2000);
+   await sql`UPDATE "bulkInvoiceJobs" SET "status"=${exhausted?'failed':'processing'},"stage"=${exhausted?'failed':'extract'},"lockedAt"=NULL,"lastError"=${storedError},"completedAt"=${exhausted?new Date():null},"updatedAt"=now() WHERE "id"=${data.jobId}`;
+   return NextResponse.json({error:exhausted?"OCR provider is temporarily unavailable. Retry the PDF package later.":msg,code:"ocr_rate_limited",retrying:!exhausted},{status:exhausted?503:429});
   }
   await sql`UPDATE "bulkInvoiceJobs" SET "lockedAt"=NULL,"lastError"=${msg.slice(0,2000)},"updatedAt"=now() WHERE "id"=${data.jobId}`;
   return NextResponse.json({error:msg},{status:500});
@@ -108,3 +112,7 @@ export async function POST(req:Request){
 function childFilename(filename:string,index:number){const base=filename.replace(/\.pdf$/i,"").slice(0,180);return `${base}-racun-${String(index+1).padStart(3,"0")}.pdf`;}
 function canAutoApprove(invoice:any,status:string,confidence:number|null,boundaryReview:boolean){const t=Number(process.env.INVOICE_CONFIDENCE_THRESHOLD??0.92);return !boundaryReview&&status==="valid"&&(confidence??0)>=t&&Boolean(invoice.supplier?.name&&invoice.invoiceNumber&&invoice.issueDate&&invoice.currency&&invoice.totals?.netAmount&&invoice.totals?.vatAmount&&invoice.totals?.grossAmount);}
 async function complete(sql:any,jobId:number,total:number){await sql`UPDATE "bulkInvoiceJobs" SET "status"='completed',"stage"='completed',"processedInvoices"=${total},"lockedAt"=NULL,"lastError"=NULL,"completedAt"=now(),"updatedAt"=now() WHERE "id"=${jobId}`;}
+function nextRateLimitAttempt(lastError: unknown) {
+ const match=String(lastError??"").match(/^\[rate-limit:(\d+)\]/);
+ return Number(match?.[1]??0)+1;
+}
