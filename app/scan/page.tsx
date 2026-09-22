@@ -22,6 +22,12 @@ const MAX_BATCH_FILES = 500;
 const MAX_IMAGE_FILE_SIZE = 10 * 1024 * 1024;
 const MAX_PDF_FILE_SIZE = 200 * 1024 * 1024;
 
+async function pdfPageCount(file: File): Promise<number> {
+  const { PDFDocument } = await import("pdf-lib");
+  const pdf = await PDFDocument.load(await file.arrayBuffer(), { updateMetadata: false });
+  return pdf.getPageCount();
+}
+
 function readFileAsBase64(file: File): Promise<{ base64: string; mime: string }> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -209,6 +215,7 @@ export default function ScanPage() {
     const failed: SelectedFile[] = [];
     let sent = 0;
     let queued = 0;
+    let lastFailureMessage = "";
 
     for (let index = 0; index < files.length; index += 1) {
       const selected = files[index];
@@ -219,12 +226,31 @@ export default function ScanPage() {
         let json: Record<string, any>;
 
         if (selected.file.type === "application/pdf") {
-          const queuedPdf = await queuePdfUpload(selected.file, {
-            subject: subject || "Račun",
-            ...(selectedCompanyId ? { companyId: selectedCompanyId } : {}),
-          });
-          responseStatus = queuedPdf.status;
-          json = queuedPdf.json;
+          const pages = await pdfPageCount(selected.file);
+          if (pages === 1 && selected.file.size <= MAX_IMAGE_FILE_SIZE) {
+            const encoded = await readFileAsBase64(selected.file);
+            const body: Record<string, unknown> = {
+              subject: subject || "Račun",
+              imageBase64: encoded.base64,
+              filename: selected.file.name,
+              mime: "application/pdf",
+            };
+            if (selectedCompanyId) body.companyId = selectedCompanyId;
+            const res = await fetch("/api/send", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(body),
+            });
+            responseStatus = res.status;
+            json = await res.json();
+          } else {
+            const queuedPdf = await queuePdfUpload(selected.file, {
+              subject: subject || "Račun",
+              ...(selectedCompanyId ? { companyId: selectedCompanyId } : {}),
+            });
+            responseStatus = queuedPdf.status;
+            json = queuedPdf.json;
+          }
         } else {
           const encoded = await compressImage(selected.file);
           const body: Record<string, unknown> = {
@@ -272,7 +298,7 @@ export default function ScanPage() {
         URL.revokeObjectURL(selected.url);
       } catch (err) {
         failed.push(selected);
-        setErrMsg(err instanceof Error ? err.message : "Napaka pri pošiljanju");
+        lastFailureMessage = err instanceof Error ? err.message : "Napaka pri pošiljanju";
       }
     }
 
@@ -281,7 +307,9 @@ export default function ScanPage() {
     setSendProgress({ current: 0, total: 0 });
     setStatus(failed.length === 0 ? "ok" : "err");
     if (failed.length === 0) setSubject("Račun");
-    else setErrMsg(`${sent + queued} dokumentov sprejetih, ${failed.length} neuspešnih. Poskusite znova.`);
+    else setErrMsg(lastFailureMessage
+      ? `${sent + queued} dokumentov sprejetih, ${failed.length} neuspešnih. Razlog: ${lastFailureMessage}`
+      : `${sent + queued} dokumentov sprejetih, ${failed.length} neuspešnih. Poskusite znova.`);
 
     fetch("/api/subscription").then(r => r.ok ? r.json() : null).then(sub => {
       if (sub) setSubStatus({ isFree: sub.isFree, monthlyUsage: sub.monthlyUsage, monthlyLimit: sub.monthlyLimit });
