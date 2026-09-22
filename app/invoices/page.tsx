@@ -161,11 +161,74 @@ function PreviewModal({ inv, onClose, onRestore }: {
 // sent via the user's default email (companyId is null)
 type CompanyFilter = "all" | "default" | number;
 
+function BulkDeleteDialog({
+  count,
+  deleting,
+  error,
+  onCancel,
+  onConfirm,
+}: {
+  count: number;
+  deleting: boolean;
+  error: string;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 p-4" role="presentation">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="bulk-delete-title"
+        className="w-full max-w-lg rounded-2xl border-2 border-red-500 bg-white p-6 shadow-2xl dark:bg-slate-900"
+      >
+        <div className="mb-4 flex items-start gap-3">
+          <span className="text-3xl" aria-hidden="true">🚩</span>
+          <div>
+            <h2 id="bulk-delete-title" className="text-xl font-extrabold text-red-700 dark:text-red-400">
+              Trajno izbriši izbrane račune?
+            </h2>
+            <p className="mt-1 text-sm text-gray-600 dark:text-slate-300">
+              Izbranih je {count} {count === 1 ? "račun" : "računov"}.
+            </p>
+          </div>
+        </div>
+        <div className="rounded-xl border border-red-300 bg-red-50 p-4 text-sm font-semibold text-red-800 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300">
+          Vsi izbrani računi in njihovi shranjeni predogledi v arhivu bodo trajno odstranjeni. Dejanja ni mogoče razveljaviti.
+        </div>
+        {error ? <p className="mt-3 text-sm font-semibold text-red-600">{error}</p> : null}
+        <div className="mt-6 flex justify-end gap-3">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={deleting}
+            className="rounded-xl border border-gray-300 px-4 py-2 font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800"
+          >
+            Prekliči
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={deleting}
+            className="rounded-xl bg-red-600 px-4 py-2 font-bold text-white hover:bg-red-700 disabled:opacity-50"
+          >
+            {deleting ? "Brišem..." : `Trajno izbriši (${count})`}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function InvoicesPage() {
   const [list, setList] = useState<Invoice[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState<number | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(() => new Set());
+  const [showBulkDelete, setShowBulkDelete] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [bulkDeleteError, setBulkDeleteError] = useState("");
   const [preview, setPreview] = useState<ArchivedInvoice | null>(null);
   const [details, setDetails] = useState<Record<number, ArchivedInvoice>>({});
   const [detailLoading, setDetailLoading] = useState<Set<number>>(new Set());
@@ -254,6 +317,11 @@ export default function InvoicesPage() {
     setDeleting(id);
     await fetch(`/api/invoices/${id}`, { method: "DELETE" });
     setList((prev) => prev.filter((i) => i.id !== id));
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      next.delete(id);
+      return next;
+    });
     setDeleting(null);
   }
 
@@ -293,6 +361,57 @@ export default function InvoicesPage() {
       return true;
     });
   }, [list, companyFilter, filter, customFrom, customTo]);
+
+  const allVisibleSelected = filtered.length > 0 && filtered.every((invoice) => selectedIds.has(invoice.id));
+
+  function toggleInvoiceSelection(id: number) {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleAllVisible() {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (allVisibleSelected) filtered.forEach((invoice) => next.delete(invoice.id));
+      else filtered.forEach((invoice) => next.add(invoice.id));
+      return next;
+    });
+  }
+
+  async function handleBulkDelete() {
+    const ids = [...selectedIds];
+    if (ids.length === 0) return;
+
+    setBulkDeleting(true);
+    setBulkDeleteError("");
+    try {
+      const response = await fetch("/api/invoices", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids }),
+      });
+      if (!response.ok) throw new Error("bulk-delete-failed");
+
+      const deletedIds = new Set(ids);
+      setList((current) => current.filter((invoice) => !deletedIds.has(invoice.id)));
+      setDetails((current) => {
+        const next = { ...current };
+        deletedIds.forEach((id) => { delete next[id]; });
+        return next;
+      });
+      setPreview((current) => current && deletedIds.has(current.id) ? null : current);
+      setSelectedIds(new Set());
+      setShowBulkDelete(false);
+    } catch {
+      setBulkDeleteError("Računov ni bilo mogoče izbrisati. Poskusi znova.");
+    } finally {
+      setBulkDeleting(false);
+    }
+  }
 
   const sent = filtered.filter((i) => i.status === "sent").length;
   const failed = filtered.filter((i) => i.status === "failed").length;
@@ -338,6 +457,19 @@ export default function InvoicesPage() {
           onRestore={(file) => restorePreview(preview, file)}
         />
       )}
+
+      {showBulkDelete ? (
+        <BulkDeleteDialog
+          count={selectedIds.size}
+          deleting={bulkDeleting}
+          error={bulkDeleteError}
+          onCancel={() => {
+            setShowBulkDelete(false);
+            setBulkDeleteError("");
+          }}
+          onConfirm={() => { void handleBulkDelete(); }}
+        />
+      ) : null}
 
       <div className="flex items-center justify-between mb-8 flex-wrap gap-3">
         <div>
@@ -479,6 +611,39 @@ export default function InvoicesPage() {
         ))}
       </div>
 
+      {!loading && filtered.length > 0 ? (
+        <div className={`mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border p-3 ${selectedIds.size > 0 ? "border-red-300 bg-red-50 dark:border-red-900 dark:bg-red-950/20" : "border-gray-200 bg-white dark:border-slate-700 dark:bg-slate-900"}`}>
+          <div className="flex flex-wrap items-center gap-3">
+            <label className="flex cursor-pointer items-center gap-2 text-sm font-semibold text-gray-700 dark:text-slate-200">
+              <input
+                type="checkbox"
+                checked={allVisibleSelected}
+                onChange={toggleAllVisible}
+                className="h-5 w-5 rounded border-gray-300 accent-red-600"
+              />
+              Izberi vse prikazane
+            </label>
+            <span className="text-sm text-gray-500 dark:text-slate-400">{selectedIds.size} izbranih</span>
+            {selectedIds.size > 0 ? (
+              <span className="flex items-center gap-1 text-sm font-bold text-red-700 dark:text-red-400">
+                <span aria-hidden="true">🚩</span> Izbrani računi bodo trajno odstranjeni.
+              </span>
+            ) : null}
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setBulkDeleteError("");
+              setShowBulkDelete(true);
+            }}
+            disabled={selectedIds.size === 0}
+            className="rounded-xl bg-red-600 px-4 py-2 text-sm font-bold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500 dark:disabled:bg-slate-700 dark:disabled:text-slate-400"
+          >
+            Izbriši izbrane ({selectedIds.size})
+          </button>
+        </div>
+      ) : null}
+
       {loading ? (
         <div className="text-center py-20 text-gray-400">
           <div className="text-4xl mb-3">⏳</div>
@@ -505,8 +670,20 @@ export default function InvoicesPage() {
               key={inv.id}
               onMouseEnter={() => { void loadInvoiceDetail(inv); }}
               onClick={() => { void openPreview(inv); }}
-              className="group flex items-start gap-4 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-2xl p-4 cursor-pointer hover:border-blue-300 dark:hover:border-blue-600 hover:shadow-md transition-all duration-200"
+              className={`group flex items-start gap-4 bg-white dark:bg-slate-900 border rounded-2xl p-4 cursor-pointer hover:shadow-md transition-all duration-200 ${selectedIds.has(inv.id) ? "border-red-400 ring-2 ring-red-100 dark:border-red-600 dark:ring-red-950" : "border-gray-200 hover:border-blue-300 dark:border-slate-700 dark:hover:border-blue-600"}`}
             >
+              <label
+                className="mt-5 flex h-8 w-8 flex-shrink-0 cursor-pointer items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800"
+                onClick={(event) => event.stopPropagation()}
+              >
+                <input
+                  type="checkbox"
+                  checked={selectedIds.has(inv.id)}
+                  onChange={() => toggleInvoiceSelection(inv.id)}
+                  aria-label={`Izberi račun ${inv.subject}`}
+                  className="h-5 w-5 rounded border-gray-300 accent-red-600"
+                />
+              </label>
               {/* Thumbnail */}
               {inv.imageMime === "application/pdf" ? (
                 <div className="w-16 h-16 group-hover:w-40 group-hover:h-52 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800 flex flex-col items-center justify-center flex-shrink-0 gap-0.5 overflow-hidden transition-all duration-200">
