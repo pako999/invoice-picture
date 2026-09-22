@@ -22,10 +22,11 @@ const MAX_BATCH_FILES = 500;
 const MAX_IMAGE_FILE_SIZE = 10 * 1024 * 1024;
 const MAX_PDF_FILE_SIZE = 200 * 1024 * 1024;
 
-async function pdfPageCount(file: File): Promise<number> {
-  const { PDFDocument } = await import("pdf-lib");
-  const pdf = await PDFDocument.load(await file.arrayBuffer(), { updateMetadata: false });
-  return pdf.getPageCount();
+async function pdfPageCount(file: File): Promise<number | null> {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const source = new TextDecoder("latin1").decode(bytes);
+  const pages = source.match(/\/Type\s*\/Page\b/g)?.length ?? 0;
+  return pages > 0 ? pages : null;
 }
 
 function readFileAsBase64(file: File): Promise<{ base64: string; mime: string }> {
