@@ -136,6 +136,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         }
         throw error;
       }
+      if (document.sourceInvoiceId != null) {
+        await db.update(invoices).set({
+          status: "pending",
+          errorMessage: null,
+          sentAt: null,
+        }).where(and(eq(invoices.id, document.sourceInvoiceId), eq(invoices.clerkUserId, userId)));
+      }
       await db.insert(invoiceAuditLogs).values({
         documentId,
         clerkUserId: userId,
@@ -145,7 +152,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       return NextResponse.json({ success: true, status: "bulk_queued", bulkJobId });
     }
 
-    await db.update(invoiceDocuments).set({ status: "queued", validationStatus: "pending", processedAt: null, approvedAt: null, updatedAt: new Date() }).where(eq(invoiceDocuments.id, documentId));
+    await db.update(invoiceDocuments).set({
+      status: "queued",
+      validationStatus: "pending",
+      warningsJson: null,
+      processedAt: null,
+      approvedAt: null,
+      rejectedAt: null,
+      updatedAt: new Date(),
+    }).where(eq(invoiceDocuments.id, documentId));
 
     if (document.bulkJobId != null && document.bulkGroupIndex != null && document.storageObjectKey) {
       await db.update(bulkInvoiceGroups).set({
@@ -168,6 +183,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         .onConflictDoUpdate({ target: invoiceProcessingJobs.documentId, set: { status: "queued", attempts: 0, availableAt: new Date(), lockedAt: null, lastError: null, updatedAt: new Date() } });
     }
 
+    if (document.sourceInvoiceId != null) {
+      await db.update(invoices).set({
+        status: "pending",
+        errorMessage: null,
+        sentAt: null,
+      }).where(and(eq(invoices.id, document.sourceInvoiceId), eq(invoices.clerkUserId, userId)));
+    }
     await db.insert(invoiceAuditLogs).values({
       documentId,
       clerkUserId: userId,
