@@ -45,24 +45,31 @@ export async function POST(req:Request){
     const confidences=(pages as any[]).map(p=>p.ocrConfidenceBps==null?null:Number(p.ocrConfidenceBps)/10000).filter((n):n is number=>n!=null&&Number.isFinite(n));
     const avg=confidences.length?confidences.reduce((a,b)=>a+b,0)/confidences.length:null;
     const documentUrl=documentUrls.get(Number(group.groupIndex));
+    const sourceFilename=childFilename(String(job.filename),Number(group.groupIndex));
+    let sourceInvoiceId:number|null=null;let documentId:number|null=group.documentId==null?null:Number(group.documentId);
+    let previousInvoice:any=null;
+    if(documentId){
+      const [doc]=await db.select({
+        sourceInvoiceId:invoiceDocuments.sourceInvoiceId,
+        normalizedJson:invoiceDocuments.normalizedJson,
+      }).from(invoiceDocuments).where(eq(invoiceDocuments.id,documentId)).limit(1);
+      sourceInvoiceId=doc?.sourceInvoiceId??null;
+      if(doc?.normalizedJson){
+        try{previousInvoice=JSON.parse(doc.normalizedJson);}catch{previousInvoice=null;}
+      }
+    }
     // The package pages have already been OCR'd. Reuse that markdown for
     // structured extraction instead of sending every child PDF through the
     // real-time OCR endpoint a second time. Direct OCR is only a safety
     // fallback for empty/unusable page text.
     const started=Date.now();const extracted=hasUsableBulkOcrMarkdown(markdown)
-      ? await extractBulkInvoice(markdown,avg)
+      ? await extractBulkInvoice(markdown,avg,previousInvoice)
       : documentUrl
         ? await extractBulkInvoiceFromDocument(documentUrl,avg)
-        : await extractBulkInvoice(markdown,avg);
+        : await extractBulkInvoice(markdown,avg,previousInvoice);
     const autoApprove=canAutoApprove(extracted.invoice,extracted.validation.status,avg,Boolean(group.needsBoundaryReview));
     const normalizedJson=JSON.stringify(extracted.invoice);
     const warningList=[...extracted.invoice.warnings,...extracted.validation.warnings,...extracted.validation.errors];
-    const sourceFilename=childFilename(String(job.filename),Number(group.groupIndex));
-    let sourceInvoiceId:number|null=null;let documentId:number|null=group.documentId==null?null:Number(group.documentId);
-    if(documentId){
-      const [doc]=await db.select({sourceInvoiceId:invoiceDocuments.sourceInvoiceId}).from(invoiceDocuments).where(eq(invoiceDocuments.id,documentId)).limit(1);
-      sourceInvoiceId=doc?.sourceInvoiceId??null;
-    }
     if(!sourceInvoiceId){
       const [src]=await db.insert(invoices).values({clerkUserId:String(job.clerkUserId),recipientEmail,companyId:job.companyId==null?null:Number(job.companyId),subject:"Račun",imageData:null,imageMime:"application/pdf",filename:sourceFilename,status:"pending"}).returning({id:invoices.id});
       sourceInvoiceId=src.id;
