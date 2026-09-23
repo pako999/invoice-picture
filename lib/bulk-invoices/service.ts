@@ -253,7 +253,7 @@ export function hasUsableBulkOcrMarkdown(markdown: string) {
     && /(?:invoice|receipt|ra[čc]un|rechnung|fattura|predra[čc]un|proforma|dobropis|credit\s+note|vat|ddv|total|skupaj|za\s+pla[čc]ilo)/i.test(text);
 }
 
-export async function extractBulkInvoice(markdown: string, ocrConfidence: number | null): Promise<{
+export async function extractBulkInvoice(markdown: string, ocrConfidence: number | null, previousInvoice: NormalizedInvoice | null = null): Promise<{
   invoice: NormalizedInvoice;
   validation: ReturnType<typeof validateInvoice>;
   raw: unknown;
@@ -293,7 +293,10 @@ export async function extractBulkInvoice(markdown: string, ocrConfidence: number
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     if (/\b429\b|rate limit/i.test(message)) {
-      const invoice = normalizeInvoiceValues(parseInvoiceTextDeterministically(markdown));
+      const parsedInvoice = normalizeInvoiceValues(parseInvoiceTextDeterministically(markdown));
+      const invoice = previousInvoice
+        ? preserveMissingFallbackValues(parsedInvoice, previousInvoice)
+        : parsedInvoice;
       const fallbackWarning = "Mistral rate limit fallback was used; verify all extracted fields before approval.";
       if (!invoice.warnings.includes(fallbackWarning)) invoice.warnings.push(fallbackWarning);
       invoice.validationStatus = "needs_review";
@@ -315,6 +318,28 @@ export async function extractBulkInvoice(markdown: string, ocrConfidence: number
     console.warn(`[bulk-invoices] Mistral structured extraction is temporarily unavailable; invoice remains queued. ${message}`);
     throw new Error(`Mistral OCR extraction is required and will be retried: ${message}`);
   }
+}
+
+function preserveMissingFallbackValues(fresh: NormalizedInvoice, previous: NormalizedInvoice) {
+  const merged = structuredClone(fresh) as Record<string, any>;
+  const fillMissing = (target: Record<string, any>, source: Record<string, any>) => {
+    for (const [key, sourceValue] of Object.entries(source)) {
+      if (["warnings", "validationStatus", "confidence"].includes(key) || sourceValue == null || sourceValue === "") continue;
+      const targetValue = target[key];
+      if (Array.isArray(sourceValue)) {
+        if ((!Array.isArray(targetValue) || targetValue.length === 0) && sourceValue.length > 0) {
+          target[key] = structuredClone(sourceValue);
+        }
+      } else if (typeof sourceValue === "object") {
+        if (!targetValue || typeof targetValue !== "object" || Array.isArray(targetValue)) target[key] = {};
+        fillMissing(target[key], sourceValue as Record<string, any>);
+      } else if (targetValue == null || targetValue === "" || (key === "documentType" && targetValue === "unknown")) {
+        target[key] = sourceValue;
+      }
+    }
+  };
+  fillMissing(merged, previous as unknown as Record<string, any>);
+  return normalizeInvoiceValues(normalizedInvoiceSchema.parse(merged));
 }
 
 export async function extractBulkInvoiceFromDocument(documentUrl: string, ocrConfidence: number | null): Promise<{
