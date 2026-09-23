@@ -4,6 +4,7 @@ import {
   invoiceAuditLogs,
   invoiceDocuments,
   invoiceDuplicateRelations,
+  invoices,
   invoiceFieldEvidence,
   invoiceLineItems,
   invoiceProcessingAttempts,
@@ -232,6 +233,7 @@ export async function runQueuedInvoiceJobs(limit = 3) {
           processedAt: new Date(),
           updatedAt: new Date(),
         }).where(eq(invoiceDocuments.id, job.documentId));
+        await markSourceInvoiceFailed(job.documentId, message);
         await db.insert(invoiceAuditLogs).values({
           documentId: job.documentId,
           clerkUserId: (await db.select({ clerkUserId: invoiceDocuments.clerkUserId }).from(invoiceDocuments).where(eq(invoiceDocuments.id, job.documentId)).limit(1))[0]?.clerkUserId ?? "unknown",
@@ -264,17 +266,46 @@ export async function runQueuedInvoiceJobs(limit = 3) {
 
       const attempt = job.attempts + 1;
       const delayMinutes = Math.min(60, 2 ** Math.min(attempt, 6));
+      const message = messageOf(error).slice(0, 2000);
       await db.update(invoiceProcessingJobs).set({
         status: "failed",
-        lastError: messageOf(error).slice(0, 2000),
+        lastError: message,
         lockedAt: null,
         availableAt: new Date(Date.now() + delayMinutes * 60_000),
         updatedAt: new Date(),
       }).where(eq(invoiceProcessingJobs.id, job.id));
-      results.push({ jobId: job.id, documentId: job.documentId, ok: false, error: messageOf(error) });
+      if (attempt >= job.maxAttempts) {
+        await db.update(invoiceDocuments).set({
+          status: "failed",
+          validationStatus: "failed",
+          warningsJson: JSON.stringify([message]),
+          processedAt: new Date(),
+          updatedAt: new Date(),
+        }).where(eq(invoiceDocuments.id, job.documentId));
+        await markSourceInvoiceFailed(job.documentId, message);
+      }
+      results.push({ jobId: job.id, documentId: job.documentId, ok: false, error: message });
     }
   }
   return results;
+}
+
+async function markSourceInvoiceFailed(documentId: number, technicalMessage: string) {
+  const db = getDb();
+  const [document] = await db.select({ sourceInvoiceId: invoiceDocuments.sourceInvoiceId })
+    .from(invoiceDocuments)
+    .where(eq(invoiceDocuments.id, documentId))
+    .limit(1);
+  if (!document?.sourceInvoiceId) return;
+
+  const errorMessage = /(?:429|rate limit)/i.test(technicalMessage)
+    ? "OCR storitev je trenutno preobremenjena. Samodejni poskusi so bili izčrpani; izberite Ponovno obdelaj."
+    : `OCR obdelava ni uspela: ${technicalMessage}`.slice(0, 2000);
+
+  await db.update(invoices).set({
+    status: "failed",
+    errorMessage,
+  }).where(eq(invoices.id, document.sourceInvoiceId));
 }
 
 async function recordAttempt<T extends ReaderResult | null>(documentId: number, provider: "deterministic" | "mistral" | "azure", model: string, fn: () => Promise<T>): Promise<T> {
