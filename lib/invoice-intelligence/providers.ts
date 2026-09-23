@@ -103,6 +103,8 @@ export async function readWithMistral(input: { base64: string; mimeType: string;
         "Normalize dates to YYYY-MM-DD, currencies to ISO 4217, countries to ISO alpha-2.",
         "Return monetary values as decimal strings without currency symbols and keep credit-note signs correct.",
         "Supplier means the issuer/seller; buyer means the customer/recipient.",
+        "Keep each party internally consistent: the supplier name must come from the same document block as the supplier address, VAT number, email and IBAN; the buyer name must come from the buyer address and VAT block.",
+        "Never copy the buyer name into the supplier. If supplier and buyer names are identical but their VAT numbers or addresses differ, re-check the document and correct the party names before returning.",
         "If the document is a quotation, offer, estimate or proforma, add a warning that it requires manual review before delivery.",
         "Set validationStatus to pending; deterministic validation runs after extraction.",
       ].join(" "),
@@ -298,13 +300,16 @@ export function reconcileMistralInvoiceWithOcrText(invoice: NormalizedInvoice, t
   if (fallback.issueDate && invoice.issueDate !== fallback.issueDate) invoice.issueDate = fallback.issueDate;
   if (fallback.dueDate && invoice.dueDate !== fallback.dueDate) invoice.dueDate = fallback.dueDate;
 
-  const fallbackHasLegalSuffix = /\b(?:d\.?o\.?o\.?|s\.?p\.?|inc\.?|llc|ltd\.?|gmbh|ag|s\.?a\.?)\b/i.test(fallback.supplier.name ?? "");
   const mistralSupplierLooksInvalid = !invoice.supplier.name
     || /^[-\s]*page\s+\d+[-\s]*$/i.test(invoice.supplier.name)
     || /^\*+|\*+$/.test(invoice.supplier.name);
-  if (fallback.supplier.name && (fallbackHasLegalSuffix || mistralSupplierLooksInvalid)) {
+  const fallbackSupplierIsBuyer = samePartyName(fallback.supplier.name, invoice.buyer.name);
+  if (fallback.supplier.name && mistralSupplierLooksInvalid && !fallbackSupplierIsBuyer) {
     invoice.supplier.name = fallback.supplier.name;
   }
+  // A generic text fallback often sees the customer's legal name first. Never
+  // allow that value to overwrite or fill the supplier name.
+  if (fallbackSupplierIsBuyer) fallback.supplier.name = null;
 
   if (invoice.supplier.vatNumber && !isPlausibleVatNumber(invoice.supplier.vatNumber)) {
     invoice.supplier.vatNumber = null;
@@ -315,6 +320,16 @@ export function reconcileMistralInvoiceWithOcrText(invoice: NormalizedInvoice, t
 
   mergeMissingInvoiceFields(invoice, fallback);
   return invoice;
+}
+
+function samePartyName(left: string | null, right: string | null) {
+  if (!left || !right) return false;
+  const normalize = (value: string) => value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, "");
+  return normalize(left) === normalize(right);
 }
 
 function isPlausibleVatNumber(value: string) {
