@@ -32,8 +32,44 @@ export async function GET() {
         imageData: sql<string | null>`case when ${invoices.imageMime} = 'application/pdf' then null else ${invoices.imageData} end`,
         imageMime: invoices.imageMime,
         filename: invoices.filename,
-        status: invoices.status,
-        errorMessage: invoices.errorMessage,
+        status: sql<"sent" | "pending" | "failed">`
+          case
+            when ${invoices.status} = 'pending' and exists (
+              select 1
+              from "invoiceDocuments" d
+              join "invoiceProcessingJobs" j on j."documentId" = d."id"
+              where d."sourceInvoiceId" = ${invoices.id}
+                and d."status" = 'failed'
+                and j."status" = 'failed'
+                and j."attempts" >= j."maxAttempts"
+            ) then 'failed'::invoice_status
+            else ${invoices.status}
+          end
+        `,
+        errorMessage: sql<string | null>`
+          coalesce(
+            ${invoices.errorMessage},
+            (
+              select j."lastError"
+              from "invoiceDocuments" d
+              join "invoiceProcessingJobs" j on j."documentId" = d."id"
+              where d."sourceInvoiceId" = ${invoices.id}
+                and j."status" = 'failed'
+                and j."attempts" >= j."maxAttempts"
+              order by d."id" desc
+              limit 1
+            )
+          )
+        `,
+        documentId: sql<number | null>`
+          (
+            select d."id"
+            from "invoiceDocuments" d
+            where d."sourceInvoiceId" = ${invoices.id}
+            order by d."id" desc
+            limit 1
+          )
+        `,
         sentAt: invoices.sentAt,
         createdAt: invoices.createdAt,
       })
