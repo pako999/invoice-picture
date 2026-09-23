@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { emptyInvoice, normalizedInvoiceSchema } from "../lib/invoice-intelligence/types";
 import { normalizeInvoiceValues, validateIban, validateInvoice } from "../lib/invoice-intelligence/validation";
-import { readDeterministically, readWithMistral } from "../lib/invoice-intelligence/providers";
+import { readDeterministically, readWithMistral, reconcileMistralInvoiceWithOcrText } from "../lib/invoice-intelligence/providers";
 import { createDocumentSignature, verifyDocumentSignature } from "../lib/invoice-intelligence/signing";
 import { resolveManualApprovalReason } from "../lib/invoice-intelligence/manual-approval";
 
@@ -137,6 +137,27 @@ test("low-confidence payload is structurally valid but remains distinguishable",
   invoice.confidence = { overall: 0.55, fields: { invoiceNumber: 0.4 } };
   assert.doesNotThrow(() => normalizedInvoiceSchema.parse(invoice));
   assert.ok((invoice.confidence.overall ?? 0) < 0.92);
+});
+
+test("OCR reconciliation never replaces a valid supplier with the buyer legal name", () => {
+  const invoice = baseInvoice();
+  invoice.supplier.name = "Domačija Kovačnik, Barbara Štern";
+  invoice.supplier.vatNumber = "SI75397536";
+  invoice.buyer.name = "SPORT GROUP D.O.O.";
+  invoice.buyer.vatNumber = "SI72133449";
+
+  const ocrText = [
+    "Domačija Kovačnik, Barbara Štern",
+    "Planica 9, 2313 Fram, Slovenija",
+    "ID za DDV SI75397536",
+    "SPORT GROUP D.O.O.",
+    "Osojnikova 4, 2000 Maribor, Slovenija",
+    "ID št. za DDV: SI72133449",
+  ].join("\n");
+
+  const reconciled = reconcileMistralInvoiceWithOcrText(invoice, ocrText);
+  assert.equal(reconciled.supplier.name, "Domačija Kovačnik, Barbara Štern");
+  assert.equal(reconciled.buyer.name, "SPORT GROUP D.O.O.");
 });
 
 test("OCR provider failure is explicit when Mistral is not configured", async () => {
