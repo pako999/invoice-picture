@@ -3,7 +3,8 @@ import { useEffect, useMemo, useState } from "react";
 import type { Invoice, Company } from "@/lib/schema";
 
 type FilterMode = "all" | "week" | "month" | "custom";
-type ArchivedInvoice = Invoice & { previewUrl?: string | null };
+type InvoiceListItem = Invoice & { documentId?: number | null };
+type ArchivedInvoice = InvoiceListItem & { previewUrl?: string | null };
 
 const FILTER_LABELS: Record<FilterMode, string> = {
   all: "All",
@@ -216,10 +217,11 @@ function BulkDeleteDialog({
 }
 
 export default function InvoicesPage() {
-  const [list, setList] = useState<Invoice[]>([]);
+  const [list, setList] = useState<InvoiceListItem[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState<number | null>(null);
+  const [reprocessing, setReprocessing] = useState<Set<number>>(() => new Set());
   const [selectedIds, setSelectedIds] = useState<Set<number>>(() => new Set());
   const [showBulkDelete, setShowBulkDelete] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
@@ -254,7 +256,7 @@ export default function InvoicesPage() {
 
   useEffect(() => { load(); }, []);
 
-  async function loadInvoiceDetail(inv: Invoice): Promise<ArchivedInvoice> {
+  async function loadInvoiceDetail(inv: InvoiceListItem): Promise<ArchivedInvoice> {
     if (inv.imageData || details[inv.id]) {
       return details[inv.id] ?? inv;
     }
@@ -275,13 +277,13 @@ export default function InvoicesPage() {
     }
   }
 
-  async function openPreview(inv: Invoice) {
+  async function openPreview(inv: InvoiceListItem) {
     setPreview(details[inv.id] ?? inv);
     const full = await loadInvoiceDetail(inv);
     setPreview(full);
   }
 
-  async function restorePreview(inv: Invoice, file: File) {
+  async function restorePreview(inv: InvoiceListItem, file: File) {
     if (!file.name.toLowerCase().endsWith(".pdf")) {
       throw new Error("Select a PDF file.");
     }
@@ -318,6 +320,41 @@ export default function InvoicesPage() {
       return next;
     });
     setDeleting(null);
+  }
+
+
+  async function handleReprocess(event: React.MouseEvent, inv: InvoiceListItem) {
+    event.stopPropagation();
+    if (!inv.documentId || reprocessing.has(inv.id)) return;
+
+    setReprocessing((current) => new Set(current).add(inv.id));
+    try {
+      const response = await fetch(`/api/invoice-reader/${inv.documentId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "reprocess" }),
+      });
+      const body = await response.json().catch(() => null) as { error?: string } | null;
+      if (!response.ok) throw new Error(body?.error ?? "Reprocessing could not be started.");
+
+      setList((current) => current.map((item) => item.id === inv.id
+        ? { ...item, status: "pending", errorMessage: null }
+        : item));
+      setDetails((current) => current[inv.id]
+        ? { ...current, [inv.id]: { ...current[inv.id], status: "pending", errorMessage: null } }
+        : current);
+      setPreview((current) => current?.id === inv.id
+        ? { ...current, status: "pending", errorMessage: null }
+        : current);
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "Reprocessing could not be started.");
+    } finally {
+      setReprocessing((current) => {
+        const next = new Set(current);
+        next.delete(inv.id);
+        return next;
+      });
+    }
   }
 
   const filtered = useMemo(() => {
@@ -711,6 +748,17 @@ export default function InvoicesPage() {
 
               <div className="flex-shrink-0 flex items-center gap-1">
                 <span className="text-xs text-gray-400 dark:text-slate-500 hidden sm:block">Click to preview</span>
+                {inv.status === "failed" && inv.documentId ? (
+                  <button
+                    type="button"
+                    onClick={(event) => { void handleReprocess(event, inv); }}
+                    disabled={reprocessing.has(inv.id)}
+                    className="min-h-9 rounded-lg border border-red-300 bg-red-50 px-3 py-1.5 text-xs font-bold text-red-700 transition-colors hover:bg-red-100 disabled:cursor-wait disabled:opacity-60 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300"
+                    title="Retry OCR processing"
+                  >
+                    {reprocessing.has(inv.id) ? "⏳" : "↻"} Retry processing
+                  </button>
+                ) : null}
                 <button
                   onClick={(e) => handleDelete(e, inv.id)}
                   disabled={deleting === inv.id}
