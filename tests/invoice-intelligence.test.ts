@@ -5,6 +5,7 @@ import { normalizeInvoiceValues, validateIban, validateInvoice } from "../lib/in
 import { readDeterministically, readWithMistral, reconcileMistralInvoiceWithOcrText } from "../lib/invoice-intelligence/providers";
 import { createDocumentSignature, verifyDocumentSignature } from "../lib/invoice-intelligence/signing";
 import { resolveManualApprovalReason } from "../lib/invoice-intelligence/manual-approval";
+import { hasUsableBulkOcrMarkdown } from "../lib/bulk-invoices/service";
 
 function baseInvoice() {
   const invoice = emptyInvoice();
@@ -158,6 +159,20 @@ test("OCR reconciliation never replaces a valid supplier with the buyer legal na
   const reconciled = reconcileMistralInvoiceWithOcrText(invoice, ocrText);
   assert.equal(reconciled.supplier.name, "Domačija Kovačnik, Barbara Štern");
   assert.equal(reconciled.buyer.name, "SPORT GROUP D.O.O.");
+});
+
+test("bulk extraction reuses usable OCR text instead of calling OCR twice", () => {
+  const markdown = [
+    "--- PAGE 1 ---",
+    "RAČUN ŠT. RN0000092/26",
+    "Domačija Kovačnik, Barbara Štern",
+    "ID za DDV SI75397536",
+    "SPORT GROUP D.O.O.",
+    "ID št. za DDV SI72133449",
+    "Za plačilo 90,00 EUR",
+  ].join("\n");
+  assert.equal(hasUsableBulkOcrMarkdown(markdown), true);
+  assert.equal(hasUsableBulkOcrMarkdown("--- PAGE 1 ---\n"), false);
 });
 
 test("OCR provider failure is explicit when Mistral is not configured", async () => {
