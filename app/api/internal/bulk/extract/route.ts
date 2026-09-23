@@ -7,7 +7,7 @@ import {
   companies, invoiceAuditLogs, invoiceDocuments, invoiceProcessingAttempts, invoiceValidationResults, invoices, userSettings
 } from "@/lib/schema";
 import { verifyBulkInternalSecret,BULK_EXTRACT_BATCH_SIZE } from "@/lib/bulk-invoices/config";
-import { bulkSql,extractBulkInvoice,extractBulkInvoiceFromDocument } from "@/lib/bulk-invoices/service";
+import { bulkSql,extractBulkInvoice,extractBulkInvoiceFromDocument,hasUsableBulkOcrMarkdown } from "@/lib/bulk-invoices/service";
 import { getCompanyDeliverySettings } from "@/lib/invoice-intelligence/delivery-settings";
 
 const schema=z.object({
@@ -45,9 +45,15 @@ export async function POST(req:Request){
     const confidences=(pages as any[]).map(p=>p.ocrConfidenceBps==null?null:Number(p.ocrConfidenceBps)/10000).filter((n):n is number=>n!=null&&Number.isFinite(n));
     const avg=confidences.length?confidences.reduce((a,b)=>a+b,0)/confidences.length:null;
     const documentUrl=documentUrls.get(Number(group.groupIndex));
-    const started=Date.now();const extracted=documentUrl
-      ? await extractBulkInvoiceFromDocument(documentUrl,avg)
-      : await extractBulkInvoice(markdown,avg);
+    // The package pages have already been OCR'd. Reuse that markdown for
+    // structured extraction instead of sending every child PDF through the
+    // real-time OCR endpoint a second time. Direct OCR is only a safety
+    // fallback for empty/unusable page text.
+    const started=Date.now();const extracted=hasUsableBulkOcrMarkdown(markdown)
+      ? await extractBulkInvoice(markdown,avg)
+      : documentUrl
+        ? await extractBulkInvoiceFromDocument(documentUrl,avg)
+        : await extractBulkInvoice(markdown,avg);
     const autoApprove=canAutoApprove(extracted.invoice,extracted.validation.status,avg,Boolean(group.needsBoundaryReview));
     const normalizedJson=JSON.stringify(extracted.invoice);
     const warningList=[...extracted.invoice.warnings,...extracted.validation.warnings,...extracted.validation.errors];
