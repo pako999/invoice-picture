@@ -3,7 +3,7 @@ import { invoiceJsonSchema, normalizedInvoiceSchema, type NormalizedInvoice } fr
 import { normalizeInvoiceValues, validateInvoice } from "@/lib/invoice-intelligence/validation";
 import { reserveOcrProviderBudget } from "@/lib/invoice-intelligence/safety";
 import { getOcrUsageSummary, quotaPageError } from "@/lib/invoice-intelligence/quota";
-import { reconcileMistralInvoiceWithOcrText } from "@/lib/invoice-intelligence/providers";
+import { parseInvoiceTextDeterministically, reconcileMistralInvoiceWithOcrText } from "@/lib/invoice-intelligence/providers";
 
 const OCR_ENDPOINT = "https://api.mistral.ai/v1/ocr";
 const CHAT_ENDPOINT = "https://api.mistral.ai/v1/chat/completions";
@@ -292,6 +292,26 @@ export async function extractBulkInvoice(markdown: string, ocrConfidence: number
     return { invoice, validation, raw, provider: "mistral", model };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
+    if (/\b429\b|rate limit/i.test(message)) {
+      const invoice = normalizeInvoiceValues(parseInvoiceTextDeterministically(markdown));
+      const fallbackWarning = "Mistral rate limit fallback was used; verify all extracted fields before approval.";
+      if (!invoice.warnings.includes(fallbackWarning)) invoice.warnings.push(fallbackWarning);
+      invoice.validationStatus = "needs_review";
+      const checked = validateInvoice(invoice);
+      const validation = {
+        ...checked,
+        status: "needs_review" as const,
+        warnings: [...checked.warnings, fallbackWarning],
+      };
+      console.warn(`[bulk-invoices] Mistral rate limit reached; completed with deterministic OCR-text fallback. ${message}`);
+      return {
+        invoice,
+        validation,
+        raw: { fallback: "ocr_text_rate_limit", error: message },
+        provider: "deterministic",
+        model: "ocr-text-rate-limit-fallback-v1",
+      };
+    }
     console.warn(`[bulk-invoices] Mistral structured extraction is temporarily unavailable; invoice remains queued. ${message}`);
     throw new Error(`Mistral OCR extraction is required and will be retried: ${message}`);
   }
