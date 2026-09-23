@@ -247,6 +247,12 @@ function documentIdentifier(text: string, kind: string | null) {
   return (receipt ?? match?.[1] ?? null)?.toUpperCase() ?? null;
 }
 
+export function hasUsableBulkOcrMarkdown(markdown: string) {
+  const text = markdown.replace(/---\s*PAGE\s+\d+\s*---/gi, " ").replace(/\s+/g, " ").trim();
+  return text.length >= 80
+    && /(?:invoice|receipt|ra[čc]un|rechnung|fattura|predra[čc]un|proforma|dobropis|credit\s+note|vat|ddv|total|skupaj|za\s+pla[čc]ilo)/i.test(text);
+}
+
 export async function extractBulkInvoice(markdown: string, ocrConfidence: number | null): Promise<{
   invoice: NormalizedInvoice;
   validation: ReturnType<typeof validateInvoice>;
@@ -270,6 +276,8 @@ export async function extractBulkInvoice(markdown: string, ocrConfidence: number
         "Dates may use numeric or written English month formats. Extract all labelled issue and due dates.",
         "Normalize dates to YYYY-MM-DD, currency to ISO 4217 and monetary values to decimal strings without currency symbols.",
         "Supplier is the issuer/seller; buyer is the recipient/customer.",
+        "Keep the supplier name with the supplier VAT, address, email and IBAN block; keep the buyer name with the buyer VAT and address block.",
+        "Never copy the buyer name into the supplier. If the names match but VAT numbers or addresses differ, re-check the OCR text.",
         "Preserve line items, discounts, VAT breakdown, totals, IBAN, BIC, payment reference and terms when visible.",
         "Set validationStatus to pending. Deterministic validation runs after extraction.",
         `OCR page confidence available to the system: ${ocrConfidence == null ? "unknown" : ocrConfidence.toFixed(4)}.`,
