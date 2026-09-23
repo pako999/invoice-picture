@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { getDb } from "@/lib/db";
-import { invoiceDocuments, invoices } from "@/lib/schema";
+import { invoiceDocuments, invoiceProcessingJobs, invoices } from "@/lib/schema";
 import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 
@@ -31,6 +31,9 @@ export async function GET(
 
   const [document] = await db
     .select({
+      id: invoiceDocuments.id,
+      status: invoiceDocuments.status,
+      warningsJson: invoiceDocuments.warningsJson,
       originalBase64: invoiceDocuments.originalBase64,
       storageObjectKey: invoiceDocuments.storageObjectKey,
     })
@@ -39,9 +42,25 @@ export async function GET(
     .orderBy(desc(invoiceDocuments.id))
     .limit(1);
 
+  const [processingJob] = document
+    ? await db.select({
+        status: invoiceProcessingJobs.status,
+        attempts: invoiceProcessingJobs.attempts,
+        maxAttempts: invoiceProcessingJobs.maxAttempts,
+        lastError: invoiceProcessingJobs.lastError,
+      }).from(invoiceProcessingJobs).where(eq(invoiceProcessingJobs.documentId, document.id)).limit(1)
+    : [];
+
+  const terminalOcrFailure = invoice.status === "pending"
+    && document?.status === "failed"
+    && processingJob?.status === "failed"
+    && processingJob.attempts >= processingJob.maxAttempts;
   const previewAvailable = Boolean(invoice.imageData || document?.originalBase64 || document?.storageObjectKey);
   return NextResponse.json({
     ...invoice,
+    status: terminalOcrFailure ? "failed" : invoice.status,
+    errorMessage: invoice.errorMessage || (terminalOcrFailure ? friendlyOcrError(processingJob?.lastError, document?.warningsJson) : null),
+    documentId: document?.id ?? null,
     previewUrl: previewAvailable ? `/api/invoices/${invoice.id}/file` : null,
   });
 }
@@ -87,4 +106,21 @@ export async function DELETE(
   const db = getDb();
   await db.delete(invoices).where(and(eq(invoices.id, Number(id)), eq(invoices.clerkUserId, userId)));
   return NextResponse.json({ success: true });
+}
+
+
+function friendlyOcrError(lastError: string | null | undefined, warningsJson: string | null | undefined) {
+  let fallback: unknown = lastError;
+  if (!fallback && warningsJson) {
+    try {
+      const warnings = JSON.parse(warningsJson);
+      fallback = Array.isArray(warnings) ? warnings[0] : null;
+    } catch {
+      fallback = null;
+    }
+  }
+  if (typeof fallback === "string" && /(?:429|rate limit)/i.test(fallback)) {
+    return "OCR storitev je trenutno preobremenjena. Samodejni poskusi so bili izčrpani; izberite Ponovno obdelaj.";
+  }
+  return typeof fallback === "string" ? fallback : "OCR obdelava ni uspela. Izberite Ponovno obdelaj.";
 }
