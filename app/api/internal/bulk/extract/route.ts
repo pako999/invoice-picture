@@ -103,6 +103,26 @@ export async function POST(req:Request){
    const exhausted=rateLimitAttempt>=3;
    const storedError=`[rate-limit:${rateLimitAttempt}] ${msg}`.slice(0,2000);
    await sql`UPDATE "bulkInvoiceJobs" SET "status"=${exhausted?'failed':'processing'},"stage"=${exhausted?'failed':'extract'},"lockedAt"=NULL,"lastError"=${storedError},"completedAt"=${exhausted?new Date():null},"updatedAt"=now() WHERE "id"=${data.jobId}`;
+   if(exhausted){
+    const friendlyError="OCR storitev je trenutno preobremenjena. Samodejni poskusi so bili izčrpani; izberite Ponovno obdelaj.";
+    await sql`
+      WITH failed_documents AS (
+        UPDATE "invoiceDocuments" d
+        SET "status"='failed',"validationStatus"='failed',
+            "warningsJson"=${JSON.stringify([friendlyError])},
+            "processedAt"=now(),"updatedAt"=now()
+        FROM "bulkInvoiceGroups" g
+        WHERE g."jobId"=${data.jobId}
+          AND g."status"='reprocess'
+          AND g."documentId"=d."id"
+        RETURNING d."sourceInvoiceId"
+      )
+      UPDATE "invoices" i
+      SET "status"='failed',"errorMessage"=${friendlyError}
+      WHERE i."id" IN (
+        SELECT "sourceInvoiceId" FROM failed_documents WHERE "sourceInvoiceId" IS NOT NULL
+      )`;
+   }
    return NextResponse.json({error:exhausted?"OCR provider is temporarily unavailable. Retry the PDF package later.":msg,code:"ocr_rate_limited",retrying:!exhausted},{status:exhausted?503:429});
   }
   await sql`UPDATE "bulkInvoiceJobs" SET "lockedAt"=NULL,"lastError"=${msg.slice(0,2000)},"updatedAt"=now() WHERE "id"=${data.jobId}`;
