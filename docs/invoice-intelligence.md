@@ -71,7 +71,7 @@ Structured XML can be auto-approved without model confidence when deterministic 
 
 ### Durable asynchronous worker
 
-`invoiceProcessingJobs` is a database-backed durable queue. `/api/cron/process-invoices` runs every minute on Vercel and processes a small configurable batch. Jobs are unique per document, locked before work, retried with exponential backoff and capped attempts.
+`invoiceProcessingJobs` is a database-backed durable queue. `/api/cron/process-invoices` runs every 15 minutes on Vercel as a recovery worker and processes a small configurable batch. Jobs are unique per document, locked before work, retried with exponential backoff and capped attempts.
 
 If OCR is enabled after documents were already stored in `uploaded`, the cron worker backfills those documents into the queue automatically.
 
