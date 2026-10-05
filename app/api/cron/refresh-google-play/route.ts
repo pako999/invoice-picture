@@ -39,12 +39,16 @@ export async function GET(req: Request) {
   let publisher;
   try {
     publisher = getPlayClient();
-  } catch (e) {
-    console.error("[cron/refresh-google-play] env error:", e);
-    return NextResponse.json(
-      { error: "Server not configured for Google Play verification" },
-      { status: 500 },
-    );
+  } catch {
+    // Google Play subscriptions are optional. An installation without the
+    // service-account credentials must not produce a failed cron run every
+    // day or wake the database unnecessarily.
+    console.info("[cron/refresh-google-play] skipped: Google Play is not configured");
+    return NextResponse.json({
+      success: true,
+      skipped: true,
+      reason: "Google Play verification is not configured",
+    });
   }
 
   const db = getDb();
