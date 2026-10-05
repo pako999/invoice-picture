@@ -3,7 +3,7 @@
   "crons": [
     {
       "path": "/api/cron/process-invoices",
-      "schedule": "* * * * *"
+      "schedule": "*/15 * * * *"
     },
     {
       "path": "/api/cron/refresh-google-play",
