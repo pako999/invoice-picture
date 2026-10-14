@@ -161,6 +161,8 @@ export function BulkInvoiceJobDetail({ id, locale }: { id: number; locale: Local
     }
   }
 
+  const canRetryRateLimit = job?.stage === "failed" && job.lastError?.startsWith("[rate-limit:");
+
   async function retryFailedDeliveries() {
     setBusy(true);
     setMessage("");
@@ -275,6 +277,16 @@ export function BulkInvoiceJobDetail({ id, locale }: { id: number; locale: Local
           <div className="mt-5 rounded-xl bg-amber-50 p-4 text-sm text-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
             {job.lastError}
           </div>
+        )}
+        {canRetryRateLimit && (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => void resumeQuota()}
+            className="mt-4 rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-50"
+          >
+            {locale === "sl" ? "Ponovno zaženi OCR" : "Retry OCR processing"}
+          </button>
         )}
         {message && (
           <div className="mt-4 rounded-xl bg-blue-50 p-3 text-sm text-blue-800 dark:bg-blue-950/30 dark:text-blue-200">{message}</div>

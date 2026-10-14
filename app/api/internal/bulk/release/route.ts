@@ -16,12 +16,15 @@ export async function POST(req: Request) {
   const sql = bulkSql();
   const rows = await sql`
     UPDATE "bulkInvoiceJobs"
-    SET "lockedAt"=NULL,"lastError"=CASE
-      WHEN "lastError" LIKE '[rate-limit:%' THEN "lastError"
-      ELSE ${data.error}
-    END,"updatedAt"=now()
-    WHERE "id"=${data.jobId} AND "status"='processing'
-    RETURNING "id"
+    SET "lockedAt"=CASE WHEN "status"='processing' THEN NULL ELSE "lockedAt" END,
+        "lastError"=CASE
+          WHEN "status"<>'processing' THEN "lastError"
+          WHEN "lastError" LIKE '[rate-limit:%' THEN "lastError"
+          ELSE ${data.error}
+        END,
+        "updatedAt"=CASE WHEN "status"='processing' THEN now() ELSE "updatedAt" END
+    WHERE "id"=${data.jobId}
+    RETURNING "id","status"
   `;
   if (!rows.length) return NextResponse.json({ error: "Bulk job not found" }, { status: 404 });
   return NextResponse.json({ success: true });

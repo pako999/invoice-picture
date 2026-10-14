@@ -26,7 +26,10 @@ export async function POST(req:Request){
   if(!quotaReached&&(/\b429\b|rate limit/i.test(msg))){
    const previous=await sql`SELECT "lastError" FROM "bulkInvoiceJobs" WHERE "id"=${data.jobId} LIMIT 1`;
    const rateLimitAttempt=nextRateLimitAttempt(previous[0]?.lastError);
-   const exhausted=rateLimitAttempt>=3;
+   // Keep transient provider throttling retryable for several hours. The
+   // queue applies a cooldown and OCR itself uses one-page requests, so this
+   // no longer hot-loops or repeatedly submits an oversized page batch.
+   const exhausted=rateLimitAttempt>=12;
    const storedError=`[rate-limit:${rateLimitAttempt}] ${msg}`.slice(0,2000);
    await sql`UPDATE "bulkInvoiceJobs" SET "status"=${exhausted?'failed':'processing'},"stage"=${exhausted?'failed':'ocr'},"lockedAt"=NULL,"lastError"=${storedError},"completedAt"=${exhausted?new Date():null},"updatedAt"=now() WHERE "id"=${data.jobId}`;
    return NextResponse.json({error:exhausted?"OCR provider is temporarily unavailable. Retry the PDF package later.":msg,code:"ocr_rate_limited",retrying:!exhausted},{status:exhausted?503:429});
