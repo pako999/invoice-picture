@@ -1,7 +1,7 @@
 import { neon } from "@neondatabase/serverless";
 import { invoiceJsonSchema, normalizedInvoiceSchema, type NormalizedInvoice } from "@/lib/invoice-intelligence/types";
 import { normalizeInvoiceValues, validateInvoice } from "@/lib/invoice-intelligence/validation";
-import { reserveOcrProviderBudget } from "@/lib/invoice-intelligence/safety";
+import { releaseUnusedOcrProviderBudget, reserveOcrProviderBudget } from "@/lib/invoice-intelligence/safety";
 import { getOcrUsageSummary, quotaPageError } from "@/lib/invoice-intelligence/quota";
 import { parseInvoiceTextDeterministically, reconcileMistralInvoiceWithOcrText } from "@/lib/invoice-intelligence/providers";
 
@@ -30,38 +30,72 @@ export async function ocrBulkPages(args: {
     throw quotaPageError(usage, remainingDailyPages <= 0 ? "daily_pages" : "pages");
   }
 
-  const pagesThisBatch = Math.min(args.batchPages, availablePages, args.pageCount - args.startPage);
+  // OCR limits are enforced in pages per minute. Large page arrays can be
+  // rejected forever on lower Mistral tiers even when the account has prepaid
+  // credit, so keep each real-time request deliberately small. The worker can
+  // still ask for a larger batch; this service advances the job incrementally.
+  const providerPagesPerRequest = envInt("MISTRAL_BULK_OCR_PAGES_PER_REQUEST", 1, 1, 25);
+  const pagesThisBatch = Math.min(
+    args.batchPages,
+    providerPagesPerRequest,
+    availablePages,
+    args.pageCount - args.startPage,
+  );
   const endPage = Math.min(args.pageCount - 1, args.startPage + pagesThisBatch - 1);
   const pages = Array.from({ length: endPage - args.startPage + 1 }, (_, i) => args.startPage + i);
-  await reserveOcrProviderBudget({ clerkUserId: args.clerkUserId, provider: "mistral", pages: pages.length });
-
-  const response = await fetch(OCR_ENDPOINT, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: process.env.MISTRAL_OCR_MODEL || "mistral-ocr-latest",
-      document: { type: "document_url", document_url: args.documentUrl },
-      pages,
-      include_blocks: false,
-      confidence_scores_granularity: "page",
-      table_format: "markdown",
-    }),
-    signal: AbortSignal.timeout(Math.max(90_000, Number(process.env.INVOICE_OCR_TIMEOUT_MS ?? 90_000))),
+  const reservation = await reserveOcrProviderBudget({ clerkUserId: args.clerkUserId, provider: "mistral", pages: pages.length });
+  const requestBody = JSON.stringify({
+    model: process.env.MISTRAL_OCR_MODEL || "mistral-ocr-latest",
+    document: { type: "document_url", document_url: args.documentUrl },
+    pages,
+    include_blocks: false,
+    confidence_scores_granularity: "page",
+    table_format: "markdown",
   });
-  const raw = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(`Mistral bulk OCR failed (${response.status}): ${providerError(raw)}`);
 
-  const responsePages = Array.isArray(raw.pages) ? raw.pages : [];
-  return {
-    pages: responsePages.map((page: Record<string, any>, i: number) => ({
-      pageNumber: Number.isInteger(page.index) ? Number(page.index) : args.startPage + i,
-      markdown: typeof page.markdown === "string" ? page.markdown : "",
-      confidence: pageConfidence(page),
-    })),
-    model: String(raw.model || process.env.MISTRAL_OCR_MODEL || "mistral-ocr-latest"),
-    nextPage: endPage + 1,
-    done: endPage + 1 >= args.pageCount,
-  };
+  try {
+    for (let attempt = 1; attempt <= 3; attempt += 1) {
+      const response = await fetch(OCR_ENDPOINT, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+        body: requestBody,
+        signal: AbortSignal.timeout(Math.max(90_000, Number(process.env.INVOICE_OCR_TIMEOUT_MS ?? 90_000))),
+      });
+      const raw = await response.json().catch(() => ({}));
+      if (response.ok) {
+        const responsePages = Array.isArray(raw.pages) ? raw.pages : [];
+        if (responsePages.length !== pages.length) {
+          throw new Error(`Mistral bulk OCR returned ${responsePages.length}/${pages.length} requested pages`);
+        }
+        return {
+          pages: responsePages.map((page: Record<string, any>, i: number) => ({
+            pageNumber: Number.isInteger(page.index) ? Number(page.index) : args.startPage + i,
+            markdown: typeof page.markdown === "string" ? page.markdown : "",
+            confidence: pageConfidence(page),
+          })),
+          model: String(raw.model || process.env.MISTRAL_OCR_MODEL || "mistral-ocr-latest"),
+          nextPage: endPage + 1,
+          done: endPage + 1 >= args.pageCount,
+        };
+      }
+
+      const retryable = response.status === 429 || response.status >= 500;
+      if (!retryable || attempt === 3) {
+        throw new Error(`Mistral bulk OCR failed (${response.status}): ${providerError(raw)}`);
+      }
+      const delayMs = retryDelayMs(response.headers.get("Retry-After"), attempt);
+      console.warn(`[bulk-invoices] Mistral bulk OCR returned ${response.status}; retrying in ${delayMs}ms (attempt ${attempt + 1}/3)`);
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+    throw new Error("Mistral bulk OCR failed after retries");
+  } catch (error) {
+    // A provider rejection must not consume the customer's internal allowance.
+    // The same pages will be reserved again only when a later attempt runs.
+    await releaseUnusedOcrProviderBudget({ reservation, pages: pages.length }).catch((releaseError) => {
+      console.error("[bulk-invoices] Failed to release unused OCR reservation", releaseError);
+    });
+    throw error;
+  }
 }
 
 const classificationSchema = {
@@ -455,6 +489,12 @@ function retryDelayMs(retryAfter: string | null, attempt: number) {
     : Date.parse(retryAfter) - Date.now();
   if (!Number.isFinite(parsedMs) || parsedMs <= 0) return fallbackMs;
   return Math.min(60_000, Math.ceil(parsedMs));
+}
+
+function envInt(name: string, fallback: number, min: number, max: number) {
+  const parsed = Number.parseInt(process.env[name] ?? "", 10);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.max(min, Math.min(max, parsed));
 }
 
 function pageConfidence(page: Record<string, any>) {

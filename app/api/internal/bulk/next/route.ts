@@ -10,6 +10,11 @@ export async function POST(req:Request){
     WHERE "status"='processing'
       AND "stage" NOT IN ('boundary_review','quota_wait','completed','failed')
       AND ("lockedAt" IS NULL OR "lockedAt" < now()-interval '15 minutes')
+      AND (
+        "lastError" IS NULL
+        OR "lastError" NOT LIKE '[rate-limit:%'
+        OR "updatedAt" <= now()-interval '2 minutes'
+      )
     ORDER BY "updatedAt" ASC,"id" ASC
     LIMIT 1 FOR UPDATE SKIP LOCKED
   )
