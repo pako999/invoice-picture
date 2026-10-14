@@ -50,6 +50,11 @@ export async function POST(req:Request){
  }catch(error){
   const msg=error instanceof Error?error.message:String(error);
   const quotaReached=error instanceof OcrCommercialQuotaError;
+  if(/Batch OCR submission failed \(402\)|enable billing/i.test(msg)){
+   const storedError=`[provider-access] Mistral Batch OCR ni omogočen za API delovni prostor tega ključa (402). V Mistral Console omogočite billing za isti workspace/API key in nato izberite Ponovno zaženi OCR.`;
+   await sql`UPDATE "bulkInvoiceJobs" SET "status"='failed',"stage"='failed',"lockedAt"=NULL,"lastError"=${storedError},"completedAt"=now(),"updatedAt"=now() WHERE "id"=${data.jobId}`;
+   return NextResponse.json({error:storedError,code:"ocr_provider_access_required",retrying:false},{status:402});
+  }
   if(!quotaReached&&(/\b429\b|rate limit/i.test(msg))){
    const previous=await sql`SELECT "lastError" FROM "bulkInvoiceJobs" WHERE "id"=${data.jobId} LIMIT 1`;
    const rateLimitAttempt=nextRateLimitAttempt(previous[0]?.lastError);

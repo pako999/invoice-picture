@@ -5,8 +5,8 @@ import { bulkSql } from "@/lib/bulk-invoices/service";
 export async function POST(_req:Request,{params}:{params:Promise<{id:string}>}){
  const {userId}=await auth();if(!userId)return NextResponse.json({error:"Unauthorized"},{status:401});const id=Number((await params).id);const sql=bulkSql();
  const rows=await sql`SELECT "totalInvoices","stage","pageCount","ocrNextPage","lastError" FROM "bulkInvoiceJobs" WHERE "id"=${id} AND "clerkUserId"=${userId} LIMIT 1`;if(!rows.length)return NextResponse.json({error:"Not found"},{status:404});
- const rateLimitedFailure=rows[0].stage==='failed'&&String(rows[0].lastError??'').startsWith('[rate-limit:');
- if(rows[0].stage!=='quota_wait'&&!rateLimitedFailure)return NextResponse.json({error:"Job ne čaka na ponovni poskus."},{status:409});
+ const retryableProviderFailure=rows[0].stage==='failed'&&(/^\[(?:rate-limit|provider-access)/).test(String(rows[0].lastError??''));
+ if(rows[0].stage!=='quota_wait'&&!retryableProviderFailure)return NextResponse.json({error:"Job ne čaka na ponovni poskus."},{status:409});
  const usage=await getOcrUsageSummary(userId);const pageCount=Number(rows[0].pageCount??0);const ocrNextPage=Number(rows[0].ocrNextPage??0);
  const ocrIncomplete=pageCount>0&&ocrNextPage<pageCount;
  if(ocrIncomplete){
