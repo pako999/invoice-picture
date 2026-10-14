@@ -7,6 +7,8 @@ import { parseInvoiceTextDeterministically, reconcileMistralInvoiceWithOcrText }
 
 const OCR_ENDPOINT = "https://api.mistral.ai/v1/ocr";
 const CHAT_ENDPOINT = "https://api.mistral.ai/v1/chat/completions";
+const BATCH_ENDPOINT = "https://api.mistral.ai/v1/batch/jobs";
+const FILES_ENDPOINT = "https://api.mistral.ai/v1/files";
 
 export function bulkSql() {
   const url = process.env.DATABASE_URL;
@@ -96,6 +98,167 @@ export async function ocrBulkPages(args: {
     });
     throw error;
   }
+}
+
+export type MistralOcrBatchState = {
+  status: "QUEUED" | "RUNNING" | "SUCCESS" | "FAILED" | "TIMEOUT_EXCEEDED" | "CANCELLATION_REQUESTED" | "CANCELLED";
+  pages: Array<{ pageNumber: number; markdown: string; confidence: number | null }>;
+  model: string;
+  error: string | null;
+};
+
+/**
+ * Bulk PDFs use Mistral's asynchronous Batch API. Batch work is independent
+ * from the real-time pages-per-minute limit which can reject even a one-page
+ * request on low usage tiers.
+ */
+export async function createMistralOcrBatch(args: {
+  clerkUserId: string;
+  documentUrl: string;
+  startPage: number;
+  batchPages: number;
+  pageCount: number;
+}) {
+  const apiKey = process.env.MISTRAL_API_KEY;
+  if (!apiKey) throw new Error("MISTRAL_API_KEY is not configured");
+  const usage = await getOcrUsageSummary(args.clerkUserId);
+  const remainingDailyPages = Math.max(0, usage.dailyPageLimit - usage.dayPages);
+  const availablePages = Math.min(usage.remainingPages, remainingDailyPages);
+  if (availablePages <= 0) {
+    throw quotaPageError(usage, remainingDailyPages <= 0 ? "daily_pages" : "pages");
+  }
+
+  const pagesThisBatch = Math.min(
+    Math.max(1, args.batchPages),
+    availablePages,
+    args.pageCount - args.startPage,
+  );
+  if (pagesThisBatch <= 0) throw new Error("Bulk OCR has no remaining pages to submit");
+  const pages = Array.from({ length: pagesThisBatch }, (_, i) => args.startPage + i);
+  const model = process.env.MISTRAL_OCR_MODEL || "mistral-ocr-latest";
+  const reservation = await reserveOcrProviderBudget({
+    clerkUserId: args.clerkUserId,
+    provider: "mistral",
+    pages: pages.length,
+  });
+
+  try {
+    const response = await fetch(BATCH_ENDPOINT, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        endpoint: "/v1/ocr",
+        model,
+        timeout_hours: 24,
+        metadata: {
+          source: "posljiracun-bulk-pdf",
+          start_page: String(args.startPage),
+          page_count: String(pages.length),
+        },
+        requests: [{
+          custom_id: `pages-${pages[0]}-${pages[pages.length - 1]}`,
+          body: {
+            document: { type: "document_url", document_url: args.documentUrl },
+            pages,
+            include_blocks: false,
+            confidence_scores_granularity: "page",
+            table_format: "markdown",
+          },
+        }],
+      }),
+      signal: AbortSignal.timeout(90_000),
+    });
+    const raw = await response.json().catch(() => ({}));
+    if (!response.ok || typeof raw.id !== "string") {
+      throw new Error(`Mistral Batch OCR submission failed (${response.status}): ${providerError(raw)}`);
+    }
+    return {
+      batchId: raw.id as string,
+      startPage: args.startPage,
+      pageCount: pages.length,
+      createdAt: new Date(),
+      status: String(raw.status || "QUEUED"),
+    };
+  } catch (error) {
+    await releaseUnusedOcrProviderBudget({ reservation, pages: pages.length }).catch((releaseError) => {
+      console.error("[bulk-invoices] Failed to release rejected Batch OCR reservation", releaseError);
+    });
+    throw error;
+  }
+}
+
+export async function pollMistralOcrBatch(args: {
+  batchId: string;
+  startPage: number;
+  expectedPageCount: number;
+}): Promise<MistralOcrBatchState> {
+  const apiKey = process.env.MISTRAL_API_KEY;
+  if (!apiKey) throw new Error("MISTRAL_API_KEY is not configured");
+  const response = await fetch(`${BATCH_ENDPOINT}/${encodeURIComponent(args.batchId)}?inline=true`, {
+    headers: { Authorization: `Bearer ${apiKey}` },
+    signal: AbortSignal.timeout(60_000),
+  });
+  const raw = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(`Mistral Batch OCR status failed (${response.status}): ${providerError(raw)}`);
+  }
+
+  const status = String(raw.status || "").toUpperCase() as MistralOcrBatchState["status"];
+  const model = String(raw.model || process.env.MISTRAL_OCR_MODEL || "mistral-ocr-latest");
+  if (status === "QUEUED" || status === "RUNNING" || status === "CANCELLATION_REQUESTED") {
+    return { status, pages: [], model, error: null };
+  }
+  if (status !== "SUCCESS") {
+    return { status, pages: [], model, error: batchError(raw) };
+  }
+
+  let records: unknown[] = Array.isArray(raw.outputs) ? raw.outputs : [];
+  if (!records.length && typeof raw.output_file === "string" && raw.output_file) {
+    const output = await fetch(`${FILES_ENDPOINT}/${encodeURIComponent(raw.output_file)}/content`, {
+      headers: { Authorization: `Bearer ${apiKey}` },
+      signal: AbortSignal.timeout(90_000),
+    });
+    if (!output.ok) {
+      const detail = await output.text().catch(() => "");
+      throw new Error(`Mistral Batch OCR result download failed (${output.status}): ${detail.slice(0, 500)}`);
+    }
+    records = parseJsonLines(await output.text());
+  }
+
+  const body = batchResponseBody(records[0]);
+  const responsePages = Array.isArray(body?.pages) ? body.pages : [];
+  if (responsePages.length !== args.expectedPageCount) {
+    throw new Error(`Mistral Batch OCR returned ${responsePages.length}/${args.expectedPageCount} requested pages`);
+  }
+  return {
+    status,
+    model: String(body?.model || model),
+    error: null,
+    pages: responsePages.map((page: Record<string, any>, i: number) => ({
+      pageNumber: Number.isInteger(page.index) ? Number(page.index) : args.startPage + i,
+      markdown: typeof page.markdown === "string" ? page.markdown : "",
+      confidence: pageConfidence(page),
+    })),
+  };
+}
+
+export async function releaseMistralOcrBatchReservation(args: {
+  clerkUserId: string;
+  createdAt: Date;
+  pages: number;
+}) {
+  const createdAt = args.createdAt;
+  const dayStart = new Date(Date.UTC(createdAt.getUTCFullYear(), createdAt.getUTCMonth(), createdAt.getUTCDate()));
+  const monthStart = new Date(Date.UTC(createdAt.getUTCFullYear(), createdAt.getUTCMonth(), 1));
+  await releaseUnusedOcrProviderBudget({
+    reservation: {
+      clerkUserId: args.clerkUserId,
+      dayStart,
+      monthStart,
+      costPerPage: envInt("MISTRAL_ANNOTATED_PAGE_COST_MICROS", 5000, 0, 10_000_000),
+    },
+    pages: args.pages,
+  });
 }
 
 const classificationSchema = {
@@ -510,4 +673,37 @@ function clamp01(value: number) {
 
 function providerError(raw: any) {
   return String(raw?.message || raw?.detail || raw?.error?.message || JSON.stringify(raw)).slice(0, 500);
+}
+
+function parseJsonLines(value: string) {
+  return value
+    .replace(/^\uFEFF/, "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      try {
+        return JSON.parse(line) as unknown;
+      } catch {
+        throw new Error("Mistral Batch OCR returned an invalid JSONL result");
+      }
+    });
+}
+
+function batchResponseBody(record: unknown): any {
+  if (!record || typeof record !== "object") return null;
+  const value = record as Record<string, any>;
+  const response = value.response;
+  const statusCode = Number(response?.status_code ?? response?.statusCode ?? 200);
+  if (Number.isFinite(statusCode) && statusCode >= 400) {
+    throw new Error(`Mistral Batch OCR request failed (${statusCode}): ${providerError(response?.body ?? response)}`);
+  }
+  return response?.body ?? value.body ?? value;
+}
+
+function batchError(raw: any) {
+  const errors = Array.isArray(raw?.errors)
+    ? raw.errors.map((item: unknown) => providerError(item)).filter(Boolean).join("; ")
+    : "";
+  return (errors || `Mistral Batch OCR ended with status ${String(raw?.status || "unknown")}`).slice(0, 1000);
 }
