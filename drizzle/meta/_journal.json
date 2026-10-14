@@ -64,6 +64,13 @@
       "when": 1789725720000,
       "tag": "0009_bulk_job_source",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1792000800000,
+      "tag": "0010_mistral_batch_ocr",
+      "breakpoints": true
     }
   ]
 }
