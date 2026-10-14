@@ -161,7 +161,9 @@ export function BulkInvoiceJobDetail({ id, locale }: { id: number; locale: Local
     }
   }
 
-  const canRetryRateLimit = job?.stage === "failed" && job.lastError?.startsWith("[rate-limit:");
+  const canRetryProvider = job?.stage === "failed" && (
+    job.lastError?.startsWith("[rate-limit:") || job.lastError?.startsWith("[provider-access]")
+  );
 
   async function retryFailedDeliveries() {
     setBusy(true);
@@ -278,7 +280,7 @@ export function BulkInvoiceJobDetail({ id, locale }: { id: number; locale: Local
             {job.lastError}
           </div>
         )}
-        {canRetryRateLimit && (
+        {canRetryProvider && (
           <button
             type="button"
             disabled={busy}
