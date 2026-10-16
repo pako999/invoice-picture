@@ -30,6 +30,7 @@ export async function sendInvoiceEmail({
   filename,
   mime = "image/jpeg",
   messageBody,
+  idempotencyKey,
 }: {
   to: string;
   subject: string;
@@ -37,6 +38,7 @@ export async function sendInvoiceEmail({
   filename: string;
   mime?: string;
   messageBody?: string;
+  idempotencyKey?: string;
 }) {
   const from = process.env.RESEND_FROM ?? "onboarding@resend.dev";
 
@@ -60,5 +62,5 @@ export async function sendInvoiceEmail({
       contentHtml: `${noteBlock}<div style="margin-top:20px"><img src="cid:invoice" alt="Predogled računa" style="display:block;width:100%;max-width:560px;border-radius:12px;border:1px solid #e5e7eb" /></div>`,
     }),
     attachments: [{ filename, content: imageBase64, contentType: mime }],
-  });
+  }, idempotencyKey ? { idempotencyKey } : undefined);
 }

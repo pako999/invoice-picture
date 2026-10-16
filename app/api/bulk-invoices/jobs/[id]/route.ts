@@ -8,8 +8,7 @@ export async function GET(_req: Request,{params}:{params:Promise<{id:string}>}) 
   const sql=bulkSql();
   const jobs=await sql`
     SELECT "id","filename","byteSize","status","stage","pageCount","ocrNextPage","classifyCursor","rangesJson",
-           "boundaryReviewRequired","totalInvoices","processedInvoices","lastError","createdAt","updatedAt","completedAt",
-           COALESCE((SELECT s."mode" FROM "companyDeliverySettings" s WHERE s."companyId"="bulkInvoiceJobs"."companyId" AND s."clerkUserId"="bulkInvoiceJobs"."clerkUserId" LIMIT 1),'email_ocr') AS "deliveryMode"
+           "boundaryReviewRequired","totalInvoices","processedInvoices","lastError","createdAt","updatedAt","completedAt","deliveryMode"
     FROM "bulkInvoiceJobs" WHERE "id"=${id} AND "clerkUserId"=${userId} LIMIT 1
   `;
   if(!jobs.length)return NextResponse.json({error:"Not found"},{status:404});

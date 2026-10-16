@@ -112,7 +112,7 @@ export async function deliverInvoiceDocument(documentId: number) {
   if (!document.approvedJson) throw new Error("Invoice is not approved yet");
 
   const settings = await getCompanyDeliverySettings(document.companyId, document.clerkUserId);
-  if (settings.mode === "email_ocr") return { mode: settings.mode, skipped: true };
+  if (settings.mode === "email_ocr" || settings.mode === "split_pdf_email") return { mode: settings.mode, skipped: true };
   const invoice = normalizedInvoiceSchema.parse(JSON.parse(document.approvedJson));
   const [company] = await db.select().from(companies)
     .where(and(eq(companies.id, document.companyId), eq(companies.clerkUserId, document.clerkUserId)))

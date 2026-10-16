@@ -3,8 +3,18 @@ import { generateEslog20Xml } from "./eslog-format";
 
 export { generateEslog20Xml } from "./eslog-format";
 
-export type DeliveryMode = "email_ocr" | "api_json" | "xml_email";
+export type DeliveryMode = "email_ocr" | "split_pdf_email" | "api_json" | "xml_email";
 export type XmlDeliveryFormat = "ubl_2_1" | "eslog_2_0_original";
+
+export function normalizeDeliveryMode(value: unknown): DeliveryMode {
+  return value === "split_pdf_email" || value === "api_json" || value === "xml_email"
+    ? value
+    : "email_ocr";
+}
+
+export function isStructuredDeliveryMode(mode: DeliveryMode) {
+  return mode === "api_json" || mode === "xml_email";
+}
 
 export function buildInvoiceApiPayload(args: {
   documentId: number;

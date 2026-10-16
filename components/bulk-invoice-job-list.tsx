@@ -16,7 +16,7 @@ type BulkJob = {
   boundaryReviewRequired: boolean;
   totalInvoices: number;
   processedInvoices: number;
-  deliveryMode: "email_ocr" | "xml_email" | "api_json";
+  deliveryMode: "email_ocr" | "split_pdf_email" | "xml_email" | "api_json";
   deliveredInvoices: number;
   failedDeliveries: number;
   pendingDeliveries: number;
@@ -112,7 +112,7 @@ export function BulkInvoiceJobList({ locale }: { locale: Locale }) {
             const done = job.stage === "completed";
             const review = job.stage === "boundary_review";
             const progress = progressFor(job);
-            const stageLabel = (locale === "sl" ? STAGE_SL : STAGE_EN)[job.stage] ?? job.stage;
+            const stageLabel = splitStageLabel(job, locale);
 
             return (
               <Link
@@ -144,10 +144,10 @@ export function BulkInvoiceJobList({ locale }: { locale: Locale }) {
 
                 <div className="mt-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-5">
                   <Stat label={locale === "sl" ? "Strani" : "Pages"} value={job.pageCount ?? "—"} />
-                  <Stat label={locale === "sl" ? "Najdeni računi" : "Invoices found"} value={job.totalInvoices || "—"} />
+                  <Stat label={job.deliveryMode === "split_pdf_email" ? (locale === "sl" ? "Ločeni PDF-ji" : "Separate PDFs") : (locale === "sl" ? "Najdeni računi" : "Invoices found")} value={job.totalInvoices || "—"} />
                   <Stat label={locale === "sl" ? "Obdelano" : "Processed"} value={job.processedInvoices} />
                   <Stat
-                    label={job.deliveryMode === "api_json" ? "API" : job.deliveryMode === "xml_email" ? "XML e-mail" : (locale === "sl" ? "E-pošta" : "Email")}
+                    label={job.deliveryMode === "api_json" ? "API" : job.deliveryMode === "xml_email" ? "XML e-mail" : job.deliveryMode === "split_pdf_email" ? "PDF e-mail" : (locale === "sl" ? "E-pošta" : "Email")}
                     value={`${job.deliveredInvoices}/${job.totalInvoices || "—"}`}
                   />
                   <Stat label={locale === "sl" ? "Napredek" : "Progress"} value={progress == null ? "—" : `${progress}%`} />
@@ -197,7 +197,19 @@ function deliveryMessage(job: BulkJob, locale: Locale) {
   if (job.deliveryMode === "xml_email") {
     return locale === "sl" ? `${job.deliveredInvoices} potrjenih računov je bilo poslanih v ${job.deliveredInvoices} ločenih XML e-poštnih sporočilih.` : `${job.deliveredInvoices} approved invoices were sent in ${job.deliveredInvoices} separate XML emails.`;
   }
+  if (job.deliveryMode === "split_pdf_email") {
+    return locale === "sl" ? `Prepoznani računi so bili brez zajema podatkov poslani v ${job.deliveredInvoices} ločenih PDF sporočilih.` : `Detected invoices were sent in ${job.deliveredInvoices} separate PDF emails without extracting invoice fields.`;
+  }
   return locale === "sl" ? `${job.deliveredInvoices} računov je bilo poslanih v ${job.deliveredInvoices} ločenih e-poštnih sporočilih.` : `${job.deliveredInvoices} invoices were sent in ${job.deliveredInvoices} separate email messages.`;
+}
+
+function splitStageLabel(job: BulkJob, locale: Locale) {
+  if (job.deliveryMode === "split_pdf_email") {
+    if (job.stage === "ocr") return locale === "sl" ? "Prepoznavanje strani" : "Reading pages";
+    if (job.stage === "classify") return locale === "sl" ? "Prepoznavanje meja računov" : "Detecting invoice boundaries";
+    if (job.stage === "extract") return locale === "sl" ? "Pošiljanje PDF-jev" : "Sending PDFs";
+  }
+  return (locale === "sl" ? STAGE_SL : STAGE_EN)[job.stage] ?? job.stage;
 }
 
 function Stat({ label, value }: { label: string; value: string | number }) {

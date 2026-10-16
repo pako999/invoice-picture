@@ -7,6 +7,8 @@ import { companies } from "@/lib/schema";
 import { BULK_PDF_GATEWAY_URL, BULK_PDF_MAX_BYTES } from "@/lib/bulk-invoices/config";
 import { bulkSql } from "@/lib/bulk-invoices/service";
 import { assertBulkJobAdmission, BulkAdmissionError } from "@/lib/bulk-invoices/admission";
+import { getCompanyDeliverySettings } from "@/lib/invoice-intelligence/delivery-settings";
+import type { DeliveryMode } from "@/lib/invoice-intelligence/delivery-format";
 
 const schema = z.object({
   objectKey: z.string().min(1).max(1024),
@@ -26,10 +28,14 @@ export async function POST(req: NextRequest) {
     await assertBulkJobAdmission(userId);
 
     const db = getDb();
+    let recipientEmail: string | null = null;
+    let deliveryMode: DeliveryMode = "email_ocr";
     if (input.companyId) {
-      const [company] = await db.select({ id: companies.id }).from(companies)
+      const [company] = await db.select({ id: companies.id, recipientEmail: companies.recipientEmail }).from(companies)
         .where(and(eq(companies.id, input.companyId), eq(companies.clerkUserId, userId))).limit(1);
       if (!company) return NextResponse.json({ error: "Podjetje ni bilo najdeno." }, { status: 404 });
+      recipientEmail = company.recipientEmail;
+      deliveryMode = (await getCompanyDeliverySettings(company.id, userId)).mode;
     }
 
     const sql = bulkSql();
@@ -53,8 +59,8 @@ export async function POST(req: NextRequest) {
 
     const filename = sanitize(input.filename);
     const rows = await sql`
-      INSERT INTO "bulkInvoiceJobs" ("clerkUserId","companyId","objectKey","filename","byteSize","status","stage","createdAt","updatedAt")
-      VALUES (${userId},${input.companyId ?? null},${input.objectKey},${filename},${input.byteSize},'processing','uploaded',now(),now())
+      INSERT INTO "bulkInvoiceJobs" ("clerkUserId","companyId","recipientEmail","deliveryMode","objectKey","filename","byteSize","status","stage","createdAt","updatedAt")
+      VALUES (${userId},${input.companyId ?? null},${recipientEmail},${deliveryMode},${input.objectKey},${filename},${input.byteSize},'processing','uploaded',now(),now())
       ON CONFLICT ("clerkUserId","objectKey") DO UPDATE SET "updatedAt"=now()
       RETURNING "id","stage","status"
     `;

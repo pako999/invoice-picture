@@ -6,6 +6,7 @@ import { sendInvoiceEmail } from "@/lib/resend";
 import { enqueueInvoiceDocument } from "@/lib/invoice-intelligence/queue";
 import { OcrCommercialQuotaError } from "@/lib/invoice-intelligence/quota";
 import { MAX_PDF_UPLOAD_WORKER_CONCURRENCY } from "@/lib/pdf-upload-limits";
+import { isStructuredDeliveryMode, type DeliveryMode } from "@/lib/invoice-intelligence/delivery-format";
 
 type UploadJob = {
   id: number;
@@ -17,7 +18,7 @@ type UploadJob = {
   subject: string;
   companyId: number | null;
   messageBody: string | null;
-  deliveryMode: "email_ocr" | "api_json" | "xml_email";
+  deliveryMode: DeliveryMode;
   totalChunks: number;
   byteSize: number;
   attempts: number;
@@ -119,24 +120,26 @@ async function processOneUploadJob(job: UploadJob) {
 
     let processingDocumentId: number | null = null;
     let quotaError: OcrCommercialQuotaError | null = null;
-    try {
-      processingDocumentId = await enqueueInvoiceDocument({
-        clerkUserId: job.clerkUserId,
-        companyId: job.companyId,
-        sourceInvoiceId: job.invoiceId,
-        filename: job.filename,
-        mimeType: job.mimeType,
-        base64,
-      });
-    } catch (error) {
-      if (error instanceof OcrCommercialQuotaError) {
-        quotaError = error;
-      } else {
-        throw error;
+    if (job.deliveryMode !== "split_pdf_email") {
+      try {
+        processingDocumentId = await enqueueInvoiceDocument({
+          clerkUserId: job.clerkUserId,
+          companyId: job.companyId,
+          sourceInvoiceId: job.invoiceId,
+          filename: job.filename,
+          mimeType: job.mimeType,
+          base64,
+        });
+      } catch (error) {
+        if (error instanceof OcrCommercialQuotaError) {
+          quotaError = error;
+        } else {
+          throw error;
+        }
       }
     }
 
-    if (job.deliveryMode !== "email_ocr") {
+    if (isStructuredDeliveryMode(job.deliveryMode)) {
       if (!processingDocumentId) {
         throw quotaError ?? new Error("Structured processing could not be queued");
       }

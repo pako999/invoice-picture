@@ -8,7 +8,7 @@ import {
 } from "@/lib/schema";
 import { verifyBulkInternalSecret,BULK_EXTRACT_BATCH_SIZE } from "@/lib/bulk-invoices/config";
 import { bulkSql,extractBulkInvoice,extractBulkInvoiceFromDocument,hasUsableBulkOcrMarkdown } from "@/lib/bulk-invoices/service";
-import { getCompanyDeliverySettings } from "@/lib/invoice-intelligence/delivery-settings";
+import { normalizeDeliveryMode } from "@/lib/invoice-intelligence/delivery-format";
 
 const schema=z.object({
  jobId:z.number().int().positive(),
@@ -23,21 +23,38 @@ export async function POST(req:Request){
   const jobs=await sql`SELECT * FROM "bulkInvoiceJobs" WHERE "id"=${data.jobId} LIMIT 1`;
   if(!jobs.length||jobs[0].stage!=='extract')return NextResponse.json({error:"Bulk job is not ready for extraction"},{status:409});
   const job:any=jobs[0];
-  let recipientEmail:string|null=typeof job.recipientEmail==="string"&&job.recipientEmail?job.recipientEmail:null;let deliveryMode:"email_ocr"|"api_json"|"xml_email"="email_ocr";
+  let recipientEmail:string|null=typeof job.recipientEmail==="string"&&job.recipientEmail?job.recipientEmail:null;const deliveryMode=normalizeDeliveryMode(job.deliveryMode);
   if(job.companyId){
     const [company]=await db.select().from(companies).where(and(eq(companies.id,Number(job.companyId)),eq(companies.clerkUserId,String(job.clerkUserId)))).limit(1);
     if(!company)throw new Error("Bulk company not found");
-    recipientEmail=company.recipientEmail;deliveryMode=(await getCompanyDeliverySettings(company.id,String(job.clerkUserId))).mode;
+    recipientEmail=company.recipientEmail;
   }else if(!recipientEmail){
     const [settings]=await db.select().from(userSettings).where(eq(userSettings.clerkUserId,String(job.clerkUserId))).limit(1);recipientEmail=settings?.recipientEmail??null;
   }
   if(!recipientEmail)throw new Error("Recipient email is not configured");
+
+  // A worker can disappear after claiming an email. Resend receives a stable
+  // idempotency key, so safely make stale claims retryable without duplicates.
+  await sql`UPDATE "bulkInvoiceGroups" SET "deliveryStatus"='pending',"updatedAt"=now()
+    WHERE "jobId"=${data.jobId} AND "deliveryStatus"='sending' AND "updatedAt"<now()-interval '15 minutes'`;
 
   // One structured request per worker tick keeps bulk packages below Mistral's
   // request-per-minute limit. The worker may still send the historical batch
   // size, so clamp here instead of rejecting its request.
   const groups=await sql`SELECT * FROM "bulkInvoiceGroups" WHERE "jobId"=${data.jobId} AND "status" IN ('pending','reprocess') ORDER BY "groupIndex" LIMIT ${Math.min(data.batchSize,1)}`;
   const documentUrls=new Map((data.documents??[]).map(item=>[item.groupIndex,item.documentUrl]));
+  if(deliveryMode==="split_pdf_email"){
+    for(const group of groups as any[]){
+      await sql`UPDATE "bulkInvoiceGroups" SET "status"='extracted',"deliveryStatus"='pending',"deliveryError"=NULL,"updatedAt"=now() WHERE "id"=${group.id}`;
+    }
+    const [progress]=await sql`SELECT count(*) FILTER (WHERE "status" = 'extracted')::int AS processed,count(*)::int AS total,
+      count(*) FILTER (WHERE "deliveryStatus" IN ('pending','failed','sending'))::int AS pending_delivery FROM "bulkInvoiceGroups" WHERE "jobId"=${data.jobId}`;
+    const processed=Number(progress?.processed??0),total=Number(progress?.total??0),pendingDelivery=Number(progress?.pending_delivery??0);
+    const deliveryItems=await sql`SELECT "groupIndex","objectKey","documentId" FROM "bulkInvoiceGroups" WHERE "jobId"=${data.jobId} AND "deliveryStatus"='pending' ORDER BY "groupIndex" LIMIT 5`;
+    if(processed>=total&&total>0&&pendingDelivery===0)await complete(sql,data.jobId,total);
+    else await sql`UPDATE "bulkInvoiceJobs" SET "processedInvoices"=${processed},"lockedAt"=NULL,"lastError"=NULL,"updatedAt"=now() WHERE "id"=${data.jobId}`;
+    return NextResponse.json({success:true,processed,total,deliveryItems,done:processed>=total&&pendingDelivery===0,structuredExtractionSkipped:true});
+  }
   for(const group of groups as any[]){
     const pages=await sql`SELECT "pageNumber","markdown","ocrConfidenceBps" FROM "bulkInvoicePages"
       WHERE "jobId"=${data.jobId} AND "pageNumber">=${group.startPage} AND "pageNumber"<=${group.endPage} ORDER BY "pageNumber"`;
@@ -102,9 +119,9 @@ export async function POST(req:Request){
     await sql`UPDATE "bulkInvoiceGroups" SET "documentId"=${documentId},"status"='extracted',"deliveryStatus"=${nextDeliveryStatus},"deliveryError"=NULL,"updatedAt"=now() WHERE "id"=${group.id}`;
   }
   const [progress]=await sql`SELECT count(*) FILTER (WHERE "status" = 'extracted')::int AS processed,count(*)::int AS total,
-    count(*) FILTER (WHERE "deliveryStatus" IN ('pending','failed'))::int AS pending_delivery FROM "bulkInvoiceGroups" WHERE "jobId"=${data.jobId}`;
+    count(*) FILTER (WHERE "deliveryStatus" IN ('pending','failed','sending'))::int AS pending_delivery FROM "bulkInvoiceGroups" WHERE "jobId"=${data.jobId}`;
   const processed=Number(progress?.processed??0),total=Number(progress?.total??0),pendingDelivery=Number(progress?.pending_delivery??0);
-  const deliveryItems=await sql`SELECT "groupIndex","objectKey","documentId" FROM "bulkInvoiceGroups" WHERE "jobId"=${data.jobId} AND "documentId" IS NOT NULL AND "deliveryStatus" IN ('pending','failed') ORDER BY "groupIndex" LIMIT 5`;
+  const deliveryItems=await sql`SELECT "groupIndex","objectKey","documentId" FROM "bulkInvoiceGroups" WHERE "jobId"=${data.jobId} AND "documentId" IS NOT NULL AND "deliveryStatus"='pending' ORDER BY "groupIndex" LIMIT 5`;
   if(processed>=total&&total>0&&pendingDelivery===0)await complete(sql,data.jobId,total);
   else await sql`UPDATE "bulkInvoiceJobs" SET "processedInvoices"=${processed},"lockedAt"=NULL,"lastError"=NULL,"updatedAt"=now() WHERE "id"=${data.jobId}`;
   return NextResponse.json({success:true,processed,total,deliveryItems,done:processed>=total&&pendingDelivery===0});

@@ -9,13 +9,14 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
   if (!Number.isInteger(jobId) || jobId <= 0) return NextResponse.json({ error: "Invalid id" }, { status: 400 });
 
   const sql = bulkSql();
-  const jobs = await sql`SELECT "id" FROM "bulkInvoiceJobs" WHERE "id"=${jobId} AND "clerkUserId"=${userId} LIMIT 1`;
+  const jobs = await sql`SELECT "id","deliveryMode" FROM "bulkInvoiceJobs" WHERE "id"=${jobId} AND "clerkUserId"=${userId} LIMIT 1`;
   if (!jobs.length) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const retried = await sql`
     UPDATE "bulkInvoiceGroups"
     SET "deliveryStatus"='pending',"deliveryError"=NULL,"updatedAt"=now()
-    WHERE "jobId"=${jobId} AND "deliveryStatus"='failed' AND "documentId" IS NOT NULL
+    WHERE "jobId"=${jobId} AND "deliveryStatus"='failed'
+      AND (${String(jobs[0].deliveryMode)}='split_pdf_email' OR "documentId" IS NOT NULL)
     RETURNING "id"
   `;
   const structuredRetried = await sql`

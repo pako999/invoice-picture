@@ -71,6 +71,13 @@
       "when": 1792000800000,
       "tag": "0010_mistral_batch_ocr",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1792136400000,
+      "tag": "0011_split_pdf_email",
+      "breakpoints": true
     }
   ]
 }

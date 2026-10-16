@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
-type DeliveryMode = "email_ocr" | "api_json" | "xml_email";
+type DeliveryMode = "email_ocr" | "split_pdf_email" | "api_json" | "xml_email";
 type XmlFormat = "ubl_2_1" | "eslog_2_0_original";
 
 type Payload = {
@@ -82,16 +82,22 @@ export function CompanyDeliverySettings({ companyId, locale }: { companyId: numb
     <div className="mt-5">
       <p className="text-xs font-bold uppercase tracking-widest text-blue-600">{en ? "Company delivery" : "Pošiljanje za podjetje"}</p>
       <h1 className="mt-1 text-3xl font-extrabold text-slate-950">{data?.company.name || (en ? "Company" : "Podjetje")}</h1>
-      <p className="mt-2 text-slate-500">{en ? "Choose how approved invoice data is delivered to the accounting platform." : "Izberite, kako se potrjeni podatki računa pošljejo v računovodski sistem."}</p>
+      <p className="mt-2 text-slate-500">{en ? "Choose how invoices are delivered to the accounting platform." : "Izberite, kako se računi pošljejo v računovodski sistem."}</p>
     </div>
 
     {error && <div className="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
 
     <section className="mt-6 space-y-3">
       <ModeCard active={mode === "email_ocr"} onClick={() => setMode("email_ocr")} title={en ? "OCR email · original document" : "OCR e-mail · originalni dokument"} description={en ? "Sends the original PDF/image immediately to the configured OCR email. Best for Minimax, Birokrat, Pantheon and similar email-import workflows." : "Originalni PDF/sliko takoj pošlje na nastavljen OCR e-mail. Primerno za Minimax, Birokrat, Pantheon in podobne email uvoze."} icon="📧" />
+      <ModeCard active={mode === "split_pdf_email"} onClick={() => setMode("split_pdf_email")} title={en ? "Detect invoices and send separate PDFs" : "Prepoznaj račune in pošlji ločene PDF-je"} description={en ? "Detects where each one- or multi-page invoice starts and ends, then sends every invoice as a separate PDF email. Invoice fields are not extracted." : "Prepozna, kje se začne in konča vsak eno- ali večstranski račun, nato vsak račun pošlje kot ločen PDF v svojem e-poštnem sporočilu. Podatkov računa ne zajema."} icon="PDF" />
       <ModeCard active={mode === "api_json"} onClick={() => setMode("api_json")} title={en ? "API JSON · structured data" : "API JSON · strukturirani podatki"} description={en ? "After OCR and approval, POSTs normalized JSON plus the original document as Base64 to your HTTPS endpoint." : "Po OCR obdelavi in potrditvi pošlje normaliziran JSON ter originalni dokument kot Base64 na vaš HTTPS endpoint."} icon="{ }" />
       <ModeCard active={mode === "xml_email"} onClick={() => setMode("xml_email")} title={en ? "XML email · UBL/eSLOG" : "XML e-mail · UBL/eSLOG"} description={en ? "After approval, sends structured UBL 2.1 or eSLOG 2.0 XML by email. Original eSLOG files are forwarded unchanged." : "Po potrditvi pošlje strukturiran UBL 2.1 ali eSLOG 2.0 XML po e-mailu. Originalni eSLOG posredujemo nespremenjen."} icon="</>" />
     </section>
+
+    {mode === "split_pdf_email" && <section className="mt-5 rounded-2xl border border-blue-200 bg-blue-50 p-5 text-sm leading-relaxed text-blue-950">
+      <div className="font-extrabold">{en ? "Only document boundaries are detected" : "Prepoznajo se samo meje dokumentov"}</div>
+      <p className="mt-1">{en ? "OCR/AI is used only to determine which pages belong to the same invoice. The app does not extract, validate or export invoice fields. Every detected invoice is sent as its own PDF to:" : "OCR/AI se uporabi samo za določitev, katere strani spadajo k istemu računu. Aplikacija ne zajema, ne preverja in ne izvaža podatkov računa. Vsak prepoznan račun se kot svoj PDF pošlje na:"} <strong>{data?.company.recipientEmail}</strong></p>
+    </section>}
 
     {mode === "api_json" && <section className="mt-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       <label className="text-sm font-bold text-slate-900">API endpoint</label>

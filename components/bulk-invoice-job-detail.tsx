@@ -48,7 +48,7 @@ type Job = {
   createdAt: string;
   updatedAt: string;
   completedAt: string | null;
-  deliveryMode: "email_ocr" | "xml_email" | "api_json";
+  deliveryMode: "email_ocr" | "split_pdf_email" | "xml_email" | "api_json";
 };
 
 export function BulkInvoiceJobDetail({ id, locale }: { id: number; locale: Locale }) {
@@ -213,7 +213,8 @@ export function BulkInvoiceJobDetail({ id, locale }: { id: number; locale: Local
     return <div className="mx-auto max-w-6xl px-4 py-10 text-slate-500">{message || "…"}</div>;
   }
 
-  const structuredDelivery = job.deliveryMode !== "email_ocr";
+  const structuredDelivery = job.deliveryMode === "api_json" || job.deliveryMode === "xml_email";
+  const pageSplitDelivery = job.deliveryMode === "split_pdf_email";
   const deliveredCount = groups.filter((group) => structuredDelivery ? group.structuredDeliveryStatus === "completed" : group.deliveryStatus === "completed").length;
   const failedDeliveryCount = groups.filter((group) => structuredDelivery ? group.structuredDeliveryStatus === "failed" : group.deliveryStatus === "failed").length;
   const awaitingApprovalCount = groups.filter((group) => structuredDelivery && group.documentStatus !== "approved").length;
@@ -230,7 +231,7 @@ export function BulkInvoiceJobDetail({ id, locale }: { id: number; locale: Local
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
             <h1 className="truncate text-2xl font-extrabold text-slate-950 dark:text-white">{job.filename}</h1>
-            <p className="mt-1 text-sm text-slate-500">{stageLabel(job.stage, locale)}</p>
+            <p className="mt-1 text-sm text-slate-500">{stageLabel(job.stage, locale, job.deliveryMode)}</p>
           </div>
           <button onClick={() => void load()} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-bold dark:border-slate-700">
             ↻ {locale === "sl" ? "Osveži" : "Refresh"}
@@ -243,7 +244,7 @@ export function BulkInvoiceJobDetail({ id, locale }: { id: number; locale: Local
 
         <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
           <Stat label={locale === "sl" ? "Strani" : "Pages"} value={job.pageCount ?? "—"} />
-          <Stat label={locale === "sl" ? "Najdeni računi" : "Invoices"} value={job.totalInvoices || "—"} />
+          <Stat label={pageSplitDelivery ? (locale === "sl" ? "Ločeni PDF-ji" : "Separate PDFs") : (locale === "sl" ? "Najdeni računi" : "Invoices")} value={job.totalInvoices || "—"} />
           <Stat label={locale === "sl" ? "Obdelano" : "Processed"} value={job.processedInvoices} />
           <Stat label={locale === "sl" ? "Napredek" : "Progress"} value={`${progress}%`} />
         </div>
@@ -254,7 +255,9 @@ export function BulkInvoiceJobDetail({ id, locale }: { id: number; locale: Local
               ? (locale === "sl" ? `✓ ${deliveredCount} računov je bilo ločeno poslanih v API.` : `✓ ${deliveredCount} invoices were delivered separately to the API.`)
               : job.deliveryMode === "xml_email"
                 ? (locale === "sl" ? `✓ ${deliveredCount} potrjenih računov je bilo poslanih kot ${deliveredCount} ločenih XML e-poštnih sporočil.` : `✓ ${deliveredCount} approved invoices were sent as ${deliveredCount} separate XML emails.`)
-                : (locale === "sl" ? `✓ ${deliveredCount} računov je bilo poslanih na nastavljeni e-mail kot ${deliveredCount} ločenih sporočil.` : `✓ ${deliveredCount} invoices were sent to the configured email as ${deliveredCount} separate messages.`)}
+                : pageSplitDelivery
+                  ? (locale === "sl" ? `✓ PDF je bil razdeljen po prepoznanih mejah in poslan kot ${deliveredCount} ločenih PDF sporočil, brez zajema podatkov računov.` : `✓ The PDF was split at detected invoice boundaries and sent as ${deliveredCount} separate PDF emails, without extracting invoice fields.`)
+                  : (locale === "sl" ? `✓ ${deliveredCount} računov je bilo poslanih na nastavljeni e-mail kot ${deliveredCount} ločenih sporočil.` : `✓ ${deliveredCount} invoices were sent to the configured email as ${deliveredCount} separate messages.`)}
           </div>
         )}
         {awaitingApprovalCount > 0 && (
@@ -377,7 +380,7 @@ export function BulkInvoiceJobDetail({ id, locale }: { id: number; locale: Local
       {displayedGroups.length > 0 && (
         <section className="mt-6">
           <h2 className="mb-3 text-xl font-extrabold text-slate-950 dark:text-white">
-            {locale === "sl" ? "Posamezni računi" : "Individual invoices"} ({displayedGroups.length})
+            {pageSplitDelivery ? (locale === "sl" ? "Posamezni PDF-ji" : "Individual PDFs") : (locale === "sl" ? "Posamezni računi" : "Individual invoices")} ({displayedGroups.length})
           </h2>
           <div className="space-y-2">
             {displayedGroups.map((group) => {
@@ -390,7 +393,7 @@ export function BulkInvoiceJobDetail({ id, locale }: { id: number; locale: Local
                 <div className="flex flex-wrap items-center justify-between gap-3 p-4">
                   <div>
                     <div className="font-bold text-slate-950 dark:text-white">
-                      {locale === "sl" ? "Račun" : "Invoice"} {group.groupIndex + 1} · {locale === "sl" ? "strani" : "pages"} {group.startPage + 1}–{group.endPage + 1}
+                      {pageSplitDelivery ? "PDF" : (locale === "sl" ? "Račun" : "Invoice")} {group.groupIndex + 1} · {locale === "sl" ? "strani" : "pages"} {group.startPage + 1}–{group.endPage + 1}
                     </div>
                     <div className="mt-1 text-xs text-slate-500">
                       {group.documentStatus ?? group.status} · {structuredDelivery ? (group.structuredDeliveryStatus ?? (group.documentStatus === "approved" ? "queued" : "awaiting approval")) : group.deliveryStatus}
@@ -419,6 +422,10 @@ export function BulkInvoiceJobDetail({ id, locale }: { id: number; locale: Local
                           ? (locale === "sl" ? "Odpri potrjen račun" : "Open approved invoice")
                           : (locale === "sl" ? "Preglej in potrdi" : "Review and confirm")}
                       </Link>
+                    ) : pageSplitDelivery ? (
+                      <span className={`text-xs font-bold ${group.deliveryStatus === "completed" ? "text-emerald-600" : group.deliveryStatus === "failed" ? "text-red-600" : "text-slate-400"}`}>
+                        {group.deliveryStatus === "completed" ? (locale === "sl" ? "Poslano" : "Sent") : group.deliveryStatus === "failed" ? (locale === "sl" ? "Napaka pri pošiljanju" : "Delivery failed") : (locale === "sl" ? "Pošiljanje…" : "Sending…")}
+                      </span>
                     ) : (
                       <span className="text-xs font-semibold text-slate-400">{locale === "sl" ? "V obdelavi…" : "Processing…"}</span>
                     )}
@@ -442,7 +449,12 @@ export function BulkInvoiceJobDetail({ id, locale }: { id: number; locale: Local
   );
 }
 
-function stageLabel(stage: string, locale: Locale) {
+function stageLabel(stage: string, locale: Locale, deliveryMode: Job["deliveryMode"]) {
+  if (deliveryMode === "split_pdf_email") {
+    if (stage === "ocr") return locale === "sl" ? "Prepoznavanje strani za pravilno razdelitev" : "Reading pages to detect invoice boundaries";
+    if (stage === "classify") return locale === "sl" ? "Ugotavljanje, katere strani spadajo k istemu računu" : "Grouping pages that belong to the same invoice";
+    if (stage === "extract") return locale === "sl" ? "Pošiljanje ločenih PDF-jev brez zajema podatkov" : "Sending separate PDFs without extracting fields";
+  }
   const sl: Record<string, string> = {
     uploaded: "Priprava PDF-ja",
     ocr: "OCR vseh strani",

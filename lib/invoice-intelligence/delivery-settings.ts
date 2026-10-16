@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import { neon } from "@neondatabase/serverless";
-import { validatePublicHttpsUrl, type DeliveryMode, type XmlDeliveryFormat } from "./delivery-format";
+import { normalizeDeliveryMode, validatePublicHttpsUrl, type DeliveryMode, type XmlDeliveryFormat } from "./delivery-format";
 
 export type CompanyDeliverySettings = {
   companyId: number;
@@ -24,7 +24,7 @@ export async function getCompanyDeliverySettings(companyId: number, clerkUserId:
   return {
     companyId: Number(row.companyId),
     clerkUserId: String(row.clerkUserId),
-    mode: normalizeMode(row.mode),
+    mode: normalizeDeliveryMode(row.mode),
     apiEndpoint: row.apiEndpoint ? String(row.apiEndpoint) : null,
     hasApiToken: Boolean(row.apiTokenEncrypted),
     xmlFormat: normalizeXmlFormat(row.xmlFormat),
@@ -99,9 +99,6 @@ function decryptSecret(value: string) {
 function db() {
   if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL is not set");
   return neon(process.env.DATABASE_URL);
-}
-function normalizeMode(value: unknown): DeliveryMode {
-  return value === "api_json" || value === "xml_email" ? value : "email_ocr";
 }
 function normalizeXmlFormat(value: unknown): XmlDeliveryFormat {
   return value === "eslog_2_0_original" ? value : "ubl_2_1";

@@ -78,6 +78,7 @@ export const bulkInvoiceJobs = pgTable("bulkInvoiceJobs", {
   companyId: integer("companyId").references(() => companies.id, { onDelete: "set null" }),
   sourceInvoiceId: integer("sourceInvoiceId").references(() => invoices.id, { onDelete: "set null" }),
   recipientEmail: varchar("recipientEmail", { length: 320 }),
+  deliveryMode: varchar("deliveryMode", { length: 32 }).default("email_ocr").notNull(),
   objectKey: text("objectKey").notNull(),
   filename: varchar("filename", { length: 255 }).notNull(),
   byteSize: integer("byteSize").notNull(),
