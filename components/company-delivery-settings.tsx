@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
-type DeliveryMode = "email_ocr" | "split_pdf_email" | "api_json" | "xml_email";
+type DeliveryMode = "email_ocr" | "split_pdf_email" | "api_json" | "xml_email" | "xml_zip_email";
 type XmlFormat = "ubl_2_1" | "eslog_2_0_original";
 
 type Payload = {
@@ -92,6 +92,7 @@ export function CompanyDeliverySettings({ companyId, locale }: { companyId: numb
       <ModeCard active={mode === "split_pdf_email"} onClick={() => setMode("split_pdf_email")} title={en ? "Detect invoices and send separate PDFs" : "Prepoznaj račune in pošlji ločene PDF-je"} description={en ? "Detects where each one- or multi-page invoice starts and ends, then sends every invoice as a separate PDF email. Invoice fields are not extracted." : "Prepozna, kje se začne in konča vsak eno- ali večstranski račun, nato vsak račun pošlje kot ločen PDF v svojem e-poštnem sporočilu. Podatkov računa ne zajema."} icon="PDF" />
       <ModeCard active={mode === "api_json"} onClick={() => setMode("api_json")} title={en ? "API JSON · structured data" : "API JSON · strukturirani podatki"} description={en ? "After OCR and approval, POSTs normalized JSON plus the original document as Base64 to your HTTPS endpoint." : "Po OCR obdelavi in potrditvi pošlje normaliziran JSON ter originalni dokument kot Base64 na vaš HTTPS endpoint."} icon="{ }" />
       <ModeCard active={mode === "xml_email"} onClick={() => setMode("xml_email")} title={en ? "XML email · UBL/eSLOG" : "XML e-mail · UBL/eSLOG"} description={en ? "After approval, sends structured UBL 2.1 or eSLOG 2.0 XML by email. Original eSLOG files are forwarded unchanged." : "Po potrditvi pošlje strukturiran UBL 2.1 ali eSLOG 2.0 XML po e-mailu. Originalni eSLOG posredujemo nespremenjen."} icon="</>" />
+      <ModeCard active={mode === "xml_zip_email"} onClick={() => setMode("xml_zip_email")} title={en ? "ZIP · all UBL/eSLOG invoices" : "ZIP · vsi UBL/eSLOG računi"} description={en ? "Creates one ZIP containing every approved invoice as a separate XML file for bulk XML/ZIP import." : "Ustvari en ZIP, v katerem je vsak potrjen račun kot ločena XML datoteka za skupinski uvoz XML/ZIP v E-računi."} icon="ZIP" />
     </section>
 
     {mode === "split_pdf_email" && <section className="mt-5 rounded-2xl border border-blue-200 bg-blue-50 p-5 text-sm leading-relaxed text-blue-950">
@@ -111,7 +112,7 @@ export function CompanyDeliverySettings({ companyId, locale }: { companyId: numb
       </div>
     </section>}
 
-    {mode === "xml_email" && <section className="mt-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    {(mode === "xml_email" || mode === "xml_zip_email") && <section className="mt-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
       <label className="text-sm font-bold text-slate-900">{en ? "XML format" : "XML format"}</label>
       <select value={xmlFormat} onChange={(e) => setXmlFormat(e.target.value as XmlFormat)} className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-500">
         <option value="ubl_2_1">UBL 2.1 · {en ? "generated from approved data" : "ustvarjen iz potrjenih podatkov"}</option>
@@ -120,7 +121,8 @@ export function CompanyDeliverySettings({ companyId, locale }: { companyId: numb
       <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs leading-relaxed text-amber-800">
         {en ? "For PDF and image invoices, a real eSLOG 2.0 file is generated from the approved data. An original eSLOG XML is forwarded unchanged." : "Za PDF in slikovne račune se iz potrjenih podatkov ustvari pravi eSLOG 2.0. Originalni eSLOG XML se posreduje nespremenjen."}
       </div>
-      <p className="mt-3 text-xs text-slate-500">{en ? "XML is sent to the company's configured email:" : "XML se pošlje na nastavljen e-mail podjetja:"} <strong>{data?.company.recipientEmail}</strong></p>
+      {mode === "xml_zip_email" && <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50 p-4 text-xs leading-relaxed text-blue-900">{en ? "For a multi-invoice PDF, delivery waits until all invoices are approved, then sends one ZIP with a separate XML file for every invoice." : "Pri PDF-ju z več računi dostava počaka, da so vsi računi potrjeni, nato pošlje en ZIP. Vsak račun je v arhivu ločena XML datoteka."}</div>}
+      <p className="mt-3 text-xs text-slate-500">{mode === "xml_zip_email" ? (en ? "The ZIP is sent to:" : "ZIP se pošlje na:") : (en ? "XML is sent to the company's configured email:" : "XML se pošlje na nastavljen e-mail podjetja:")} <strong>{data?.company.recipientEmail}</strong></p>
     </section>}
 
     <button onClick={save} disabled={saving || (mode === "api_json" && !endpoint.trim())} className={`mt-6 w-full rounded-xl py-3.5 text-sm font-bold text-white transition disabled:opacity-50 ${saved ? "bg-emerald-600" : "bg-blue-600 hover:bg-blue-700"}`}>

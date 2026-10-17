@@ -46,19 +46,21 @@ export async function POST(req: NextRequest) {
     };
 
     const session = await getStripe().checkout.sessions.create({
+      ui_mode: "embedded",
       mode: "subscription",
       line_items: [{ price: priceId, quantity: 1 }],
       ...(existing?.stripeCustomerId ? { customer: existing.stripeCustomerId } : { customer_email: email }),
       client_reference_id: userId,
       metadata,
       subscription_data: { metadata },
-      success_url: `${origin}${prefix}/scan?upgraded=1&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}${prefix}/upgrade?plan=${data.tier}&billing=${data.billing}&canceled=1`,
+      return_url: `${origin}${prefix}/scan?upgraded=1&session_id={CHECKOUT_SESSION_ID}`,
+      automatic_tax: { enabled: true },
+      billing_address_collection: "auto",
       allow_promotion_codes: true,
     });
 
-    if (!session.url) throw new Error("Stripe Checkout URL was not returned");
-    return NextResponse.json({ url: session.url });
+    if (!session.client_secret) throw new Error("Stripe Embedded Checkout client secret was not returned");
+    return NextResponse.json({ clientSecret: session.client_secret });
   } catch (error) {
     console.error("[stripe checkout]", error);
     if (error instanceof z.ZodError) return NextResponse.json({ error: "Invalid checkout request" }, { status: 400 });

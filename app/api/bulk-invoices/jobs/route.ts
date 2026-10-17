@@ -11,17 +11,17 @@ export async function GET() {
            j."deliveryMode",
            count(g."id") FILTER (WHERE
              (j."deliveryMode" IN ('email_ocr','split_pdf_email') AND g."deliveryStatus"='completed') OR
-             (j."deliveryMode" IN ('xml_email','api_json') AND dj."status"='completed')
+             (j."deliveryMode" IN ('xml_email','xml_zip_email','api_json') AND dj."status"='completed')
            )::int AS "deliveredInvoices",
            count(g."id") FILTER (WHERE
              (j."deliveryMode" IN ('email_ocr','split_pdf_email') AND g."deliveryStatus"='failed') OR
-             (j."deliveryMode" IN ('xml_email','api_json') AND dj."status"='failed')
+             (j."deliveryMode" IN ('xml_email','xml_zip_email','api_json') AND dj."status"='failed')
            )::int AS "failedDeliveries",
            count(g."id") FILTER (WHERE
              (j."deliveryMode" IN ('email_ocr','split_pdf_email') AND g."deliveryStatus" IN ('pending','sending')) OR
-             (j."deliveryMode" IN ('xml_email','api_json') AND d."status"='approved' AND COALESCE(dj."status",'queued') IN ('queued','processing'))
+             (j."deliveryMode" IN ('xml_email','xml_zip_email','api_json') AND d."status"='approved' AND COALESCE(dj."status",'queued') IN ('queued','processing'))
            )::int AS "pendingDeliveries",
-           count(g."id") FILTER (WHERE j."deliveryMode" IN ('xml_email','api_json') AND d."status" IS DISTINCT FROM 'approved')::int AS "awaitingApproval"
+           count(g."id") FILTER (WHERE j."deliveryMode" IN ('xml_email','xml_zip_email','api_json') AND d."status" IS DISTINCT FROM 'approved')::int AS "awaitingApproval"
     FROM "bulkInvoiceJobs" j
     LEFT JOIN "bulkInvoiceGroups" g ON g."jobId"=j."id"
     LEFT JOIN "invoiceDocuments" d ON d."id"=g."documentId"

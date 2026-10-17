@@ -94,6 +94,9 @@ export const bulkInvoiceJobs = pgTable("bulkInvoiceJobs", {
   ocrBatchPageCount: integer("ocrBatchPageCount"),
   ocrBatchCreatedAt: timestamp("ocrBatchCreatedAt"),
   classifyCursor: integer("classifyCursor").default(0).notNull(),
+  classifyBatchId: text("classifyBatchId"),
+  classifyBatchStartPage: integer("classifyBatchStartPage"),
+  classifyBatchEndPage: integer("classifyBatchEndPage"),
   rangesJson: text("rangesJson"),
   boundaryReviewRequired: boolean("boundaryReviewRequired").default(false).notNull(),
   totalInvoices: integer("totalInvoices").default(0).notNull(),
@@ -188,6 +191,8 @@ export const bulkInvoiceGroups = pgTable("bulkInvoiceGroups", {
   deliveryError: text("deliveryError"),
   archiveHidden: boolean("archiveHidden").default(false).notNull(),
   documentId: integer("documentId").references(() => invoiceDocuments.id, { onDelete: "set null" }),
+  extractionBatchId: text("extractionBatchId"),
+  extractionBatchCreatedAt: timestamp("extractionBatchCreatedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 }, (t) => ({

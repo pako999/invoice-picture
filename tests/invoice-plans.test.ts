@@ -3,14 +3,14 @@ import assert from "node:assert/strict";
 import { ADMIN_OCR_OVERRIDE, PLAN_CONFIGS, getPlanConfig, isPaidPlan, nextPaidPlan } from "../lib/plans";
 
 test("commercial OCR plans expose agreed prices and limits",()=>{
-  assert.deepEqual([PLAN_CONFIGS.basic.monthlyPrice,PLAN_CONFIGS.basic.ocrDocumentsMonthly,PLAN_CONFIGS.basic.ocrPagesMonthly,PLAN_CONFIGS.basic.companyLimit],[9.9,50,75,1]);
-  assert.deepEqual([PLAN_CONFIGS.pro.monthlyPrice,PLAN_CONFIGS.pro.ocrDocumentsMonthly,PLAN_CONFIGS.pro.ocrPagesMonthly,PLAN_CONFIGS.pro.companyLimit],[29.9,500,600,3]);
-  assert.deepEqual([PLAN_CONFIGS.accounting_pro.monthlyPrice,PLAN_CONFIGS.accounting_pro.ocrDocumentsMonthly,PLAN_CONFIGS.accounting_pro.ocrPagesMonthly,PLAN_CONFIGS.accounting_pro.companyLimit],[59.95,2000,2500,null]);
-  assert.deepEqual([PLAN_CONFIGS.accounting_max.monthlyPrice,PLAN_CONFIGS.accounting_max.ocrDocumentsMonthly,PLAN_CONFIGS.accounting_max.ocrPagesMonthly,PLAN_CONFIGS.accounting_max.companyLimit],[134.95,5000,5500,null]);
+  assert.deepEqual([PLAN_CONFIGS.basic.monthlyPrice,PLAN_CONFIGS.basic.ocrDocumentsMonthly,PLAN_CONFIGS.basic.ocrPagesMonthly,PLAN_CONFIGS.basic.companyLimit],[13.5,50,150,1]);
+  assert.deepEqual([PLAN_CONFIGS.pro.monthlyPrice,PLAN_CONFIGS.pro.ocrDocumentsMonthly,PLAN_CONFIGS.pro.ocrPagesMonthly,PLAN_CONFIGS.pro.companyLimit],[48,500,600,3]);
+  assert.deepEqual([PLAN_CONFIGS.accounting_pro.monthlyPrice,PLAN_CONFIGS.accounting_pro.ocrDocumentsMonthly,PLAN_CONFIGS.accounting_pro.ocrPagesMonthly,PLAN_CONFIGS.accounting_pro.companyLimit],[125,2000,2500,null]);
+  assert.deepEqual([PLAN_CONFIGS.accounting_max.monthlyPrice,PLAN_CONFIGS.accounting_max.ocrDocumentsMonthly,PLAN_CONFIGS.accounting_max.ocrPagesMonthly,PLAN_CONFIGS.accounting_max.companyLimit],[199,5000,5500,null]);
 });
 
 test("yearly prices and delivery entitlements are correct",()=>{
-  assert.equal(PLAN_CONFIGS.basic.yearlyPrice,99);assert.equal(PLAN_CONFIGS.pro.yearlyPrice,299);assert.equal(PLAN_CONFIGS.accounting_pro.yearlyPrice,599.5);assert.equal(PLAN_CONFIGS.accounting_max.yearlyPrice,1349.5);
+  assert.equal(PLAN_CONFIGS.basic.yearlyPrice,135);assert.equal(PLAN_CONFIGS.pro.yearlyPrice,480);assert.equal(PLAN_CONFIGS.accounting_pro.yearlyPrice,1250);assert.equal(PLAN_CONFIGS.accounting_max.yearlyPrice,1990);
   assert.equal(PLAN_CONFIGS.basic.structuredDelivery,true);assert.equal(PLAN_CONFIGS.basic.apiDelivery,false);assert.equal(PLAN_CONFIGS.pro.apiDelivery,true);assert.equal(PLAN_CONFIGS.accounting_pro.priorityProcessing,true);
 });
 

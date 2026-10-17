@@ -86,7 +86,7 @@ function SettingsContent() {
   const [addError, setAddError] = useState("");
   const [adding, setAdding] = useState(false);
   const [isPro, setIsPro] = useState(false);
-  const [planInfo, setPlanInfo] = useState<{ plan: string; isFree: boolean; monthlyUsage: number; monthlyLimit: number | null } | null>(null);
+  const [planInfo, setPlanInfo] = useState<{ plan: string; isFree: boolean; monthlyUsage: number; monthlyLimit: number | null; ocrDocumentsMonthly: number; ocrPagesMonthly: number } | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -96,8 +96,8 @@ function SettingsContent() {
     ]).then(([settings, comps, sub]) => {
       setEmail(settings.recipientEmail ?? "");
       setCompanyList(Array.isArray(comps) ? comps : []);
-      setIsPro(sub.plan === "pro" && sub.paid === true);
-      setPlanInfo({ plan: sub.plan, isFree: sub.isFree, monthlyUsage: sub.monthlyUsage, monthlyLimit: sub.monthlyLimit });
+      setIsPro(["pro", "accounting_pro", "accounting_max"].includes(sub.commercialPlan ?? sub.plan));
+      setPlanInfo({ plan: sub.commercialPlan ?? sub.plan, isFree: sub.isFree, monthlyUsage: sub.monthlyUsage, monthlyLimit: sub.monthlyLimit, ocrDocumentsMonthly: Number(sub.ocrDocumentsMonthly ?? 0), ocrPagesMonthly: Number(sub.ocrPagesMonthly ?? 0) });
       setLoading(false);
     });
   }, []);
@@ -180,7 +180,7 @@ function SettingsContent() {
           </span>
         </div>
         <p className="text-xs text-gray-500 dark:text-slate-400 mb-5 ml-9">
-          Add companies. Use the ⚙️ icon on each company to select OCR email, API JSON or XML delivery.
+          Add companies. Use the ⚙️ icon on each company to select OCR email, separate PDFs, API JSON, XML or a bulk XML ZIP.
         </p>
 
         {loading ? (
@@ -297,9 +297,10 @@ function SettingsContent() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-semibold text-gray-900 dark:text-white capitalize">
-                  {planInfo.plan === "basic" ? "Basic plan" : planInfo.plan === "pro" ? "PRO plan" : planInfo.plan === "trial" ? "Trial" : planInfo.plan}
+                  {planInfo.plan === "basic" ? "Basic plan" : planInfo.plan === "pro" ? "PRO plan" : planInfo.plan === "accounting_pro" ? "Accounting PRO" : planInfo.plan === "accounting_max" ? "Accounting MAX" : planInfo.plan === "trial" ? "Trial" : planInfo.plan}
                 </p>
                 <p className="text-sm text-gray-500 dark:text-slate-400">Unlimited invoice sending</p>
+                <p className="mt-1 text-sm font-semibold text-blue-700 dark:text-blue-300">{planInfo.ocrDocumentsMonthly.toLocaleString("en-IE")} OCR documents · {planInfo.ocrPagesMonthly.toLocaleString("en-IE")} OCR pages / month</p>
               </div>
               {(planInfo.plan === "expired" || planInfo.plan === "canceled") && (
                 <a href="/en/upgrade" className="text-sm font-bold text-blue-600 dark:text-blue-400 hover:underline">

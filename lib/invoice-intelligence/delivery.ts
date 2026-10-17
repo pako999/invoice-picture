@@ -1,12 +1,13 @@
-import { and, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { neon } from "@neondatabase/serverless";
 import { getDb } from "@/lib/db";
-import { companies, invoiceAuditLogs, invoiceDocuments, invoices } from "@/lib/schema";
+import { bulkInvoiceJobs, companies, invoiceAuditLogs, invoiceDocuments, invoices } from "@/lib/schema";
 import { getResend } from "@/lib/resend";
 import { brandedEmail } from "@/lib/email-template";
 import { normalizedInvoiceSchema } from "./types";
 import { buildInvoiceApiPayload, resolveXmlDelivery } from "./delivery-format";
 import { getCompanyDeliverySettings, getDeliverySecret } from "./delivery-settings";
+import { createZip } from "@/lib/zip";
 
 export async function queuePendingApprovedDeliveries(limit = 100) {
   const sql = rawDb();
@@ -37,7 +38,7 @@ export async function queuePendingApprovedDeliveries(limit = 100) {
     LEFT JOIN "invoiceDeliveryJobs" j ON j."documentId" = d."id"
     WHERE d."status" = 'approved'
       AND d."approvedJson" IS NOT NULL
-      AND s."mode" IN ('api_json', 'xml_email')
+      AND s."mode" IN ('api_json', 'xml_email', 'xml_zip_email')
       AND j."id" IS NULL
     ORDER BY d."approvedAt" ASC NULLS LAST, d."id" ASC
     LIMIT ${Math.max(1, Math.min(500, limit))}
@@ -118,6 +119,23 @@ export async function deliverInvoiceDocument(documentId: number) {
     .where(and(eq(companies.id, document.companyId), eq(companies.clerkUserId, document.clerkUserId)))
     .limit(1);
   if (!company) throw new Error("Company not found");
+
+  if (settings.mode === "xml_zip_email") {
+    const documents = document.bulkJobId
+      ? await db.select().from(invoiceDocuments).where(eq(invoiceDocuments.bulkJobId, document.bulkJobId)).orderBy(asc(invoiceDocuments.bulkGroupIndex))
+      : [document];
+    if (document.bulkJobId) {
+      const [job] = await db.select({ totalInvoices: bulkInvoiceJobs.totalInvoices }).from(bulkInvoiceJobs).where(eq(bulkInvoiceJobs.id, document.bulkJobId)).limit(1);
+      if (!job || documents.length < job.totalInvoices || documents.some((item) => item.status !== "approved" || !item.approvedJson)) return { mode: settings.mode, waitingForApproval: true };
+    }
+    if (documents.some((item) => item.status !== "approved" || !item.approvedJson)) return { mode: settings.mode, waitingForApproval: true };
+    const entries=documents.map((item,index)=>{const parsed=normalizedInvoiceSchema.parse(JSON.parse(item.approvedJson!));const resolved=resolveXmlDelivery({format:settings.xmlFormat,invoice:parsed,originalBase64:item.originalBase64,originalMimeType:item.mimeType,originalFilename:item.filename});return{name:`${String(index+1).padStart(3,"0")}-${resolved.filename}`,data:resolved.xml};});
+    const zip=createZip(entries);
+    const result=await getResend().emails.send({from:process.env.RESEND_FROM??"onboarding@resend.dev",to:company.recipientEmail,subject:`ZIP e-računov · ${entries.length} računov`,html:brandedEmail({preheader:`${entries.length} strukturiranih računov v ZIP datoteki`,eyebrow:"Slikaj Račun · ZIP",title:"ZIP za skupinski uvoz računov",introHtml:`<p style="margin:0">V priponki je ZIP z <strong>${entries.length} ločenimi XML računi</strong> za skupinski uvoz v E-računi ali drug združljiv računovodski program.</p>`,noticeHtml:"Vsak račun je v ZIP arhivu shranjen kot samostojna UBL/eSLOG XML datoteka."}),attachments:[{filename:`e-racuni-${document.bulkJobId??document.id}.zip`,content:zip.toString("base64"),contentType:"application/zip"}]},{idempotencyKey:`xml-zip/${document.clerkUserId}/${document.bulkJobId??document.id}`});
+    if(result.error)throw new Error(`XML ZIP email delivery failed: ${result.error.message}`);
+    for(const item of documents){await markSourceInvoice(item.id,true);await audit(item.id,"structured_zip_delivery_success",{mode:settings.mode,bulkJobId:document.bulkJobId,invoices:entries.length,to:company.recipientEmail});}
+    return {mode:settings.mode,invoices:entries.length};
+  }
 
   if (settings.mode === "api_json") {
     if (!settings.apiEndpoint) throw new Error("JSON API endpoint is not configured");

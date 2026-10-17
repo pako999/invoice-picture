@@ -134,7 +134,7 @@ export async function POST(req: NextRequest) {
       }, { status: 422 });
     }
 
-    if (deliveryMode === "xml_email" && !cfg.structuredDelivery) {
+    if ((deliveryMode === "xml_email" || deliveryMode === "xml_zip_email") && !cfg.structuredDelivery) {
       return NextResponse.json({
         success: false,
         error: "XML/eSLOG pošiljanje ni vključeno v vaš paket.",

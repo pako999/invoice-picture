@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    if (event.type === "checkout.session.completed") {
+    if (event.type === "checkout.session.completed" || event.type === "checkout.session.async_payment_succeeded") {
       const session = event.data.object;
       if (session.mode === "subscription" && (session.payment_status === "paid" || session.payment_status === "no_payment_required") && session.subscription) {
         const subscription = typeof session.subscription === "string"

@@ -86,7 +86,7 @@ function SettingsContent() {
   const [addError, setAddError] = useState("");
   const [adding, setAdding] = useState(false);
   const [isPro, setIsPro] = useState(false);
-  const [planInfo, setPlanInfo] = useState<{ plan: string; isFree: boolean; monthlyUsage: number; monthlyLimit: number | null } | null>(null);
+  const [planInfo, setPlanInfo] = useState<{ plan: string; isFree: boolean; monthlyUsage: number; monthlyLimit: number | null; ocrDocumentsMonthly: number; ocrPagesMonthly: number } | null>(null);
 
   useEffect(() => {
     const noStore: RequestInit = { cache: "no-store", headers: { "Cache-Control": "no-cache" } };
@@ -97,8 +97,8 @@ function SettingsContent() {
     ]).then(([settings, comps, sub]) => {
       setEmail(settings.recipientEmail ?? "");
       setCompanyList(Array.isArray(comps) ? comps : []);
-      setIsPro(sub.plan === "pro" && sub.paid === true);
-      setPlanInfo({ plan: sub.plan, isFree: sub.isFree, monthlyUsage: sub.monthlyUsage, monthlyLimit: sub.monthlyLimit });
+      setIsPro(["pro", "accounting_pro", "accounting_max"].includes(sub.commercialPlan ?? sub.plan));
+      setPlanInfo({ plan: sub.commercialPlan ?? sub.plan, isFree: sub.isFree, monthlyUsage: sub.monthlyUsage, monthlyLimit: sub.monthlyLimit, ocrDocumentsMonthly: Number(sub.ocrDocumentsMonthly ?? 0), ocrPagesMonthly: Number(sub.ocrPagesMonthly ?? 0) });
       setLoading(false);
     });
   }, []);
@@ -183,7 +183,7 @@ function SettingsContent() {
           </span>
         </div>
         <p className="text-xs text-gray-500 dark:text-slate-400 mb-5 ml-9">
-          Dodajte podjetja. Z ikono ⚙️ pri vsakem podjetju izberete OCR e-mail, API JSON ali XML pošiljanje.
+          Dodajte podjetja. Z ikono ⚙️ pri vsakem podjetju izberete OCR e-mail, ločene PDF-je, API JSON, XML ali skupinski XML ZIP.
         </p>
 
         {loading ? (
@@ -300,9 +300,10 @@ function SettingsContent() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-semibold text-gray-900 dark:text-white capitalize">
-                  {planInfo.plan === "basic" ? "Osnovni paket" : planInfo.plan === "pro" ? "PRO paket" : planInfo.plan === "trial" ? "Preizkusna doba" : planInfo.plan}
+                  {planInfo.plan === "basic" ? "Osnovni paket" : planInfo.plan === "pro" ? "PRO paket" : planInfo.plan === "accounting_pro" ? "Računovodstvo PRO" : planInfo.plan === "accounting_max" ? "Računovodstvo MAX" : planInfo.plan === "trial" ? "Preizkusna doba" : planInfo.plan}
                 </p>
                 <p className="text-sm text-gray-500 dark:text-slate-400">Neomejeno pošiljanje računov</p>
+                <p className="mt-1 text-sm font-semibold text-blue-700 dark:text-blue-300">{planInfo.ocrDocumentsMonthly.toLocaleString("sl-SI")} OCR dokumentov · {planInfo.ocrPagesMonthly.toLocaleString("sl-SI")} OCR strani / mesec</p>
               </div>
               {(planInfo.plan === "expired" || planInfo.plan === "canceled") && (
                 <a href="/upgrade" className="text-sm font-bold text-blue-600 dark:text-blue-400 hover:underline">

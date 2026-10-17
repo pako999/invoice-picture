@@ -14,3 +14,9 @@ test("split PDF email is not a structured data delivery mode", () => {
   assert.equal(isStructuredDeliveryMode(mode), false);
   assert.equal(normalizeDeliveryMode("unknown"), "email_ocr");
 });
+
+test("XML ZIP delivery is a structured mode", () => {
+  const mode = normalizeDeliveryMode("xml_zip_email");
+  assert.equal(mode, "xml_zip_email");
+  assert.equal(isStructuredDeliveryMode(mode), true);
+});

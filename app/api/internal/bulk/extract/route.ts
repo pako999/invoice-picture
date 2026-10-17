@@ -7,7 +7,7 @@ import {
   companies, invoiceAuditLogs, invoiceDocuments, invoiceProcessingAttempts, invoiceValidationResults, invoices, userSettings
 } from "@/lib/schema";
 import { verifyBulkInternalSecret,BULK_EXTRACT_BATCH_SIZE } from "@/lib/bulk-invoices/config";
-import { bulkSql,extractBulkInvoice,extractBulkInvoiceFromDocument,hasUsableBulkOcrMarkdown } from "@/lib/bulk-invoices/service";
+import { bulkSql,createMistralInvoiceExtractionBatch,extractBulkInvoiceFromDocument,hasUsableBulkOcrMarkdown,pollMistralInvoiceExtractionBatch } from "@/lib/bulk-invoices/service";
 import { normalizeDeliveryMode } from "@/lib/invoice-intelligence/delivery-format";
 
 const schema=z.object({
@@ -79,11 +79,13 @@ export async function POST(req:Request){
     // structured extraction instead of sending every child PDF through the
     // real-time OCR endpoint a second time. Direct OCR is only a safety
     // fallback for empty/unusable page text.
-    const started=Date.now();const extracted=hasUsableBulkOcrMarkdown(markdown)
-      ? await extractBulkInvoice(markdown,avg,previousInvoice)
-      : documentUrl
-        ? await extractBulkInvoiceFromDocument(documentUrl,avg)
-        : await extractBulkInvoice(markdown,avg,previousInvoice);
+    const started=Date.now();let extracted;
+    if(hasUsableBulkOcrMarkdown(markdown)){
+      if(!group.extractionBatchId){const batch=await createMistralInvoiceExtractionBatch(markdown,avg);await sql`UPDATE "bulkInvoiceGroups" SET "extractionBatchId"=${batch.batchId},"extractionBatchCreatedAt"=now(),"updatedAt"=now() WHERE "id"=${group.id}`;await sql`UPDATE "bulkInvoiceJobs" SET "lockedAt"=NULL,"lastError"=NULL,"updatedAt"=now() WHERE "id"=${data.jobId}`;return NextResponse.json({success:true,batchSubmitted:true,batchId:batch.batchId},{status:202});}
+      const state=await pollMistralInvoiceExtractionBatch({batchId:String(group.extractionBatchId),markdown,ocrConfidence:avg});
+      if(["QUEUED","RUNNING","CANCELLATION_REQUESTED"].includes(state.status)){await sql`UPDATE "bulkInvoiceJobs" SET "lockedAt"=NULL,"updatedAt"=now() WHERE "id"=${data.jobId}`;return NextResponse.json({success:true,batchPending:true,status:state.status},{status:202});}
+      if(!state.result)throw new Error(state.error||`Mistral Batch extraction ended with ${state.status}`);extracted=state.result;
+    }else if(documentUrl)extracted=await extractBulkInvoiceFromDocument(documentUrl,avg);else throw new Error("Bulk OCR returned no usable text for structured extraction");
     const autoApprove=canAutoApprove(extracted.invoice,extracted.validation.status,avg,Boolean(group.needsBoundaryReview));
     const normalizedJson=JSON.stringify(extracted.invoice);
     const warningList=[...extracted.invoice.warnings,...extracted.validation.warnings,...extracted.validation.errors];
@@ -116,7 +118,7 @@ export async function POST(req:Request){
     const nextDeliveryStatus=isReprocess
       ? String(group.deliveryStatus)
       : deliveryMode==='email_ocr'?'pending':'not_required';
-    await sql`UPDATE "bulkInvoiceGroups" SET "documentId"=${documentId},"status"='extracted',"deliveryStatus"=${nextDeliveryStatus},"deliveryError"=NULL,"updatedAt"=now() WHERE "id"=${group.id}`;
+    await sql`UPDATE "bulkInvoiceGroups" SET "documentId"=${documentId},"status"='extracted',"deliveryStatus"=${nextDeliveryStatus},"deliveryError"=NULL,"extractionBatchId"=NULL,"extractionBatchCreatedAt"=NULL,"updatedAt"=now() WHERE "id"=${group.id}`;
   }
   const [progress]=await sql`SELECT count(*) FILTER (WHERE "status" = 'extracted')::int AS processed,count(*)::int AS total,
     count(*) FILTER (WHERE "deliveryStatus" IN ('pending','failed','sending'))::int AS pending_delivery FROM "bulkInvoiceGroups" WHERE "jobId"=${data.jobId}`;

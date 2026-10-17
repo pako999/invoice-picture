@@ -16,7 +16,7 @@ type BulkJob = {
   boundaryReviewRequired: boolean;
   totalInvoices: number;
   processedInvoices: number;
-  deliveryMode: "email_ocr" | "split_pdf_email" | "xml_email" | "api_json";
+  deliveryMode: "email_ocr" | "split_pdf_email" | "xml_email" | "xml_zip_email" | "api_json";
   deliveredInvoices: number;
   failedDeliveries: number;
   pendingDeliveries: number;
@@ -147,7 +147,7 @@ export function BulkInvoiceJobList({ locale }: { locale: Locale }) {
                   <Stat label={job.deliveryMode === "split_pdf_email" ? (locale === "sl" ? "Ločeni PDF-ji" : "Separate PDFs") : (locale === "sl" ? "Najdeni računi" : "Invoices found")} value={job.totalInvoices || "—"} />
                   <Stat label={locale === "sl" ? "Obdelano" : "Processed"} value={job.processedInvoices} />
                   <Stat
-                    label={job.deliveryMode === "api_json" ? "API" : job.deliveryMode === "xml_email" ? "XML e-mail" : job.deliveryMode === "split_pdf_email" ? "PDF e-mail" : (locale === "sl" ? "E-pošta" : "Email")}
+                    label={job.deliveryMode === "api_json" ? "API" : job.deliveryMode === "xml_zip_email" ? "XML ZIP" : job.deliveryMode === "xml_email" ? "XML e-mail" : job.deliveryMode === "split_pdf_email" ? "PDF e-mail" : (locale === "sl" ? "E-pošta" : "Email")}
                     value={`${job.deliveredInvoices}/${job.totalInvoices || "—"}`}
                   />
                   <Stat label={locale === "sl" ? "Napredek" : "Progress"} value={progress == null ? "—" : `${progress}%`} />
@@ -196,6 +196,9 @@ function deliveryMessage(job: BulkJob, locale: Locale) {
   }
   if (job.deliveryMode === "xml_email") {
     return locale === "sl" ? `${job.deliveredInvoices} potrjenih računov je bilo poslanih v ${job.deliveredInvoices} ločenih XML e-poštnih sporočilih.` : `${job.deliveredInvoices} approved invoices were sent in ${job.deliveredInvoices} separate XML emails.`;
+  }
+  if (job.deliveryMode === "xml_zip_email") {
+    return locale === "sl" ? `ZIP z ${job.deliveredInvoices} ločenimi XML računi je bil pripravljen za skupinski uvoz.` : `A ZIP with ${job.deliveredInvoices} separate XML invoices was prepared for bulk import.`;
   }
   if (job.deliveryMode === "split_pdf_email") {
     return locale === "sl" ? `Prepoznani računi so bili brez zajema podatkov poslani v ${job.deliveredInvoices} ločenih PDF sporočilih.` : `Detected invoices were sent in ${job.deliveredInvoices} separate PDF emails without extracting invoice fields.`;

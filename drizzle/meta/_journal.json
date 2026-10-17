@@ -85,6 +85,13 @@
       "when": 1792224000000,
       "tag": "0012_split_pdf_archive",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1792235600000,
+      "tag": "0013_full_mistral_batch",
+      "breakpoints": true
     }
   ]
 }

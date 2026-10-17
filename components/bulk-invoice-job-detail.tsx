@@ -48,7 +48,7 @@ type Job = {
   createdAt: string;
   updatedAt: string;
   completedAt: string | null;
-  deliveryMode: "email_ocr" | "split_pdf_email" | "xml_email" | "api_json";
+  deliveryMode: "email_ocr" | "split_pdf_email" | "xml_email" | "xml_zip_email" | "api_json";
 };
 
 export function BulkInvoiceJobDetail({ id, locale }: { id: number; locale: Locale }) {
@@ -213,7 +213,7 @@ export function BulkInvoiceJobDetail({ id, locale }: { id: number; locale: Local
     return <div className="mx-auto max-w-6xl px-4 py-10 text-slate-500">{message || "…"}</div>;
   }
 
-  const structuredDelivery = job.deliveryMode === "api_json" || job.deliveryMode === "xml_email";
+  const structuredDelivery = job.deliveryMode === "api_json" || job.deliveryMode === "xml_email" || job.deliveryMode === "xml_zip_email";
   const pageSplitDelivery = job.deliveryMode === "split_pdf_email";
   const deliveredCount = groups.filter((group) => structuredDelivery ? group.structuredDeliveryStatus === "completed" : group.deliveryStatus === "completed").length;
   const failedDeliveryCount = groups.filter((group) => structuredDelivery ? group.structuredDeliveryStatus === "failed" : group.deliveryStatus === "failed").length;
@@ -253,6 +253,8 @@ export function BulkInvoiceJobDetail({ id, locale }: { id: number; locale: Local
           <div className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-200">
             {job.deliveryMode === "api_json"
               ? (locale === "sl" ? `✓ ${deliveredCount} računov je bilo ločeno poslanih v API.` : `✓ ${deliveredCount} invoices were delivered separately to the API.`)
+              : job.deliveryMode === "xml_zip_email"
+                ? (locale === "sl" ? `✓ ZIP vsebuje ${deliveredCount} ločenih XML računov za skupinski uvoz.` : `✓ The ZIP contains ${deliveredCount} separate XML invoices for bulk import.`)
               : job.deliveryMode === "xml_email"
                 ? (locale === "sl" ? `✓ ${deliveredCount} potrjenih računov je bilo poslanih kot ${deliveredCount} ločenih XML e-poštnih sporočil.` : `✓ ${deliveredCount} approved invoices were sent as ${deliveredCount} separate XML emails.`)
                 : pageSplitDelivery

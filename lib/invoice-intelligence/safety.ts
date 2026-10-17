@@ -43,7 +43,7 @@ export function knownDocumentExceedsPageLimit(input: { base64: string; mimeType:
 export function azureAllowedForInput(input: { base64: string; mimeType: string; filename?: string }) { if (!isPdfInput(input)) return true; const estimated = estimateSourcePages(input); return estimated != null && estimated <= getOcrSafetyConfig().maxPagesPerDocument; }
 export function createOcrRunBudget(): OcrRunBudget { return { remainingPages: getOcrSafetyConfig().maxPagesPerCron }; }
 
-export async function reserveOcrProviderBudget(args: { clerkUserId: string; provider: OcrProvider; pages: number; runBudget?: OcrRunBudget }) {
+export async function reserveOcrProviderBudget(args: { clerkUserId: string; provider: OcrProvider; pages: number; runBudget?: OcrRunBudget; costPerPageMicros?: number }) {
   const config = getOcrSafetyConfig();
   const entitlement = await resolveOcrEntitlement(args.clerkUserId);
   const pages = Math.max(1, Math.min(Math.trunc(args.pages), config.maxPagesPerDocument));
@@ -55,7 +55,7 @@ export async function reserveOcrProviderBudget(args: { clerkUserId: string; prov
 
   const url = process.env.DATABASE_URL; if (!url) throw new Error("DATABASE_URL is not set"); const sql = neon(url);
   const now = new Date(); const dayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())); const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
-  const costPerPage = args.provider === "mistral" ? envInt("MISTRAL_ANNOTATED_PAGE_COST_MICROS", 5000, 0, 10_000_000) : envInt("AZURE_PAGE_COST_MICROS", 0, 0, 10_000_000);
+  const costPerPage = args.costPerPageMicros ?? (args.provider === "mistral" ? envInt("MISTRAL_ANNOTATED_PAGE_COST_MICROS", 5000, 0, 10_000_000) : envInt("AZURE_PAGE_COST_MICROS", 0, 0, 10_000_000));
   const estimatedCost = pages * costPerPage; const userScope = `user:${args.clerkUserId}`;
 
   try {
