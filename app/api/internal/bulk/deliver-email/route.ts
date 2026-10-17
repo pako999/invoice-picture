@@ -52,6 +52,7 @@ export async function POST(req: Request) {
 
   let documentId: number | null = null;
   let sourceInvoiceId: number | null = null;
+  let splitArchiveInvoiceId: number | null = null;
   let recipientEmail = job.recipientEmail;
   let subject = `Račun ${data.groupIndex + 1}/${job.pageCount ?? data.groupIndex + 1} · ${job.filename}`;
   let filename = splitPdfFilename(job.filename, data.groupIndex);
@@ -99,6 +100,24 @@ export async function POST(req: Request) {
     const bytes = Buffer.from(await response.arrayBuffer());
     if (bytes.length > 25 * 1024 * 1024) throw new Error("Child PDF exceeds the 25 MB email delivery safety limit");
 
+    if (mode === "split_pdf_email" && !group.archiveHidden) {
+      const [archive] = await db.insert(invoices).values({
+        clerkUserId: job.clerkUserId,
+        recipientEmail,
+        companyId: job.companyId,
+        subject,
+        imageData: null,
+        imageMime: "application/pdf",
+        filename,
+        bulkGroupId: group.id,
+        status: "pending",
+      }).onConflictDoUpdate({
+        target: invoices.bulkGroupId,
+        set: { status: "pending", errorMessage: null, filename, recipientEmail, subject },
+      }).returning({ id: invoices.id });
+      splitArchiveInvoiceId = archive?.id ?? null;
+    }
+
     const sent = await sendInvoiceEmail({
       to: recipientEmail,
       subject,
@@ -112,6 +131,10 @@ export async function POST(req: Request) {
     if (sourceInvoiceId) {
       await db.update(invoices).set({ status: "sent", sentAt: new Date(), errorMessage: null })
         .where(eq(invoices.id, sourceInvoiceId));
+    }
+    if (splitArchiveInvoiceId) {
+      await db.update(invoices).set({ status: "sent", sentAt: new Date(), errorMessage: null })
+        .where(eq(invoices.id, splitArchiveInvoiceId));
     }
     await db.update(bulkInvoiceGroups).set({
       deliveryStatus: "completed",
@@ -152,6 +175,10 @@ export async function POST(req: Request) {
     if (sourceInvoiceId) {
       await db.update(invoices).set({ status: "failed", errorMessage: message.slice(0, 2000) })
         .where(eq(invoices.id, sourceInvoiceId));
+    }
+    if (splitArchiveInvoiceId) {
+      await db.update(invoices).set({ status: "failed", errorMessage: message.slice(0, 2000) })
+        .where(eq(invoices.id, splitArchiveInvoiceId));
     }
     await db.update(bulkInvoiceJobs).set({
       status: "failed",

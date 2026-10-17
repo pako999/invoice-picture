@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { getDb } from "@/lib/db";
-import { invoiceDocuments, invoiceProcessingJobs, invoices } from "@/lib/schema";
+import { bulkInvoiceGroups, invoiceDocuments, invoiceProcessingJobs, invoices } from "@/lib/schema";
 import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 
@@ -55,7 +55,7 @@ export async function GET(
     && document?.status === "failed"
     && processingJob?.status === "failed"
     && processingJob.attempts >= processingJob.maxAttempts;
-  const previewAvailable = Boolean(invoice.imageData || document?.originalBase64 || document?.storageObjectKey);
+  const previewAvailable = Boolean(invoice.imageData || invoice.bulkGroupId || document?.originalBase64 || document?.storageObjectKey);
   return NextResponse.json({
     ...invoice,
     status: terminalOcrFailure ? "failed" : invoice.status,
@@ -104,6 +104,13 @@ export async function DELETE(
 
   const { id } = await params;
   const db = getDb();
+  const [invoice] = await db.select({ bulkGroupId: invoices.bulkGroupId }).from(invoices)
+    .where(and(eq(invoices.id, Number(id)), eq(invoices.clerkUserId, userId))).limit(1);
+  if (!invoice) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (invoice.bulkGroupId) {
+    await db.update(bulkInvoiceGroups).set({ archiveHidden: true })
+      .where(eq(bulkInvoiceGroups.id, invoice.bulkGroupId));
+  }
   await db.delete(invoices).where(and(eq(invoices.id, Number(id)), eq(invoices.clerkUserId, userId)));
   return NextResponse.json({ success: true });
 }

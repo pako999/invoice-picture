@@ -58,11 +58,14 @@ export const invoices = pgTable("invoices", {
   imageData: text("imageData"),
   imageMime: varchar("imageMime", { length: 64 }).default("image/jpeg"),
   filename: varchar("filename", { length: 255 }).notNull(),
+  bulkGroupId: integer("bulkGroupId"),
   status: statusEnum("status").default("pending").notNull(),
   errorMessage: text("errorMessage"),
   sentAt: timestamp("sentAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+}, (t) => ({
+  bulkGroupUnique: uniqueIndex("invoices_bulk_group_unique").on(t.bulkGroupId),
+}));
 
 export const companies = pgTable("companies", {
   id: serial("id").primaryKey(),
@@ -183,6 +186,7 @@ export const bulkInvoiceGroups = pgTable("bulkInvoiceGroups", {
   status: varchar("status", { length: 32 }).default("pending").notNull(),
   deliveryStatus: varchar("deliveryStatus", { length: 32 }).default("pending").notNull(),
   deliveryError: text("deliveryError"),
+  archiveHidden: boolean("archiveHidden").default(false).notNull(),
   documentId: integer("documentId").references(() => invoiceDocuments.id, { onDelete: "set null" }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),

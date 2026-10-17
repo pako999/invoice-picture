@@ -3,7 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import { and, desc, eq } from "drizzle-orm";
 import { BULK_PDF_GATEWAY_URL } from "@/lib/bulk-invoices/config";
 import { getDb } from "@/lib/db";
-import { invoiceDocuments, invoices } from "@/lib/schema";
+import { bulkInvoiceGroups, bulkInvoiceJobs, invoiceDocuments, invoices } from "@/lib/schema";
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { userId, getToken } = await auth();
@@ -19,6 +19,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     filename: invoices.filename,
     mimeType: invoices.imageMime,
     imageData: invoices.imageData,
+    bulkGroupId: invoices.bulkGroupId,
   }).from(invoices)
     .where(and(eq(invoices.id, invoiceId), eq(invoices.clerkUserId, userId)))
     .limit(1);
@@ -41,6 +42,32 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       method: "POST",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
       body: JSON.stringify({ key: document.storageObjectKey }),
+      signal: AbortSignal.timeout(15_000),
+    });
+    const body = await signed.json().catch(() => ({})) as { url?: unknown };
+    if (!signed.ok || typeof body.url !== "string") {
+      return NextResponse.json({ error: "Could not open private document" }, { status: 502 });
+    }
+    return NextResponse.redirect(body.url, 307);
+  }
+
+  const [bulkFile] = invoice.bulkGroupId
+    ? await db.select({ storageObjectKey: bulkInvoiceGroups.objectKey })
+      .from(bulkInvoiceGroups)
+      .innerJoin(bulkInvoiceJobs, eq(bulkInvoiceJobs.id, bulkInvoiceGroups.jobId))
+      .where(and(
+        eq(bulkInvoiceGroups.id, invoice.bulkGroupId),
+        eq(bulkInvoiceJobs.clerkUserId, userId),
+      ))
+      .limit(1)
+    : [];
+  if (bulkFile?.storageObjectKey) {
+    const token = await getToken();
+    if (!token) return NextResponse.json({ error: "Session expired" }, { status: 401 });
+    const signed = await fetch(`${BULK_PDF_GATEWAY_URL}/sign-download`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ key: bulkFile.storageObjectKey }),
       signal: AbortSignal.timeout(15_000),
     });
     const body = await signed.json().catch(() => ({})) as { url?: unknown };

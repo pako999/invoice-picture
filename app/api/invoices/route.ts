@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { getDb } from "@/lib/db";
-import { invoices } from "@/lib/schema";
+import { bulkInvoiceGroups, invoices } from "@/lib/schema";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { backfillInvoiceCompanyIds } from "@/lib/backfill-invoice-company";
@@ -14,12 +14,36 @@ export async function GET() {
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  // One-time-per-server backfill so old invoices show up in the new
-  // company-folder UI. Idempotent + cheap after the first call.
-  await backfillInvoiceCompanyIds();
-
   try {
     const db = getDb();
+    // Split-PDF delivery predates its archive link. This idempotent insert
+    // restores already delivered child PDFs and also covers interrupted jobs.
+    await db.execute(sql`
+      INSERT INTO "invoices" (
+        "clerkUserId", "recipientEmail", "companyId", "subject", "imageMime",
+        "filename", "bulkGroupId", "status", "errorMessage", "sentAt", "createdAt"
+      )
+      SELECT
+        j."clerkUserId", j."recipientEmail", j."companyId",
+        'Račun ' || (g."groupIndex" + 1)::text || '/' || greatest(j."totalInvoices", 1)::text || ' · ' || j."filename",
+        'application/pdf',
+        regexp_replace(j."filename", '\\.pdf$', '', 'i') || '-racun-' || lpad((g."groupIndex" + 1)::text, 3, '0') || '.pdf',
+        g."id",
+        CASE WHEN g."deliveryStatus" = 'completed' THEN 'sent'::invoice_status ELSE 'failed'::invoice_status END,
+        g."deliveryError",
+        CASE WHEN g."deliveryStatus" = 'completed' THEN g."updatedAt" ELSE NULL END,
+        g."createdAt"
+      FROM "bulkInvoiceGroups" g
+      JOIN "bulkInvoiceJobs" j ON j."id" = g."jobId"
+      WHERE j."clerkUserId" = ${userId}
+        AND j."deliveryMode" = 'split_pdf_email'
+        AND j."recipientEmail" IS NOT NULL
+        AND g."deliveryStatus" IN ('completed', 'failed')
+        AND g."archiveHidden" = false
+      ON CONFLICT ("bulkGroupId") DO NOTHING
+    `);
+    // One-time-per-server company association for older archive entries.
+    await backfillInvoiceCompanyIds();
     const rows = await db
       .select({
         id: invoices.id,
@@ -90,8 +114,9 @@ export async function GET() {
       ...row,
       previewUrl: `/api/invoices/${row.id}/file`,
     })));
-  } catch {
-    return NextResponse.json([]);
+  } catch (error) {
+    console.error("invoice_archive_load_failed", error);
+    return NextResponse.json({ error: "Arhiva računov ni bilo mogoče naložiti." }, { status: 500 });
   }
 }
 
@@ -103,6 +128,13 @@ export async function DELETE(req: NextRequest) {
     const body = bulkDeleteSchema.parse(await req.json());
     const ids = [...new Set(body.ids)];
     const db = getDb();
+    const linkedGroups = await db.select({ id: invoices.bulkGroupId }).from(invoices)
+      .where(and(eq(invoices.clerkUserId, userId), inArray(invoices.id, ids)));
+    const bulkGroupIds = linkedGroups.flatMap((row) => row.id == null ? [] : [row.id]);
+    if (bulkGroupIds.length) {
+      await db.update(bulkInvoiceGroups).set({ archiveHidden: true })
+        .where(inArray(bulkInvoiceGroups.id, bulkGroupIds));
+    }
     const deleted = await db
       .delete(invoices)
       .where(and(eq(invoices.clerkUserId, userId), inArray(invoices.id, ids)))

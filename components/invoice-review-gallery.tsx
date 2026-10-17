@@ -30,6 +30,9 @@ export function InvoiceReviewGallery() {
   const [hovered, setHovered] = useState<Doc | null>(null);
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(() => new Set());
+  const [showBulkDelete, setShowBulkDelete] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -48,22 +51,70 @@ export function InvoiceReviewGallery() {
 
   useEffect(() => { void load(); }, [load]);
   useEffect(() => {
-    if (!preview && !confirmAction) return;
+    if (!preview && !confirmAction && !showBulkDelete) return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
-      if (confirmAction) setConfirmAction(null); else setPreview(null);
+      if (showBulkDelete && !bulkDeleting) setShowBulkDelete(false);
+      else if (confirmAction) setConfirmAction(null);
+      else setPreview(null);
     };
     window.addEventListener("keydown", closeOnEscape);
     return () => {
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", closeOnEscape);
     };
-  }, [confirmAction, preview]);
+  }, [bulkDeleting, confirmAction, preview, showBulkDelete]);
+
+  useEffect(() => { setSelectedIds(new Set()); }, [filter]);
 
   const docs = useMemo(() => payload?.documents.filter((item) => filter === "all" || item.status === filter) ?? [], [payload, filter]);
   const stats = payload?.stats ?? {};
+  const allVisibleSelected = docs.length > 0 && docs.every((item) => selectedIds.has(item.id));
+
+  function toggleSelected(id: number) {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleAllVisible() {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (allVisibleSelected) docs.forEach((item) => next.delete(item.id));
+      else docs.forEach((item) => next.add(item.id));
+      return next;
+    });
+  }
+
+  async function deleteSelected() {
+    const ids = [...selectedIds];
+    if (!ids.length) return;
+    setBulkDeleting(true);
+    setError("");
+    try {
+      const response = await fetch("/api/invoice-reader", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error ?? "Izbranih računov ni bilo mogoče izbrisati.");
+      setSelectedIds(new Set());
+      setShowBulkDelete(false);
+      setHovered(null);
+      setPreview((current) => current && ids.includes(current.id) ? null : current);
+      await load();
+    } catch (deleteError) {
+      setShowBulkDelete(false);
+      setError(deleteError instanceof Error ? deleteError.message : "Izbranih računov ni bilo mogoče izbrisati.");
+    } finally {
+      setBulkDeleting(false);
+    }
+  }
 
   async function runConfirmedAction() {
     if (!confirmAction) return;
@@ -80,6 +131,11 @@ export function InvoiceReviewGallery() {
       if (!response.ok) throw new Error(result.error ?? (kind === "delete" ? "Računa ni bilo mogoče izbrisati." : "Računa ni bilo mogoče potrditi."));
       setConfirmAction(null);
       setHovered(null);
+      setSelectedIds((current) => {
+        const next = new Set(current);
+        next.delete(selected.id);
+        return next;
+      });
       setPreview((current) => current?.id === selected.id ? null : current);
       await load();
     } catch (actionError) {
@@ -121,6 +177,21 @@ export function InvoiceReviewGallery() {
         </div>
       </div>
 
+      {!loading && docs.length > 0 ? (
+        <div className="mb-5 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:flex-row sm:items-center sm:justify-between dark:border-slate-700 dark:bg-slate-900">
+          <label className="inline-flex min-h-11 cursor-pointer items-center gap-3 rounded-xl px-2 font-bold text-slate-800 dark:text-white">
+            <input type="checkbox" checked={allVisibleSelected} onChange={toggleAllVisible} className="h-5 w-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
+            Izberi vse prikazane
+          </label>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <span className="text-sm font-semibold text-slate-500">{selectedIds.size} izbranih</span>
+            <button type="button" onClick={() => setShowBulkDelete(true)} disabled={selectedIds.size === 0} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-red-600 px-4 font-bold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500 dark:disabled:bg-slate-700 dark:disabled:text-slate-400">
+              <Trash2 className="h-4 w-4" /> Izbriši izbrane ({selectedIds.size})
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       {error ? <div role="alert" className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">{error}</div> : null}
       {loading ? (
         <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center text-slate-500 shadow-sm dark:border-slate-700 dark:bg-slate-900"><Loader2 className="mx-auto mb-3 h-7 w-7 animate-spin" />Nalaganje…</div>
@@ -128,25 +199,29 @@ export function InvoiceReviewGallery() {
         <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center shadow-sm dark:border-slate-700 dark:bg-slate-900"><CheckCircle2 className="mx-auto mb-3 h-10 w-10 text-emerald-500" /><p className="font-semibold text-slate-800 dark:text-white">Ni dokumentov v tem pogledu.</p></div>
       ) : view === "grid" ? (
         <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" aria-label="Računi">
-          {docs.map((item) => <InvoiceCard key={item.id} document={item} busy={busyId === item.id} onPreview={() => setPreview(item)} onHover={setHovered} onApprove={() => setConfirmAction({ kind: "approve", document: item })} onDelete={() => setConfirmAction({ kind: "delete", document: item })} />)}
+          {docs.map((item) => <InvoiceCard key={item.id} document={item} selected={selectedIds.has(item.id)} busy={busyId === item.id} onToggle={() => toggleSelected(item.id)} onPreview={() => setPreview(item)} onHover={setHovered} onApprove={() => setConfirmAction({ kind: "approve", document: item })} onDelete={() => setConfirmAction({ kind: "delete", document: item })} />)}
         </section>
       ) : (
         <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900" aria-label="Računi">
-          <div className="divide-y divide-slate-100 dark:divide-slate-800">{docs.map((item) => <InvoiceRow key={item.id} document={item} busy={busyId === item.id} onPreview={() => setPreview(item)} onApprove={() => setConfirmAction({ kind: "approve", document: item })} onDelete={() => setConfirmAction({ kind: "delete", document: item })} />)}</div>
+          <div className="divide-y divide-slate-100 dark:divide-slate-800">{docs.map((item) => <InvoiceRow key={item.id} document={item} selected={selectedIds.has(item.id)} busy={busyId === item.id} onToggle={() => toggleSelected(item.id)} onPreview={() => setPreview(item)} onApprove={() => setConfirmAction({ kind: "approve", document: item })} onDelete={() => setConfirmAction({ kind: "delete", document: item })} />)}</div>
         </section>
       )}
 
       {hovered && !preview && !confirmAction ? <HoverPreview document={hovered} /> : null}
       {preview ? <PreviewModal document={preview} onClose={() => setPreview(null)} /> : null}
       {confirmAction ? <ConfirmDialog action={confirmAction} busy={busyId === confirmAction.document.id} onCancel={() => setConfirmAction(null)} onConfirm={() => void runConfirmedAction()} /> : null}
+      {showBulkDelete ? <BulkDeleteDialog count={selectedIds.size} busy={bulkDeleting} onCancel={() => setShowBulkDelete(false)} onConfirm={() => void deleteSelected()} /> : null}
     </main>
   );
 }
 
-function InvoiceCard({ document: item, busy, onPreview, onHover, onApprove, onDelete }: { document: Doc; busy: boolean; onPreview: () => void; onHover: (document: Doc | null) => void; onApprove: () => void; onDelete: () => void }) {
+function InvoiceCard({ document: item, selected, busy, onToggle, onPreview, onHover, onApprove, onDelete }: { document: Doc; selected: boolean; busy: boolean; onToggle: () => void; onPreview: () => void; onHover: (document: Doc | null) => void; onApprove: () => void; onDelete: () => void }) {
   const warnings = parseWarnings(item.warningsJson);
   return (
-    <article className="relative flex min-w-0 flex-col rounded-2xl border border-slate-200 bg-white p-3 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg dark:border-slate-700 dark:bg-slate-900">
+    <article className={`relative flex min-w-0 flex-col rounded-2xl border bg-white p-3 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg dark:bg-slate-900 ${selected ? "border-blue-500 ring-2 ring-blue-500/30 dark:border-blue-400" : "border-slate-200 dark:border-slate-700"}`}>
+      <label className="absolute left-5 top-5 z-10 flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl border border-slate-200 bg-white/95 shadow-md dark:border-slate-600 dark:bg-slate-900/95" title="Izberi račun">
+        <input type="checkbox" checked={selected} onChange={onToggle} className="h-5 w-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500" aria-label={`Izberi račun ${item.filename}`} />
+      </label>
       <button type="button" onClick={onPreview} onPointerEnter={(event) => { if (event.pointerType === "mouse") onHover(item); }} onPointerLeave={() => onHover(null)} className="group relative aspect-[4/3] w-full overflow-hidden rounded-xl border border-slate-200 bg-slate-100 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-slate-700 dark:bg-slate-950" aria-label={`Odpri celoten predogled: ${item.filename}`}>
         <DocumentPreview document={item} compact />
         <span className="absolute inset-0 flex items-center justify-center bg-slate-950/0 transition group-hover:bg-slate-950/20"><span className="translate-y-2 rounded-full bg-white/95 p-3 text-slate-900 opacity-0 shadow-xl transition group-hover:translate-y-0 group-hover:opacity-100"><Maximize2 className="h-5 w-5" /></span></span>
@@ -162,8 +237,8 @@ function InvoiceCard({ document: item, busy, onPreview, onHover, onApprove, onDe
   );
 }
 
-function InvoiceRow({ document: item, busy, onPreview, onApprove, onDelete }: { document: Doc; busy: boolean; onPreview: () => void; onApprove: () => void; onDelete: () => void }) {
-  return <article className="grid gap-3 p-3 sm:grid-cols-[6rem_minmax(0,1fr)_auto] sm:items-center"><button type="button" onClick={onPreview} className="relative aspect-[4/3] w-24 overflow-hidden rounded-lg border border-slate-200 bg-slate-100 focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-slate-700" aria-label={`Predogled: ${item.filename}`}><DocumentPreview document={item} compact /></button><div className="min-w-0"><div className="flex min-w-0 items-center gap-2"><h2 className="truncate font-bold text-slate-900 dark:text-white">{item.filename}</h2><Status status={item.status} /></div><p className="mt-1 truncate text-sm text-slate-500">{item.documentType || "Dokument"} · {item.provider || "čaka na obdelavo"} · {new Date(item.createdAt).toLocaleString("sl-SI")} · {confidence(item)}</p></div><CardActions document={item} busy={busy} onPreview={onPreview} onApprove={onApprove} onDelete={onDelete} compact /></article>;
+function InvoiceRow({ document: item, selected, busy, onToggle, onPreview, onApprove, onDelete }: { document: Doc; selected: boolean; busy: boolean; onToggle: () => void; onPreview: () => void; onApprove: () => void; onDelete: () => void }) {
+  return <article className={`grid grid-cols-[auto_6rem_minmax(0,1fr)] items-center gap-3 p-3 sm:grid-cols-[auto_6rem_minmax(0,1fr)_auto] ${selected ? "bg-blue-50/80 dark:bg-blue-950/20" : ""}`}><label className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl" title="Izberi račun"><input type="checkbox" checked={selected} onChange={onToggle} className="h-5 w-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500" aria-label={`Izberi račun ${item.filename}`} /></label><button type="button" onClick={onPreview} className="relative aspect-[4/3] w-24 overflow-hidden rounded-lg border border-slate-200 bg-slate-100 focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-slate-700" aria-label={`Predogled: ${item.filename}`}><DocumentPreview document={item} compact /></button><div className="min-w-0"><div className="flex min-w-0 items-center gap-2"><h2 className="truncate font-bold text-slate-900 dark:text-white">{item.filename}</h2><Status status={item.status} /></div><p className="mt-1 truncate text-sm text-slate-500">{item.documentType || "Dokument"} · {item.provider || "čaka na obdelavo"} · {new Date(item.createdAt).toLocaleString("sl-SI")} · {confidence(item)}</p></div><div className="col-span-3 sm:col-span-1"><CardActions document={item} busy={busy} onPreview={onPreview} onApprove={onApprove} onDelete={onDelete} compact /></div></article>;
 }
 
 function CardActions({ document: item, busy, onPreview, onApprove, onDelete, compact = false }: { document: Doc; busy: boolean; onPreview: () => void; onApprove: () => void; onDelete: () => void; compact?: boolean }) {
@@ -194,6 +269,10 @@ function PreviewModal({ document: item, onClose }: { document: Doc; onClose: () 
 function ConfirmDialog({ action, busy, onCancel, onConfirm }: { action: Exclude<ConfirmAction, null>; busy: boolean; onCancel: () => void; onConfirm: () => void }) {
   const deleting = action.kind === "delete";
   return <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/70 p-4" role="presentation" onMouseDown={() => { if (!busy) onCancel(); }}><section role="dialog" aria-modal="true" aria-labelledby="confirm-action-title" className={`w-full max-w-lg rounded-2xl border-2 bg-white p-6 shadow-2xl dark:bg-slate-900 ${deleting ? "border-red-500" : "border-emerald-500"}`} onMouseDown={(event) => event.stopPropagation()}><h2 id="confirm-action-title" className={`text-xl font-extrabold ${deleting ? "text-red-700 dark:text-red-400" : "text-emerald-700 dark:text-emerald-400"}`}>{deleting ? "Trajno izbriši račun?" : "Potrdi račun brez dodatnega pregleda?"}</h2><p className="mt-2 break-all font-semibold text-slate-900 dark:text-white">{action.document.filename}</p><p className="mt-3 text-sm text-slate-600 dark:text-slate-300">{deleting ? "Račun, izvorna datoteka in podatki obdelave bodo trajno odstranjeni. Dejanja ni mogoče razveljaviti." : "Potrjeni bodo trenutno prebrani podatki. Če jih želite najprej popraviti, izberite »Preglej podatke« na kartici računa."}</p><div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end"><button type="button" onClick={onCancel} disabled={busy} className="min-h-11 rounded-xl border border-slate-300 px-4 font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800">Prekliči</button><button type="button" onClick={onConfirm} disabled={busy} className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 font-bold text-white disabled:opacity-50 ${deleting ? "bg-red-600 hover:bg-red-700" : "bg-emerald-600 hover:bg-emerald-700"}`}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : deleting ? <Trash2 className="h-4 w-4" /> : <Check className="h-4 w-4" />}{busy ? "Prosim, počakajte…" : deleting ? "Trajno izbriši" : "Potrdi račun"}</button></div></section></div>;
+}
+
+function BulkDeleteDialog({ count, busy, onCancel, onConfirm }: { count: number; busy: boolean; onCancel: () => void; onConfirm: () => void }) {
+  return <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/70 p-4" role="presentation" onMouseDown={() => { if (!busy) onCancel(); }}><section role="dialog" aria-modal="true" aria-labelledby="bulk-delete-title" className="w-full max-w-lg rounded-2xl border-2 border-red-500 bg-white p-6 shadow-2xl dark:bg-slate-900" onMouseDown={(event) => event.stopPropagation()}><h2 id="bulk-delete-title" className="text-xl font-extrabold text-red-700 dark:text-red-400">Trajno izbriši izbrane račune?</h2><p className="mt-3 text-slate-700 dark:text-slate-200">Izbrisali boste <strong>{count} {count === 1 ? "račun" : count === 2 ? "računa" : "računov"}</strong>, njihove izvorne datoteke in podatke obdelave.</p><p className="mt-2 text-sm font-semibold text-red-700 dark:text-red-400">Tega dejanja ni mogoče razveljaviti.</p><div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end"><button type="button" onClick={onCancel} disabled={busy} className="min-h-11 rounded-xl border border-slate-300 px-4 font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800">Prekliči</button><button type="button" onClick={onConfirm} disabled={busy || count === 0} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-red-600 px-4 font-bold text-white hover:bg-red-700 disabled:opacity-50">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}{busy ? "Brisanje…" : `Trajno izbriši (${count})`}</button></div></section></div>;
 }
 
 function ViewButton({ active, onClick, icon, children }: { active: boolean; onClick: () => void; icon: React.ReactNode; children: React.ReactNode }) { return <button type="button" onClick={onClick} aria-pressed={active} className={`inline-flex min-h-9 items-center gap-2 rounded-lg px-3 text-sm font-bold ${active ? "bg-slate-950 text-white dark:bg-blue-600" : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"}`}>{icon}{children}</button>; }

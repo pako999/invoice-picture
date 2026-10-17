@@ -297,6 +297,7 @@ export default function InvoicesPage() {
   const [list, setList] = useState<InvoiceListItem[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
+  const [archiveError, setArchiveError] = useState("");
   const [deleting, setDeleting] = useState<number | null>(null);
   const [approving, setApproving] = useState<number | null>(null);
   const [reprocessing, setReprocessing] = useState<Set<number>>(() => new Set());
@@ -317,6 +318,7 @@ export default function InvoicesPage() {
 
   async function load() {
     setLoading(true);
+    setArchiveError("");
     try {
       const [invRes, compRes] = await Promise.all([
         fetch("/api/invoices"),
@@ -324,11 +326,12 @@ export default function InvoicesPage() {
       ]);
       const invData = await invRes.json();
       const compData = await compRes.json();
+      if (!invRes.ok) throw new Error(invData?.error ?? "Arhiva računov ni bilo mogoče naložiti.");
+      if (!compRes.ok) throw new Error(compData?.error ?? "Podjetij ni bilo mogoče naložiti.");
       setList(Array.isArray(invData) ? invData : []);
       setCompanies(Array.isArray(compData) ? compData : []);
-    } catch {
-      setList([]);
-      setCompanies([]);
+    } catch (error) {
+      setArchiveError(error instanceof Error ? error.message : "Arhiva računov ni bilo mogoče naložiti.");
     } finally {
       setLoading(false);
     }
@@ -637,6 +640,13 @@ export default function InvoicesPage() {
           🔄 Osveži
         </button>
       </div>
+
+      {archiveError ? (
+        <div role="alert" className="mb-6 flex flex-col gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-red-800 sm:flex-row sm:items-center sm:justify-between dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">
+          <p className="font-semibold">{archiveError}</p>
+          <button type="button" onClick={() => void load()} className="min-h-11 rounded-xl bg-red-600 px-4 font-bold text-white hover:bg-red-700">Poskusi znova</button>
+        </div>
+      ) : null}
 
       {/* Company filter pills — shown only if the user has any companies.
           Free / Basic users with 0 companies don't see this row at all. */}
