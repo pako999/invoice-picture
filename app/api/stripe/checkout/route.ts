@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
     };
 
     const session = await getStripe().checkout.sessions.create({
-      ui_mode: "embedded",
+      ui_mode: "embedded_page",
       integration_identifier: "posljiracun_checkout_ocrflowx",
       mode: "subscription",
       line_items: [{ price: priceId, quantity: 1 }],
