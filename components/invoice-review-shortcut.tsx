@@ -84,7 +84,7 @@ export function InvoiceReviewShortcut({ locale = "sl" }: { locale?: "sl" | "en" 
             <p className="mt-1 text-xs text-blue-700 dark:text-blue-300">
               {en ? "When a document needs your confirmation, the approval button will appear here automatically." : "Ko bo račun potreboval tvojo potrditev, se bo tukaj samodejno prikazal gumb za pregled."}
             </p>
-            <Link href="/invoice-review" className="mt-2 inline-flex text-xs font-bold text-blue-700 underline underline-offset-2 dark:text-blue-300">
+            <Link href={en ? "/en/invoices" : "/invoices"} className="mt-2 inline-flex text-xs font-bold text-blue-700 underline underline-offset-2 dark:text-blue-300">
               {en ? "Open OCR status" : "Odpri OCR status"}
             </Link>
           </div>
@@ -97,13 +97,13 @@ export function InvoiceReviewShortcut({ locale = "sl" }: { locale?: "sl" | "en" 
     return (
       <aside className="mx-auto my-4 w-[min(620px,calc(100%-2rem))] rounded-2xl border border-red-200 bg-red-50 p-4 shadow-lg dark:border-red-800 dark:bg-red-950">
         <p className="font-extrabold text-red-900 dark:text-red-100">{en ? `${state.failed.length} OCR error(s)` : `${state.failed.length} OCR napak`}</p>
-        <Link href="/invoice-review" className="mt-2 inline-flex rounded-lg bg-red-600 px-3 py-2 text-xs font-bold text-white">{en ? "Open OCR review" : "Odpri OCR pregled"}</Link>
+        <Link href={en ? "/en/invoices" : "/invoices"} className="mt-2 inline-flex rounded-lg bg-red-600 px-3 py-2 text-xs font-bold text-white">{en ? "Open OCR review" : "Odpri OCR pregled"}</Link>
       </aside>
     );
   }
 
   return (
-    <Link href="/invoice-review" className="mx-auto my-4 block w-fit rounded-xl border border-emerald-200 bg-white/95 px-3 py-2 text-xs font-bold text-emerald-700 shadow-md backdrop-blur hover:bg-emerald-50 dark:border-emerald-800 dark:bg-slate-900 dark:text-emerald-400">
+    <Link href={en ? "/en/invoices" : "/invoices"} className="mx-auto my-4 block w-fit rounded-xl border border-emerald-200 bg-white/95 px-3 py-2 text-xs font-bold text-emerald-700 shadow-md backdrop-blur hover:bg-emerald-50 dark:border-emerald-800 dark:bg-slate-900 dark:text-emerald-400">
       {en ? "✓ OCR review" : "✓ OCR pregled"}
     </Link>
   );

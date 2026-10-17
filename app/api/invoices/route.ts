@@ -70,6 +70,15 @@ export async function GET() {
             limit 1
           )
         `,
+        documentStatus: sql<string | null>`
+          (
+            select d."status"::text
+            from "invoiceDocuments" d
+            where d."sourceInvoiceId" = ${invoices.id}
+            order by d."id" desc
+            limit 1
+          )
+        `,
         sentAt: invoices.sentAt,
         createdAt: invoices.createdAt,
       })
@@ -77,7 +86,10 @@ export async function GET() {
       .where(eq(invoices.clerkUserId, userId))
       .orderBy(desc(invoices.createdAt))
       .limit(100);
-    return NextResponse.json(rows);
+    return NextResponse.json(rows.map((row) => ({
+      ...row,
+      previewUrl: `/api/invoices/${row.id}/file`,
+    })));
   } catch {
     return NextResponse.json([]);
   }

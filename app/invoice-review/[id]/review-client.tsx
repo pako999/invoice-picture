@@ -92,7 +92,7 @@ export function InvoiceReviewClient({ documentId }: { documentId: number }) {
       return;
     }
     if (action === "approve" || action === "reject") {
-      let nextPath = "/invoice-review";
+      let nextPath = "/invoices";
       try {
         const pendingRes = await fetch("/api/invoice-reader?status=needs_review", { cache: "no-store" });
         if (pendingRes.ok) {
@@ -123,10 +123,10 @@ export function InvoiceReviewClient({ documentId }: { documentId: number }) {
 
   function goRelative(offset: number) {
     const index = siblings.indexOf(documentId);
-    if (index < 0) return router.push("/invoice-review");
+    if (index < 0) return router.push("/invoices");
     const target = siblings[index + offset];
     if (target) router.push(`/invoice-review/${target}`);
-    else router.push("/invoice-review");
+    else router.push("/invoices");
   }
 
   const selectedEvidence = useMemo(() => detail?.evidence.find((e) => e.fieldPath === selectedPath) ?? null, [detail, selectedPath]);
@@ -145,7 +145,7 @@ export function InvoiceReviewClient({ documentId }: { documentId: number }) {
     <main className="mx-auto w-full min-w-0 max-w-[1600px] overflow-x-hidden px-3 pb-36 pt-5 sm:px-5 md:pb-5 lg:px-7">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
-          <Link href="/invoice-review" className="rounded-lg border border-slate-200 p-2 hover:bg-slate-50"><ChevronLeft className="h-5 w-5" /></Link>
+          <Link href="/invoices" className="rounded-lg border border-slate-200 p-2 hover:bg-slate-50"><ChevronLeft className="h-5 w-5" /></Link>
           <div className="min-w-0"><h1 className="truncate text-xl font-extrabold text-slate-950 dark:text-white">{detail.document.filename}</h1><p className="text-xs text-slate-500">{detail.document.provider ?? "—"} · {detail.document.model ?? "—"} · {detail.document.status}</p></div>
         </div>
         <div className="flex items-center gap-2"><button onClick={() => goRelative(-1)} className="rounded-lg border p-2" title="Prejšnji (Alt+←)"><ChevronLeft className="h-4 w-4" /></button><button onClick={() => goRelative(1)} className="rounded-lg border p-2" title="Naslednji (Alt+→)"><ChevronRight className="h-4 w-4" /></button></div>

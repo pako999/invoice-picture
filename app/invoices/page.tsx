@@ -1,10 +1,17 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { Check, Eye, Grid2X2, List, Trash2 } from "lucide-react";
 import type { Invoice, Company } from "@/lib/schema";
+import { InvoiceReviewGallery } from "@/components/invoice-review-gallery";
 
 type FilterMode = "all" | "week" | "month" | "custom";
-type InvoiceListItem = Invoice & { documentId?: number | null };
-type ArchivedInvoice = InvoiceListItem & { previewUrl?: string | null };
+type InvoiceListItem = Invoice & {
+  documentId?: number | null;
+  documentStatus?: string | null;
+  previewUrl?: string | null;
+};
+type ArchivedInvoice = InvoiceListItem;
 
 const FILTER_LABELS: Record<FilterMode, string> = {
   all: "Vse",
@@ -31,6 +38,15 @@ function StatusBadge({ status }: { status: Invoice["status"] }) {
   const { bg, label } = map[status];
   return (
     <span className={`text-xs font-bold px-2 py-0.5 rounded-md ${bg}`}>{label}</span>
+  );
+}
+
+function InvoicesTabs({ active, onChange }: { active: "ocr" | "archive"; onChange: (next: "ocr" | "archive") => void }) {
+  return (
+    <nav className="mx-auto mt-5 flex max-w-7xl gap-2 overflow-x-auto px-3 sm:px-6 lg:px-8" aria-label="Vrsta računov">
+      <button type="button" onClick={() => onChange("ocr")} aria-current={active === "ocr" ? "page" : undefined} className={`shrink-0 rounded-xl px-5 py-3 text-sm font-extrabold transition ${active === "ocr" ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20" : "border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"}`}>OCR računi in potrjevanje</button>
+      <button type="button" onClick={() => onChange("archive")} aria-current={active === "archive" ? "page" : undefined} className={`shrink-0 rounded-xl px-5 py-3 text-sm font-extrabold transition ${active === "archive" ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20" : "border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"}`}>Poslani arhiv</button>
+    </nav>
   );
 }
 
@@ -158,6 +174,61 @@ function PreviewModal({ inv, onClose, onRestore }: {
   );
 }
 
+function InvoiceThumbnail({ inv }: { inv: InvoiceListItem }) {
+  if (inv.imageMime === "application/pdf" && inv.previewUrl) {
+    return (
+      <iframe
+        src={`${inv.previewUrl}#page=1&toolbar=0&navpanes=0&scrollbar=0&view=FitH`}
+        title={`Predogled ${inv.filename ?? inv.subject}`}
+        loading="lazy"
+        tabIndex={-1}
+        className="pointer-events-none h-full w-full bg-white"
+      />
+    );
+  }
+  if (inv.imageData) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={`data:${inv.imageMime};base64,${inv.imageData}`} alt="" loading="lazy" className="h-full w-full object-contain" />;
+  }
+  if (inv.previewUrl) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={inv.previewUrl} alt="" loading="lazy" className="h-full w-full object-contain" />;
+  }
+  return <div className="flex h-full flex-col items-center justify-center gap-1 text-gray-400"><span className="text-4xl">📄</span><span className="text-xs font-bold">Predogled ni na voljo</span></div>;
+}
+
+function HoverInvoicePreview({ inv }: { inv: InvoiceListItem }) {
+  return (
+    <aside className="pointer-events-none fixed bottom-4 right-4 top-20 z-[65] hidden w-[min(46vw,46rem)] overflow-hidden rounded-2xl border border-gray-300 bg-white shadow-2xl lg:block dark:border-slate-600 dark:bg-slate-900" aria-hidden="true">
+      <div className="flex h-12 items-center justify-between gap-3 border-b border-gray-200 px-4 dark:border-slate-700">
+        <span className="truncate text-sm font-bold text-gray-900 dark:text-white">{inv.subject}</span>
+        <span className="shrink-0 text-xs font-semibold text-gray-500">Klikni za celoten pogled</span>
+      </div>
+      <div className="h-[calc(100%-3rem)] bg-gray-100 dark:bg-slate-950"><InvoiceThumbnail inv={inv} /></div>
+    </aside>
+  );
+}
+
+function DocumentStatusBadge({ status }: { status: string | null | undefined }) {
+  if (!status) return null;
+  const labels: Record<string, string> = {
+    needs_review: "OCR za potrditev",
+    approved: "OCR potrjen",
+    queued: "OCR v vrsti",
+    processing: "OCR obdelava",
+    failed: "OCR napaka",
+    uploaded: "OCR naložen",
+  };
+  const color = status === "needs_review"
+    ? "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300"
+    : status === "approved"
+      ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300"
+      : status === "failed"
+        ? "bg-red-100 text-red-800 dark:bg-red-950/50 dark:text-red-300"
+        : "bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300";
+  return <span className={`rounded-full px-2 py-1 text-[10px] font-extrabold ${color}`}>{labels[status] ?? status}</span>;
+}
+
 // "all" = show all, number = specific company id, "default" = invoices
 // sent via the user's default email (companyId is null)
 type CompanyFilter = "all" | "default" | number;
@@ -222,16 +293,20 @@ function BulkDeleteDialog({
 }
 
 export default function InvoicesPage() {
+  const [section, setSection] = useState<"ocr" | "archive">("ocr");
   const [list, setList] = useState<InvoiceListItem[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState<number | null>(null);
+  const [approving, setApproving] = useState<number | null>(null);
   const [reprocessing, setReprocessing] = useState<Set<number>>(() => new Set());
   const [selectedIds, setSelectedIds] = useState<Set<number>>(() => new Set());
   const [showBulkDelete, setShowBulkDelete] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [bulkDeleteError, setBulkDeleteError] = useState("");
   const [preview, setPreview] = useState<ArchivedInvoice | null>(null);
+  const [hoveredPreview, setHoveredPreview] = useState<InvoiceListItem | null>(null);
+  const [view, setView] = useState<"grid" | "list">("grid");
   const [details, setDetails] = useState<Record<number, ArchivedInvoice>>({});
   const [detailLoading, setDetailLoading] = useState<Set<number>>(new Set());
   const [filter, setFilter] = useState<FilterMode>("all");
@@ -317,14 +392,42 @@ export default function InvoicesPage() {
     e.stopPropagation();
     if (!confirm("Res želiš izbrisati ta račun?")) return;
     setDeleting(id);
-    await fetch(`/api/invoices/${id}`, { method: "DELETE" });
-    setList((prev) => prev.filter((i) => i.id !== id));
-    setSelectedIds((current) => {
-      const next = new Set(current);
-      next.delete(id);
-      return next;
-    });
-    setDeleting(null);
+    try {
+      const response = await fetch(`/api/invoices/${id}`, { method: "DELETE" });
+      if (!response.ok) throw new Error("Računa ni bilo mogoče izbrisati.");
+      setList((prev) => prev.filter((i) => i.id !== id));
+      setSelectedIds((current) => {
+        const next = new Set(current);
+        next.delete(id);
+        return next;
+      });
+      setHoveredPreview((current) => current?.id === id ? null : current);
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "Računa ni bilo mogoče izbrisati.");
+    } finally {
+      setDeleting(null);
+    }
+  }
+
+  async function handleApprove(event: React.MouseEvent, inv: InvoiceListItem) {
+    event.stopPropagation();
+    if (!inv.documentId || inv.documentStatus !== "needs_review" || approving != null) return;
+    if (!confirm("Potrdi trenutno prebrane podatke računa brez dodatnega urejanja?")) return;
+    setApproving(inv.id);
+    try {
+      const response = await fetch(`/api/invoice-reader/${inv.documentId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "approve", changes: {} }),
+      });
+      const body = await response.json().catch(() => null) as { error?: string } | null;
+      if (!response.ok) throw new Error(body?.error ?? "Računa ni bilo mogoče potrditi.");
+      setList((current) => current.map((item) => item.id === inv.id ? { ...item, documentStatus: "approved" } : item));
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "Računa ni bilo mogoče potrditi.");
+    } finally {
+      setApproving(null);
+    }
   }
 
   // Apply company + date filters together. Company filter narrows the
@@ -485,8 +588,20 @@ export default function InvoicesPage() {
     ? `${fmtDateShort(new Date(customFrom + "T00:00:00"))}${customTo ? " – " + fmtDateShort(new Date(customTo + "T00:00:00")) : ""}`
     : FILTER_LABELS.custom;
 
+  if (section === "ocr") {
+    return (
+      <>
+        <InvoicesTabs active={section} onChange={setSection} />
+        <InvoiceReviewGallery />
+      </>
+    );
+  }
+
   return (
-    <div className="max-w-5xl mx-auto px-4 py-10">
+    <div className="mx-auto max-w-7xl px-3 py-6 sm:px-6 sm:py-10 lg:px-8">
+      <div className="-mx-3 -mt-6 mb-6 sm:-mx-6 sm:-mt-10 lg:-mx-8">
+        <InvoicesTabs active={section} onChange={setSection} />
+      </div>
       {preview && (
         <PreviewModal
           inv={preview}
@@ -494,6 +609,8 @@ export default function InvoicesPage() {
           onRestore={(file) => restorePreview(preview, file)}
         />
       )}
+
+      {hoveredPreview && !preview ? <HoverInvoicePreview inv={hoveredPreview} /> : null}
 
       {showBulkDelete ? (
         <BulkDeleteDialog
@@ -587,6 +704,13 @@ export default function InvoicesPage() {
             </button>
           );
         })}
+      </div>
+
+      <div className="mb-5 flex justify-end">
+        <div className="inline-flex rounded-xl border border-gray-200 bg-white p-1 shadow-sm dark:border-slate-700 dark:bg-slate-900" aria-label="Način prikaza računov">
+          <button type="button" onClick={() => setView("grid")} aria-pressed={view === "grid"} className={`inline-flex min-h-9 items-center gap-2 rounded-lg px-3 text-sm font-bold ${view === "grid" ? "bg-slate-900 text-white dark:bg-blue-600" : "text-gray-600 hover:bg-gray-100 dark:text-slate-300 dark:hover:bg-slate-800"}`}><Grid2X2 className="h-4 w-4" /> Mreža</button>
+          <button type="button" onClick={() => setView("list")} aria-pressed={view === "list"} className={`inline-flex min-h-9 items-center gap-2 rounded-lg px-3 text-sm font-bold ${view === "list" ? "bg-slate-900 text-white dark:bg-blue-600" : "text-gray-600 hover:bg-gray-100 dark:text-slate-300 dark:hover:bg-slate-800"}`}><List className="h-4 w-4" /> Seznam</button>
+        </div>
       </div>
 
       {/* Custom range picker */}
@@ -698,6 +822,46 @@ export default function InvoicesPage() {
               : "Spremeni filter, da prikažeš več računov."}
           </p>
         </div>
+      ) : view === "grid" ? (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {filtered.map((inv) => (
+            <article
+              key={inv.id}
+              onPointerEnter={(event) => { if (event.pointerType === "mouse") setHoveredPreview(inv); }}
+              onPointerLeave={() => setHoveredPreview(null)}
+              className={`group relative flex min-w-0 flex-col rounded-2xl border bg-white p-3 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg dark:bg-slate-900 ${selectedIds.has(inv.id) ? "border-red-400 ring-2 ring-red-100 dark:border-red-600 dark:ring-red-950" : "border-gray-200 hover:border-blue-300 dark:border-slate-700 dark:hover:border-blue-600"}`}
+            >
+              <label className="absolute right-5 top-5 z-20 flex h-9 w-9 cursor-pointer items-center justify-center rounded-lg bg-white/95 shadow-md dark:bg-slate-900/95" onClick={(event) => event.stopPropagation()}>
+                <input type="checkbox" checked={selectedIds.has(inv.id)} onChange={() => toggleInvoiceSelection(inv.id)} aria-label={`Izberi račun ${inv.subject}`} className="h-5 w-5 rounded border-gray-300 accent-red-600" />
+              </label>
+
+              <button type="button" onClick={() => { void openPreview(inv); }} className="relative aspect-[4/3] w-full overflow-hidden rounded-xl border border-gray-200 bg-gray-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-slate-700 dark:bg-slate-950" aria-label={`Odpri celoten predogled računa ${inv.subject}`}>
+                <InvoiceThumbnail inv={inv} />
+                <span className="absolute inset-0 flex items-center justify-center bg-slate-950/0 transition group-hover:bg-slate-950/20"><span className="translate-y-2 rounded-full bg-white/95 p-3 text-slate-900 opacity-0 shadow-xl transition group-hover:translate-y-0 group-hover:opacity-100"><Eye className="h-5 w-5" /></span></span>
+              </button>
+
+              <div className="min-w-0 px-1 pb-2 pt-3">
+                <div className="flex min-w-0 items-start justify-between gap-2"><h2 className="truncate font-extrabold text-gray-900 dark:text-white" title={inv.subject}>{inv.subject}</h2><StatusBadge status={inv.status} /></div>
+                <p className="mt-1 truncate text-sm text-gray-500 dark:text-slate-400"><span className="font-medium">Za:</span> {inv.recipientEmail}</p>
+                <p className="mt-1 text-xs text-gray-400 dark:text-slate-500">{fmt(inv.createdAt)}</p>
+                <div className="mt-2"><DocumentStatusBadge status={inv.documentStatus} /></div>
+                {inv.status === "failed" && inv.errorMessage ? <p className="mt-2 line-clamp-2 text-xs text-red-500">{inv.errorMessage}</p> : null}
+              </div>
+
+              <div className="mt-auto grid grid-cols-3 gap-2 pt-2">
+                <button type="button" onClick={() => { void openPreview(inv); }} className="inline-flex min-h-10 items-center justify-center gap-1 rounded-lg border border-gray-200 px-2 text-xs font-bold text-gray-700 hover:bg-gray-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"><Eye className="h-4 w-4" /> Poglej</button>
+                {inv.documentStatus === "needs_review" && inv.documentId ? (
+                  <button type="button" onClick={(event) => { void handleApprove(event, inv); }} disabled={approving === inv.id} className="inline-flex min-h-10 items-center justify-center gap-1 rounded-lg bg-emerald-600 px-2 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50"><Check className="h-4 w-4" /> {approving === inv.id ? "..." : "Potrdi"}</button>
+                ) : inv.documentId ? (
+                  <Link href={`/invoice-review/${inv.documentId}`} className="inline-flex min-h-10 items-center justify-center rounded-lg bg-blue-600 px-2 text-center text-xs font-bold text-white hover:bg-blue-700">Podatki</Link>
+                ) : <span />}
+                <button type="button" onClick={(event) => { void handleDelete(event, inv.id); }} disabled={deleting === inv.id} className="inline-flex min-h-10 items-center justify-center gap-1 rounded-lg border border-red-200 px-2 text-xs font-bold text-red-700 hover:bg-red-50 disabled:opacity-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950/30"><Trash2 className="h-4 w-4" /> Izbriši</button>
+                {inv.documentId ? <Link href={`/invoice-review/${inv.documentId}`} className="col-span-3 inline-flex min-h-10 items-center justify-center rounded-lg bg-slate-900 px-3 text-xs font-bold text-white hover:bg-slate-800 dark:bg-blue-600 dark:hover:bg-blue-700">Preglej in uredi OCR podatke</Link> : null}
+                {inv.status === "failed" && inv.documentId ? <button type="button" onClick={(event) => { void handleReprocess(event, inv); }} disabled={reprocessing.has(inv.id)} className="col-span-3 min-h-10 rounded-lg border border-red-300 bg-red-50 px-3 text-xs font-bold text-red-700 hover:bg-red-100 disabled:opacity-60 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300">{reprocessing.has(inv.id) ? "Obdelujem…" : "↻ Ponovno obdelaj OCR"}</button> : null}
+              </div>
+            </article>
+          ))}
+        </div>
       ) : (
         <div className="grid gap-3">
           {filtered.map((inv) => {
@@ -762,6 +926,7 @@ export default function InvoicesPage() {
                   <span className="font-medium">Za:</span> {inv.recipientEmail}
                 </p>
                 <p className="text-xs text-gray-400 dark:text-slate-500 mt-0.5">{fmt(inv.createdAt)}</p>
+                <div className="mt-2"><DocumentStatusBadge status={inv.documentStatus} /></div>
                 {inv.status === "failed" && inv.errorMessage && (
                   <p className="text-xs text-red-500 mt-1 line-clamp-2">{inv.errorMessage}</p>
                 )}
@@ -770,6 +935,11 @@ export default function InvoicesPage() {
               {/* Preview hint + Delete */}
               <div className="flex-shrink-0 flex items-center gap-1">
                 <span className="text-xs text-gray-400 dark:text-slate-500 hidden sm:block">Klikni za predogled</span>
+                {inv.documentStatus === "needs_review" && inv.documentId ? (
+                  <button type="button" onClick={(event) => { void handleApprove(event, inv); }} disabled={approving === inv.id} className="min-h-9 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50">{approving === inv.id ? "Potrjujem…" : "✓ Potrdi"}</button>
+                ) : inv.documentId ? (
+                  <Link href={`/invoice-review/${inv.documentId}`} onClick={(event) => event.stopPropagation()} className="inline-flex min-h-9 items-center rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-blue-700">OCR podatki</Link>
+                ) : null}
                 {inv.status === "failed" && inv.documentId ? (
                   <button
                     type="button"
