@@ -17,9 +17,11 @@ function partyJsonSchema(supplier: boolean) {
 }
 
 export const invoiceLineItemSchema = z.object({
+  productCode: nullableText,
   description: nullableText,
   quantity: nullableDecimal,
   unit: nullableText,
+  unitPriceBeforeDiscount: nullableDecimal,
   unitPriceNet: nullableDecimal,
   discountPercent: nullableDecimal,
   discountAmount: nullableDecimal,
@@ -63,6 +65,8 @@ export const normalizedInvoiceSchema = z.object({
   }).strict(),
   invoiceNumber: nullableText,
   purchaseOrderNumber: nullableText,
+  deliveryNoteNumber: nullableText,
+  supplyPlace: nullableText,
   issueDate: nullableText,
   serviceDate: nullableText,
   dueDate: nullableText,
@@ -144,6 +148,8 @@ export const emptyInvoice = (): NormalizedInvoice => ({
   },
   invoiceNumber: null,
   purchaseOrderNumber: null,
+  deliveryNoteNumber: null,
+  supplyPlace: null,
   issueDate: null,
   serviceDate: null,
   dueDate: null,
@@ -170,7 +176,7 @@ export const invoiceJsonSchema = {
   additionalProperties: false,
   required: [
     "documentType", "documentLanguage", "supplier", "buyer", "invoiceNumber",
-    "purchaseOrderNumber", "issueDate", "serviceDate", "dueDate", "paymentReference",
+    "purchaseOrderNumber", "deliveryNoteNumber", "supplyPlace", "issueDate", "serviceDate", "dueDate", "paymentReference",
     "paymentTerms", "currency", "lineItems", "totals", "vatBreakdown", "confidence",
     "warnings", "validationStatus",
   ],
@@ -181,6 +187,8 @@ export const invoiceJsonSchema = {
     buyer: partyJsonSchema(false),
     invoiceNumber: nullableStringJsonSchema,
     purchaseOrderNumber: nullableStringJsonSchema,
+    deliveryNoteNumber: nullableStringJsonSchema,
+    supplyPlace: nullableStringJsonSchema,
     issueDate: nullableStringJsonSchema,
     serviceDate: nullableStringJsonSchema,
     dueDate: nullableStringJsonSchema,
@@ -192,9 +200,9 @@ export const invoiceJsonSchema = {
       items: {
         type: "object",
         additionalProperties: false,
-        required: ["description", "quantity", "unit", "unitPriceNet", "discountPercent", "discountAmount", "vatRate", "netAmount", "vatAmount", "grossAmount"],
+        required: ["productCode", "description", "quantity", "unit", "unitPriceBeforeDiscount", "unitPriceNet", "discountPercent", "discountAmount", "vatRate", "netAmount", "vatAmount", "grossAmount"],
         properties: Object.fromEntries([
-          "description", "quantity", "unit", "unitPriceNet", "discountPercent", "discountAmount",
+          "productCode", "description", "quantity", "unit", "unitPriceBeforeDiscount", "unitPriceNet", "discountPercent", "discountAmount",
           "vatRate", "netAmount", "vatAmount", "grossAmount",
         ].map((key) => [key, nullableStringJsonSchema])),
       },
