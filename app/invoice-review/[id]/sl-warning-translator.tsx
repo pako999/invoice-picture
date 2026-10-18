@@ -32,6 +32,18 @@ function translateWarning(message: string) {
   match = /^Invalid currency code:\s*(.+)$/i.exec(trimmed);
   if (match) return `Neveljavna oznaka valute: ${match[1]}.`;
 
+  match = /^Line item (\d+) description is missing$/i.exec(trimmed);
+  if (match) return `Postavka ${match[1]}: manjka opis oziroma ime postavke.`;
+
+  match = /^Line item (\d+) net amount does not match quantity × pre-discount price minus discount$/i.exec(trimmed);
+  if (match) return `Postavka ${match[1]}: neto znesek se ne ujema s količino × ceno pred rabatom minus rabat.`;
+
+  match = /^Line item (\d+) net unit price does not match the stated discount$/i.exec(trimmed);
+  if (match) return `Postavka ${match[1]}: cena na enoto po rabatu se ne ujema z navedenim rabatom.`;
+
+  match = /^Line item (\d+) net amount does not match quantity × net unit price$/i.exec(trimmed);
+  if (match) return `Postavka ${match[1]}: neto znesek se ne ujema s količino × neto ceno na enoto.`;
+
   match = /^Line item (\d+) net amount does not match quantity × unit price minus discount$/i.exec(trimmed);
   if (match) return `Postavka ${match[1]}: neto znesek se ne ujema s količino × ceno na enoto minus popust.`;
 

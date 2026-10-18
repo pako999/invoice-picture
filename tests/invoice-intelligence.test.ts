@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { emptyInvoice, normalizedInvoiceSchema } from "../lib/invoice-intelligence/types";
 import { normalizeInvoiceValues, validateIban, validateInvoice } from "../lib/invoice-intelligence/validation";
-import { readDeterministically, readWithMistral, reconcileMistralInvoiceWithOcrText } from "../lib/invoice-intelligence/providers";
+import { parseInvoiceTextDeterministically, readDeterministically, readWithMistral, reconcileMistralInvoiceWithOcrText } from "../lib/invoice-intelligence/providers";
 import { createDocumentSignature, verifyDocumentSignature } from "../lib/invoice-intelligence/signing";
 import { resolveManualApprovalReason } from "../lib/invoice-intelligence/manual-approval";
 import { hasUsableBulkOcrMarkdown } from "../lib/bulk-invoices/service";
@@ -195,3 +195,81 @@ test("signed document URL cannot be replayed for a different tenant", () => {
 test("scanned and rotated mobile photos are provider integration cases", { skip: "Requires anonymized image fixture + configured OCR provider; covered by evaluation harness in deployment environment." }, () => {});
 test("duplicate invoice DB relation is an integration case", { skip: "Requires isolated Neon test database; checksum and structured duplicate rules are exercised in processor integration." }, () => {});
 test("unauthorized tenant route access is an integration case", { skip: "Requires Clerk test session + isolated database; signed-URL tenant binding is unit-tested above." }, () => {});
+
+
+test("Slovenian invoice table preserves product description, code, discount and prices", () => {
+  const parsed = normalizeInvoiceValues(parseInvoiceTextDeterministically(`
+Račun št.: 1719-FAKT1-240
+Datum: 09.09.2026
+Dobavnica: 240/2026
+Kraj izdaje blaga: Ljubljana
+Sklic: 2402026
+
+| Zap. | Šifra | Opis blaga oz.opravljene storitve | Količina | EM | Cena | Rabat | Cena brez DDV | DDV | Vr.brez DDV |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1. | 44260-3023-9 | DTK EVO D_LAB 9m 2026 , kite only | 1,000 | Kos | 2.335,2459 | 60% | 934,0984 | 22,0 | 934,10 |
+
+Prodajna vrednost: 934,10
+DDV 205,50
+Za plačilo: 1.139,60 EUR
+`));
+
+  assert.equal(parsed.invoiceNumber, "1719-FAKT1-240");
+  assert.equal(parsed.deliveryNoteNumber, "240/2026");
+  assert.equal(parsed.supplyPlace, "Ljubljana");
+  assert.equal(parsed.lineItems.length, 1);
+  const item = parsed.lineItems[0];
+  assert.equal(item.productCode, "44260-3023-9");
+  assert.equal(item.description, "DTK EVO D_LAB 9m 2026 , kite only");
+  assert.equal(item.quantity, "1.000");
+  assert.equal(item.unit, "Kos");
+  assert.equal(item.unitPriceBeforeDiscount, "2335.2459");
+  assert.equal(item.discountPercent, "60");
+  assert.equal(item.unitPriceNet, "934.0984");
+  assert.equal(item.vatRate, "22.0");
+  assert.equal(item.netAmount, "934.10");
+});
+
+test("line-item discount validation does not subtract discount twice", () => {
+  const invoice = baseInvoice();
+  invoice.totals.netAmount = "934.10";
+  invoice.totals.vatAmount = "205.50";
+  invoice.totals.grossAmount = "1139.60";
+  invoice.totals.amountDue = "1139.60";
+  invoice.lineItems = [{
+    productCode: "44260-3023-9",
+    description: "DTK EVO D_LAB 9m 2026 , kite only",
+    quantity: "1",
+    unit: "Kos",
+    unitPriceBeforeDiscount: "2335.2459",
+    unitPriceNet: "934.0984",
+    discountPercent: "60",
+    discountAmount: null,
+    vatRate: "22",
+    netAmount: "934.10",
+    vatAmount: "205.50",
+    grossAmount: "1139.60",
+  }];
+  const result = validateInvoice(normalizeInvoiceValues(invoice));
+  assert.equal(result.warnings.some((warning) => /discount|rabat/i.test(warning)), false);
+});
+
+test("old saved line items remain compatible with expanded OCR schema", () => {
+  const legacy = baseInvoice();
+  const raw = JSON.parse(JSON.stringify(legacy));
+  raw.lineItems = [{
+    description: "Legacy item",
+    quantity: "1",
+    unit: "kos",
+    unitPriceNet: "100",
+    discountPercent: null,
+    discountAmount: null,
+    vatRate: "22",
+    netAmount: "100",
+    vatAmount: "22",
+    grossAmount: "122",
+  }];
+  const parsed = normalizedInvoiceSchema.parse(raw);
+  assert.equal(parsed.lineItems[0].productCode, null);
+  assert.equal(parsed.lineItems[0].unitPriceBeforeDiscount, null);
+});

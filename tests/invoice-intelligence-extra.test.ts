@@ -42,9 +42,11 @@ test("Slovenian OCR markdown fallback removes formatting and extracts product ro
   assert.equal(invoice.supplier.name, "Amodor d.o.o.");
   assert.equal(invoice.issueDate, "2026-09-16");
   assert.equal(invoice.lineItems.length, 2);
-  assert.equal(invoice.lineItems[0].description, "1301260014 – GA TEAM CARBON SDM 32cm");
+  assert.equal(invoice.lineItems[0].productCode, "1301260014");
+  assert.equal(invoice.lineItems[0].description, "GA TEAM CARBON SDM 32cm");
   assert.equal(invoice.lineItems[0].quantity, "1.000");
-  assert.equal(invoice.lineItems[0].unitPriceNet, "154.918");
+  assert.equal(invoice.lineItems[0].unitPriceBeforeDiscount, "154.918");
+  assert.equal(invoice.lineItems[0].unitPriceNet, "100.6967");
   assert.equal(invoice.lineItems[0].discountPercent, "35");
   assert.equal(invoice.lineItems[0].vatRate, "22.0");
   assert.equal(invoice.lineItems[0].netAmount, "100.70");
@@ -82,10 +84,12 @@ test("line-item percentage discount reconciles with net amount", () => {
   invoice.issueDate = "2026-09-07";
   invoice.currency = "EUR";
   invoice.lineItems = [{
+    productCode: null,
     description: "Storitev",
     quantity: "2",
     unit: "kos",
-    unitPriceNet: "50",
+    unitPriceBeforeDiscount: "50",
+    unitPriceNet: "45",
     discountPercent: "10",
     discountAmount: "10",
     vatRate: "22",
@@ -110,10 +114,12 @@ test("incorrect line-item discount is flagged for review", () => {
   invoice.issueDate = "2026-09-07";
   invoice.currency = "EUR";
   invoice.lineItems = [{
+    productCode: null,
     description: "Storitev",
     quantity: "2",
     unit: "kos",
-    unitPriceNet: "50",
+    unitPriceBeforeDiscount: "50",
+    unitPriceNet: "47.5",
     discountPercent: "10",
     discountAmount: "5",
     vatRate: "22",

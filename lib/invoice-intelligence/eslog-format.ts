@@ -70,10 +70,12 @@ function lineXml(line: InvoiceLineItemData, index: number) {
   const tax = line.vatAmount != null ? decimal(line.vatAmount, "0") : money(number(net) * number(line.vatRate || "0") / 100);
   const gross = line.grossAmount != null ? decimal(line.grossAmount, "0") : money(number(net) + number(tax));
   const unitPrice = line.unitPriceNet != null ? decimal(line.unitPriceNet, "0") : quantity !== "0" ? money(number(net) / number(quantity)) : net;
+  const listPrice = line.unitPriceBeforeDiscount != null ? decimal(line.unitPriceBeforeDiscount, unitPrice) : unitPrice;
+  const itemCode = line.productCode ? `<C_C212><D_7140>${xml(clamp(line.productCode, 35))}</D_7140><D_7143>SA</D_7143></C_C212>` : "";
   const rate = decimal(line.vatRate, "0");
   const category = number(rate) === 0 ? "Z" : "S";
 
-  return `<G_SG26><S_LIN><D_1082>${index}</D_1082></S_LIN><S_IMD><D_7077>F</D_7077><C_C273><D_7008>${xml(clamp(line.description || `Postavka ${index}`, 256))}</D_7008></C_C273></S_IMD><S_QTY><C_C186><D_6063>47</D_6063><D_6060>${quantity}</D_6060><D_6411>${unitCode(line.unit)}</D_6411></C_C186></S_QTY><G_SG27><S_MOA><C_C516><D_5025>38</D_5025><D_5004>${gross}</D_5004></C_C516></S_MOA></G_SG27><G_SG27><S_MOA><C_C516><D_5025>203</D_5025><D_5004>${net}</D_5004></C_C516></S_MOA></G_SG27><G_SG29><S_PRI><C_C509><D_5125>AAA</D_5125><D_5118>${unitPrice}</D_5118><D_5284>1</D_5284><D_6411>C62</D_6411></C_C509></S_PRI></G_SG29><G_SG29><S_PRI><C_C509><D_5125>AAB</D_5125><D_5118>${unitPrice}</D_5118><D_5284>1</D_5284><D_6411>C62</D_6411></C_C509></S_PRI></G_SG29><G_SG34>${taxXml(rate, category, tax, net)}</G_SG34></G_SG26>`;
+  return `<G_SG26><S_LIN><D_1082>${index}</D_1082>${itemCode}</S_LIN><S_IMD><D_7077>F</D_7077><C_C273><D_7008>${xml(clamp(line.description || `Postavka ${index}`, 256))}</D_7008></C_C273></S_IMD><S_QTY><C_C186><D_6063>47</D_6063><D_6060>${quantity}</D_6060><D_6411>${unitCode(line.unit)}</D_6411></C_C186></S_QTY><G_SG27><S_MOA><C_C516><D_5025>38</D_5025><D_5004>${gross}</D_5004></C_C516></S_MOA></G_SG27><G_SG27><S_MOA><C_C516><D_5025>203</D_5025><D_5004>${net}</D_5004></C_C516></S_MOA></G_SG27><G_SG29><S_PRI><C_C509><D_5125>AAA</D_5125><D_5118>${unitPrice}</D_5118><D_5284>1</D_5284><D_6411>C62</D_6411></C_C509></S_PRI></G_SG29><G_SG29><S_PRI><C_C509><D_5125>AAB</D_5125><D_5118>${listPrice}</D_5118><D_5284>1</D_5284><D_6411>C62</D_6411></C_C509></S_PRI></G_SG29><G_SG34>${taxXml(rate, category, tax, net)}</G_SG34></G_SG26>`;
 }
 
 function vatSummaryXml(row: VatBreakdownData) {
