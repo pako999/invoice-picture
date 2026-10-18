@@ -273,3 +273,31 @@ test("old saved line items remain compatible with expanded OCR schema", () => {
   assert.equal(parsed.lineItems[0].productCode, null);
   assert.equal(parsed.lineItems[0].unitPriceBeforeDiscount, null);
 });
+
+test("Slovenian invoice fallback captures draft, shipping, goods date and pre-discount total", () => {
+  const invoice = normalizeInvoiceValues(parseInvoiceTextDeterministically(`
+Račun št.: 1719-FAKT1-240
+Datum: 09.09.2026
+Datum valute: 09.09.2026
+Kraj izdaje blaga: Ljubljana
+Datum izdaje blaga: 09.09.2026
+Dobavnica: 240/2026
+Način plačila: TRR
+Način odpreme: Osebno
+Vrednost skupaj: 2.335,25
+Rabat: 1.401,15
+Prodajna vrednost: 934,10
+Za plačilo: 1.139,60 EUR
+Status: Osnutek
+`));
+  assert.equal(invoice.documentStatus, "Osnutek");
+  assert.equal(invoice.shippingMethod, "Osebno");
+  assert.equal(invoice.serviceDate, "2026-09-09");
+  assert.equal(invoice.dueDate, "2026-09-09");
+  assert.equal(invoice.supplyPlace, "Ljubljana");
+  assert.equal(invoice.deliveryNoteNumber, "240/2026");
+  assert.equal(invoice.totals.amountBeforeDiscount, "2335.25");
+  const result = validateInvoice(invoice);
+  assert.equal(result.status, "needs_review");
+  assert.equal(result.warnings.some((w) => /draft/i.test(w)), true);
+});
