@@ -10,6 +10,7 @@ type Validation = { status: string; warnings: string[]; errors: string[]; differ
 type Detail = {
   document: {
     id: number; filename: string; mimeType: string; status: string; provider: string | null; model: string | null;
+    legacyMultiPagePdf?: boolean; estimatedPages?: number | null;
     normalized: InvoiceData | null; approved: InvoiceData | null; warnings: string[]; overallConfidenceBps: number | null;
   };
   evidence: Evidence[];
@@ -138,7 +139,8 @@ export function InvoiceReviewClient({ documentId }: { documentId: number }) {
   ])], [latestValidation]);
   const invoice = detail?.document.approved ?? detail?.document.normalized;
   const isProcessing = detail?.document.status === "queued" || detail?.document.status === "processing";
-  const needsPdfSplit = detail?.document.mimeType === "application/pdf" && detail.document.warnings.some((warning) => /hard-capped|first 25 pages|technical PDF limit/i.test(warning));
+  const needsPdfSplit = detail?.document.legacyMultiPagePdf === true
+    || (detail?.document.mimeType === "application/pdf" && detail.document.warnings.some((warning) => /hard-capped|first 25 pages|technical PDF limit/i.test(warning)));
 
   if (!detail) return <main className="mx-auto w-full min-w-0 max-w-7xl overflow-x-hidden p-8"><div className="flex items-center gap-2 text-slate-500"><Loader2 className="h-5 w-5 animate-spin" /> Nalaganje dokumenta…</div>{message && <p className="mt-4 text-red-600">{message}</p>}</main>;
 
@@ -151,6 +153,27 @@ export function InvoiceReviewClient({ documentId }: { documentId: number }) {
         </div>
         <div className="flex items-center gap-2"><button onClick={() => goRelative(-1)} className="rounded-lg border p-2" title="Prejšnji (Alt+←)"><ChevronLeft className="h-4 w-4" /></button><button onClick={() => goRelative(1)} className="rounded-lg border p-2" title="Naslednji (Alt+→)"><ChevronRight className="h-4 w-4" /></button></div>
       </div>
+
+      {detail.document.legacyMultiPagePdf && !isProcessing ? (
+        <div className="mb-4 flex flex-col gap-3 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <div className="font-extrabold">Ta PDF vsebuje več strani in je bil obdelan po starem načinu.</div>
+            <div className="mt-1">
+              Prikazani OCR podatki lahko pripadajo samo prvemu računu. PDF ima približno {detail.document.estimatedPages ?? "več"} strani.
+              Razdeli ga v posamezne račune in vsak račun bo obdelan ločeno.
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => submit("reprocess")}
+            disabled={busy !== null}
+            className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-amber-600 px-4 py-2.5 font-bold text-white hover:bg-amber-700 disabled:opacity-60"
+          >
+            {busy === "reprocess" ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+            Razdeli PDF na račune
+          </button>
+        </div>
+      ) : null}
 
       {!isProcessing && (validationIssues.length > 0 || detail.duplicates.length > 0) ? (
         <div className="mb-4 min-w-0 break-words rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
