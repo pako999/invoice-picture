@@ -57,9 +57,10 @@ export function generateUbl21Xml(invoice: NormalizedInvoice) {
     ${line.netAmount ? `<cbc:LineExtensionAmount currencyID="${xml(invoice.currency || "EUR")}">${xml(line.netAmount)}</cbc:LineExtensionAmount>` : ""}
     <cac:Item>
       ${line.description ? `<cbc:Description>${xml(line.description)}</cbc:Description>` : ""}
+      ${line.productCode ? `<cac:SellersItemIdentification><cbc:ID>${xml(line.productCode)}</cbc:ID></cac:SellersItemIdentification>` : ""}
       ${line.vatRate ? `<cac:ClassifiedTaxCategory><cbc:Percent>${xml(line.vatRate)}</cbc:Percent><cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme></cac:ClassifiedTaxCategory>` : ""}
     </cac:Item>
-    ${line.unitPriceNet ? `<cac:Price><cbc:PriceAmount currencyID="${xml(invoice.currency || "EUR")}">${xml(line.unitPriceNet)}</cbc:PriceAmount></cac:Price>` : ""}
+    ${line.unitPriceNet ? `<cac:Price><cbc:PriceAmount currencyID="${xml(invoice.currency || "EUR")}">${xml(line.unitPriceNet)}</cbc:PriceAmount>${line.quantity ? `<cbc:BaseQuantity>${xml(line.quantity)}</cbc:BaseQuantity>` : ""}</cac:Price>` : ""}
   </cac:${lineRoot}>`).join("");
 
   return `<?xml version="1.0" encoding="UTF-8"?>
