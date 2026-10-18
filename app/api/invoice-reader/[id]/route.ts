@@ -260,9 +260,24 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const documentId = Number((await params).id);
   const db = getDb();
-  const [document] = await db.select({ id: invoiceDocuments.id }).from(invoiceDocuments).where(and(eq(invoiceDocuments.id, documentId), eq(invoiceDocuments.clerkUserId, userId))).limit(1);
+  const [document] = await db.select({
+    id: invoiceDocuments.id,
+    bulkJobId: invoiceDocuments.bulkJobId,
+    bulkGroupIndex: invoiceDocuments.bulkGroupIndex,
+  }).from(invoiceDocuments).where(and(eq(invoiceDocuments.id, documentId), eq(invoiceDocuments.clerkUserId, userId))).limit(1);
   if (!document) return NextResponse.json({ error: "Not found" }, { status: 404 });
   await db.insert(invoiceAuditLogs).values({ documentId, clerkUserId: userId, action: "delete" });
+  if (document.bulkJobId != null && document.bulkGroupIndex != null) {
+    await db.update(bulkInvoiceGroups).set({
+      status: "deleted",
+      deliveryStatus: "not_required",
+      deliveryError: null,
+      updatedAt: new Date(),
+    }).where(and(
+      eq(bulkInvoiceGroups.jobId, document.bulkJobId),
+      eq(bulkInvoiceGroups.groupIndex, document.bulkGroupIndex),
+    ));
+  }
   await db.delete(invoiceDocuments).where(eq(invoiceDocuments.id, documentId));
   return NextResponse.json({ success: true });
 }
