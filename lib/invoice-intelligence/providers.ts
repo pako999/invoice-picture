@@ -93,13 +93,14 @@ export async function readWithMistral(input: { base64: string; mimeType: string;
       ...(pages ? { pages } : {}),
       include_blocks: true,
       confidence_scores_granularity: "block",
-      table_format: "html",
+      table_format: "markdown",
       document_annotation_prompt: [
         "Extract structured accounting data from invoices, credit notes, receipts, proforma invoices, quotations, sales quotes, offers and estimates.",
         "A quotation, sales quote, offer or estimate is still a readable accounting document: set documentType to proforma and extract every shared field that is visible.",
         "For a quotation or offer, place its quote/offer number in invoiceNumber because the schema has no separate quote-number field.",
         "Do not leave fields null merely because the document is a quotation or proforma. Return null only when the value is genuinely missing or unreadable. Never invent values.",
-        "Extract supplier, buyer, document number, dates, payment reference and terms, currency, all line items, discounts, VAT breakdown, totals, IBAN and BIC whenever visible.",
+        "Extract supplier, buyer, document number, delivery note number, supply/place of delivery, dates, payment reference and terms, currency, all line items, discounts, VAT breakdown, totals, IBAN and BIC whenever visible.",
+        "For EVERY visible line item extract productCode/SKU, full description/name, quantity, unit, unitPriceBeforeDiscount, unitPriceNet after discount, discountPercent, discountAmount, vatRate, netAmount, vatAmount and grossAmount. Never omit the description when it is visible in the table.",
         "Normalize dates to YYYY-MM-DD, currencies to ISO 4217, countries to ISO alpha-2.",
         "Return monetary values as decimal strings without currency symbols and keep credit-note signs correct.",
         "Supplier means the issuer/seller; buyer means the customer/recipient.",
@@ -124,10 +125,11 @@ export async function readWithMistral(input: { base64: string; mimeType: string;
   const responsePages = Array.isArray(raw.pages) ? raw.pages : [];
   const rawText = responsePages.map((p: Record<string, unknown>) => typeof p.markdown === "string" ? p.markdown : "").join("\n\n");
 
-  if (criticalCount(invoice) < 5 && rawText.trim()) {
-    const fallback = normalizeInvoiceValues(parseInvoiceTextDeterministically(rawText));
-    const recovered = mergeMissingInvoiceFields(invoice, fallback);
-    if (recovered > 0) invoice.warnings.push(`Recovered ${recovered} missing field${recovered === 1 ? "" : "s"} from OCR text fallback.`);
+  if (rawText.trim()) {
+    const before = JSON.stringify(invoice.lineItems);
+    reconcileMistralInvoiceWithOcrText(invoice, rawText);
+    const after = JSON.stringify(invoice.lineItems);
+    if (before !== after) invoice.warnings.push("Line items were completed from deterministic OCR table parsing.");
   }
 
   if (invoice.documentType === "proforma" && !invoice.warnings.some((w) => /manual review before delivery/i.test(w))) {
@@ -251,6 +253,8 @@ export function parseInvoiceTextDeterministically(text: string): NormalizedInvoi
   invoice.invoiceNumber = match(plainText, /(?:invoice\s*(?:number|no\.?|#)|receipt\s*(?:number|no\.?|#)|predra[čc]un\s*(?:[šs]t(?:evilka)?\.?|st\.?|#)?|ra[čc]un\s*(?:[šs]t(?:evilka)?\.?|st\.?|#)|[šs]t\.?\s*ra[čc]una|[šs]tevilka\s+fakture)\s*:?\s*([A-Z0-9][A-Z0-9.\-_/]{2,})/i)
     ?? match(plainText, /(?:sales\s+quote|quotation|quote|offer|estimate|ponudba|proforma|rechnung|fattura)\s*(?:no\.?|nr\.?|[šs]t\.?|number|[:#])\s*([A-Z0-9][A-Z0-9.\-_/]{2,})/i);
   invoice.purchaseOrderNumber = match(plainText, /(?:purchase\s+order|order\s+no\.?|naročilnica|narocilnica|ref\.?\s*sales\s*order)\s*[:#]?\s*([A-Z0-9][A-Z0-9\-_/]{1,})/i);
+  invoice.deliveryNoteNumber = match(plainText, /(?:delivery\s+note|dobavnica)\s*[:#]?\s*([A-Z0-9][A-Z0-9.\-_/]{1,})/i);
+  invoice.supplyPlace = match(plainText, /(?:place\s+of\s+(?:supply|delivery)|kraj\s+izdaje\s+blaga|kraj\s+dobave)\s*:?\s*([^\n|]{2,100})/i);
   invoice.issueDate = match(plainText, /(?:issue date|document date|quote date|datum izdaje|datum računa|datum racuna|datum dokumenta|rechnungsdatum|data fattura|city,\s*document date|\bdatum\b)\s*:?\s*(\d{1,4}[./-]\d{1,2}[./-]\d{1,4})/i);
   invoice.issueDate ??= matchEnglishDate(plainText, /(?:date\s+of\s+issue|issue\s+date|invoice\s+date)/i);
   invoice.serviceDate = match(plainText, /(?:service date|delivery\/performance date|performance date|delivery date|datum storitve|datum dobave)\s*:?\s*(\d{1,4}[./-]\d{1,2}[./-]\d{1,4})/i);
@@ -422,7 +426,7 @@ function mergeMissingInvoiceFields(target: NormalizedInvoice, fallback: Normaliz
     }
   };
 
-  for (const key of ["invoiceNumber", "purchaseOrderNumber", "issueDate", "serviceDate", "dueDate", "paymentReference", "paymentTerms", "currency"] as const) assign(key);
+  for (const key of ["invoiceNumber", "purchaseOrderNumber", "deliveryNoteNumber", "supplyPlace", "issueDate", "serviceDate", "dueDate", "paymentReference", "paymentTerms", "currency"] as const) assign(key);
   if (target.documentType === "unknown" && fallback.documentType !== "unknown") {
     target.documentType = fallback.documentType;
     recovered += 1;
@@ -449,6 +453,17 @@ function mergeMissingInvoiceFields(target: NormalizedInvoice, fallback: Normaliz
   if (!target.lineItems.length && fallback.lineItems.length) {
     target.lineItems = fallback.lineItems;
     recovered += fallback.lineItems.length;
+  } else if (fallback.lineItems.length) {
+    for (let i = 0; i < Math.min(target.lineItems.length, fallback.lineItems.length); i += 1) {
+      const current = target.lineItems[i];
+      const candidate = fallback.lineItems[i];
+      for (const key of ["productCode", "description", "quantity", "unit", "unitPriceBeforeDiscount", "unitPriceNet", "discountPercent", "discountAmount", "vatRate", "netAmount", "vatAmount", "grossAmount"] as const) {
+        if ((current[key] == null || current[key] === "") && candidate[key] != null && candidate[key] !== "") {
+          current[key] = candidate[key];
+          recovered += 1;
+        }
+      }
+    }
   }
   if (!target.vatBreakdown.length && fallback.vatBreakdown.length) {
     target.vatBreakdown = fallback.vatBreakdown;
@@ -482,7 +497,9 @@ function mapAzureInvoice(fields: Record<string, any>): NormalizedInvoice {
     ? fields.Items.valueArray.map((entry: any) => {
         const p = entry?.valueObject ?? {};
         return {
+          productCode: azureFieldValue(p.ProductCode) ?? azureFieldValue(p.ItemCode) ?? azureFieldValue(p.SKU),
           description: azureFieldValue(p.Description), quantity: azureFieldValue(p.Quantity), unit: azureFieldValue(p.Unit),
+          unitPriceBeforeDiscount: azureMoney(p.UnitPrice),
           unitPriceNet: azureMoney(p.UnitPrice), discountPercent: azureFieldValue(p.DiscountRate), discountAmount: azureMoney(p.Discount),
           vatRate: azureFieldValue(p.TaxRate), netAmount: azureMoney(p.Amount), vatAmount: azureMoney(p.Tax), grossAmount: null,
         };
