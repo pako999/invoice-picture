@@ -126,6 +126,34 @@ export function BulkInvoiceJobDetail({ id, locale }: { id: number; locale: Local
     });
   }, [groups, job]);
 
+  function splitRange(index: number) {
+    setRanges((current) => {
+      const range = current[index];
+      if (!range || range.startPage >= range.endPage) return current;
+      const splitAt = Math.floor((range.startPage + range.endPage) / 2);
+      return [
+        ...current.slice(0, index),
+        { startPage: range.startPage, endPage: splitAt },
+        { startPage: splitAt + 1, endPage: range.endPage },
+        ...current.slice(index + 1),
+      ];
+    });
+  }
+
+  function mergeWithPrevious(index: number) {
+    if (index <= 0) return;
+    setRanges((current) => {
+      const previous = current[index - 1];
+      const currentRange = current[index];
+      if (!previous || !currentRange) return current;
+      return [
+        ...current.slice(0, index - 1),
+        { startPage: previous.startPage, endPage: currentRange.endPage },
+        ...current.slice(index + 1),
+      ];
+    });
+  }
+
   async function saveRanges() {
     setBusy(true);
     setMessage("");
@@ -345,6 +373,26 @@ export function BulkInvoiceJobDetail({ id, locale }: { id: number; locale: Local
                     className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900"
                   />
                 </label>
+                <div className="flex flex-wrap gap-2 sm:col-span-3">
+                  {range.startPage < range.endPage && (
+                    <button
+                      type="button"
+                      onClick={() => splitRange(index)}
+                      className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-bold text-blue-700 hover:bg-blue-100"
+                    >
+                      {locale === "sl" ? "＋ Razdeli ta razpon" : "＋ Split this range"}
+                    </button>
+                  )}
+                  {index > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => mergeWithPrevious(index)}
+                      className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"
+                    >
+                      {locale === "sl" ? "↔ Združi s prejšnjim" : "↔ Merge with previous"}
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>
