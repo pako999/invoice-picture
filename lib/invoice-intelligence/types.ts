@@ -17,11 +17,11 @@ function partyJsonSchema(supplier: boolean) {
 }
 
 export const invoiceLineItemSchema = z.object({
-  productCode: nullableText,
+  productCode: nullableText.default(null),
   description: nullableText,
   quantity: nullableDecimal,
   unit: nullableText,
-  unitPriceBeforeDiscount: nullableDecimal,
+  unitPriceBeforeDiscount: nullableDecimal.default(null),
   unitPriceNet: nullableDecimal,
   discountPercent: nullableDecimal,
   discountAmount: nullableDecimal,
@@ -65,8 +65,8 @@ export const normalizedInvoiceSchema = z.object({
   }).strict(),
   invoiceNumber: nullableText,
   purchaseOrderNumber: nullableText,
-  deliveryNoteNumber: nullableText,
-  supplyPlace: nullableText,
+  deliveryNoteNumber: nullableText.default(null),
+  supplyPlace: nullableText.default(null),
   issueDate: nullableText,
   serviceDate: nullableText,
   dueDate: nullableText,
