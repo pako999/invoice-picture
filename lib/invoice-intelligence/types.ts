@@ -41,6 +41,7 @@ export const vatBreakdownSchema = z.object({
 export const normalizedInvoiceSchema = z.object({
   documentType: z.enum(["invoice", "credit_note", "receipt", "proforma", "unknown"]),
   documentLanguage: nullableText,
+  documentStatus: nullableText.default(null),
   supplier: z.object({
     name: nullableText,
     address: nullableText,
@@ -72,9 +73,11 @@ export const normalizedInvoiceSchema = z.object({
   dueDate: nullableText,
   paymentReference: nullableText,
   paymentTerms: nullableText,
+  shippingMethod: nullableText.default(null),
   currency: nullableText,
   lineItems: z.array(invoiceLineItemSchema),
   totals: z.object({
+    amountBeforeDiscount: nullableDecimal.default(null),
     netAmount: nullableDecimal,
     discountAmount: nullableDecimal,
     vatAmount: nullableDecimal,
@@ -124,6 +127,7 @@ export type ValidationResult = {
 export const emptyInvoice = (): NormalizedInvoice => ({
   documentType: "unknown",
   documentLanguage: null,
+  documentStatus: null,
   supplier: {
     name: null,
     address: null,
@@ -155,9 +159,11 @@ export const emptyInvoice = (): NormalizedInvoice => ({
   dueDate: null,
   paymentReference: null,
   paymentTerms: null,
+  shippingMethod: null,
   currency: null,
   lineItems: [],
   totals: {
+    amountBeforeDiscount: null,
     netAmount: null,
     discountAmount: null,
     vatAmount: null,
@@ -175,14 +181,15 @@ export const invoiceJsonSchema = {
   type: "object",
   additionalProperties: false,
   required: [
-    "documentType", "documentLanguage", "supplier", "buyer", "invoiceNumber",
+    "documentType", "documentLanguage", "documentStatus", "supplier", "buyer", "invoiceNumber",
     "purchaseOrderNumber", "deliveryNoteNumber", "supplyPlace", "issueDate", "serviceDate", "dueDate", "paymentReference",
-    "paymentTerms", "currency", "lineItems", "totals", "vatBreakdown", "confidence",
+    "paymentTerms", "shippingMethod", "currency", "lineItems", "totals", "vatBreakdown", "confidence",
     "warnings", "validationStatus",
   ],
   properties: {
     documentType: { type: "string", enum: ["invoice", "credit_note", "receipt", "proforma", "unknown"] },
     documentLanguage: nullableStringJsonSchema,
+    documentStatus: nullableStringJsonSchema,
     supplier: partyJsonSchema(true),
     buyer: partyJsonSchema(false),
     invoiceNumber: nullableStringJsonSchema,
@@ -194,6 +201,7 @@ export const invoiceJsonSchema = {
     dueDate: nullableStringJsonSchema,
     paymentReference: nullableStringJsonSchema,
     paymentTerms: nullableStringJsonSchema,
+    shippingMethod: nullableStringJsonSchema,
     currency: nullableStringJsonSchema,
     lineItems: {
       type: "array",
@@ -210,9 +218,9 @@ export const invoiceJsonSchema = {
     totals: {
       type: "object",
       additionalProperties: false,
-      required: ["netAmount", "discountAmount", "vatAmount", "grossAmount", "amountPaid", "amountDue"],
+      required: ["amountBeforeDiscount", "netAmount", "discountAmount", "vatAmount", "grossAmount", "amountPaid", "amountDue"],
       properties: Object.fromEntries([
-        "netAmount", "discountAmount", "vatAmount", "grossAmount", "amountPaid", "amountDue",
+        "amountBeforeDiscount", "netAmount", "discountAmount", "vatAmount", "grossAmount", "amountPaid", "amountDue",
       ].map((key) => [key, nullableStringJsonSchema])),
     },
     vatBreakdown: {
