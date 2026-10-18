@@ -21,6 +21,7 @@ type Detail = {
 
 type InvoiceData = {
   documentType: string; documentLanguage: string | null; invoiceNumber: string | null; purchaseOrderNumber: string | null;
+  deliveryNoteNumber: string | null; supplyPlace: string | null;
   issueDate: string | null; serviceDate: string | null; dueDate: string | null; paymentReference: string | null; paymentTerms: string | null; currency: string | null;
   supplier: Record<string, string | null>; buyer: Record<string, string | null>;
   totals: Record<string, string | null>;
@@ -31,7 +32,7 @@ type InvoiceData = {
 };
 
 const fieldGroups: Array<{ title: string; fields: Array<[string, string]> }> = [
-  { title: "Dokument", fields: [["invoiceNumber", "Številka računa"], ["purchaseOrderNumber", "Naročilnica"], ["issueDate", "Datum izdaje"], ["serviceDate", "Datum storitve"], ["dueDate", "Rok plačila"], ["currency", "Valuta"], ["paymentReference", "Sklic"], ["paymentTerms", "Plačilni pogoji"]] },
+  { title: "Dokument", fields: [["invoiceNumber", "Številka računa"], ["purchaseOrderNumber", "Naročilnica"], ["deliveryNoteNumber", "Dobavnica"], ["supplyPlace", "Kraj dobave/izdaje blaga"], ["issueDate", "Datum izdaje"], ["serviceDate", "Datum storitve"], ["dueDate", "Rok plačila"], ["currency", "Valuta"], ["paymentReference", "Sklic"], ["paymentTerms", "Plačilni pogoji"]] },
   { title: "Dobavitelj", fields: [["supplier.name", "Naziv"], ["supplier.vatNumber", "ID za DDV"], ["supplier.registrationNumber", "Matična"], ["supplier.address", "Naslov"], ["supplier.postalCode", "Pošta"], ["supplier.city", "Mesto"], ["supplier.countryCode", "Država"], ["supplier.iban", "IBAN"], ["supplier.bic", "BIC"], ["supplier.email", "E-mail"], ["supplier.phone", "Telefon"]] },
   { title: "Kupec", fields: [["buyer.name", "Naziv"], ["buyer.vatNumber", "ID za DDV"], ["buyer.registrationNumber", "Matična"], ["buyer.address", "Naslov"], ["buyer.postalCode", "Pošta"], ["buyer.city", "Mesto"], ["buyer.countryCode", "Država"]] },
   { title: "Zneski", fields: [["totals.netAmount", "Neto"], ["totals.discountAmount", "Popust"], ["totals.vatAmount", "DDV"], ["totals.grossAmount", "Bruto"], ["totals.amountPaid", "Plačano"], ["totals.amountDue", "Za plačilo"]] },
@@ -182,7 +183,7 @@ export function InvoiceReviewClient({ documentId }: { documentId: number }) {
           ) : fieldGroups.map((group) => <FieldGroup key={group.title} title={group.title} fields={group.fields} form={form} setForm={setForm} evidence={detail.evidence} selectedPath={selectedPath} setSelectedPath={setSelectedPath} />)}
 
           {!isProcessing && invoice?.vatBreakdown?.length ? <DataTable title="DDV razčlenitev" rows={invoice.vatBreakdown} columns={["vatRate", "taxableAmount", "vatAmount", "grossAmount"]} /> : null}
-          {!isProcessing && invoice?.lineItems?.length ? <DataTable title={`Postavke (${invoice.lineItems.length})`} rows={invoice.lineItems} columns={["description", "quantity", "unitPriceNet", "vatRate", "netAmount", "vatAmount", "grossAmount"]} /> : null}
+          {!isProcessing && invoice?.lineItems?.length ? <DataTable title={`Postavke (${invoice.lineItems.length})`} rows={invoice.lineItems} columns={["productCode", "description", "quantity", "unit", "unitPriceBeforeDiscount", "unitPriceNet", "discountPercent", "discountAmount", "vatRate", "netAmount", "vatAmount", "grossAmount"]} /> : null}
 
           {!isProcessing && detail.corrections.length > 0 && <div className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900"><h2 className="font-bold">Revizijska sled popravkov</h2><div className="mt-3 max-h-48 space-y-2 overflow-auto text-xs text-slate-600">{detail.corrections.map((c) => <div key={c.id} className="rounded-lg bg-slate-50 p-2"><strong>{c.fieldPath}</strong>: {c.oldValue ?? "∅"} → {c.newValue ?? "∅"} · {new Date(c.createdAt).toLocaleString("sl-SI")}</div>)}</div></div>}
 
@@ -209,8 +210,24 @@ function FieldGroup({ title, fields, form, setForm, evidence, selectedPath, setS
   return <div className="w-full min-w-0 max-w-full rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900"><h2 className="mb-3 text-lg font-extrabold text-slate-900 dark:text-white">{title}</h2><div className="grid min-w-0 gap-3 sm:grid-cols-2">{fields.map(([path, label]) => { const ev = evidence.find((e) => e.fieldPath === path); const low = ev?.confidence != null && ev.confidence < 0.92; return <label key={path} className={`min-w-0 rounded-xl border p-2 ${selectedPath === path ? "border-blue-400 bg-blue-50/60" : low ? "border-amber-300 bg-amber-50" : "border-slate-200 dark:border-slate-700"}`}><div className="mb-1 flex items-center justify-between gap-2 text-xs font-bold text-slate-600"><span>{label}</span><span className={low ? "text-amber-700" : "text-slate-400"}>{ev?.confidence == null ? "" : `${Math.round(ev.confidence * 100)}%`}</span></div><input value={form[path] ?? ""} onFocus={() => setSelectedPath(path)} onChange={(e) => setForm((f) => ({ ...f, [path]: e.target.value }))} className="w-full min-w-0 bg-transparent text-sm font-medium text-slate-950 outline-none dark:text-white" /></label>; })}</div></div>;
 }
 
+const tableColumnLabels: Record<string, string> = {
+  productCode: "Šifra",
+  description: "Opis postavke",
+  quantity: "Količina",
+  unit: "EM",
+  unitPriceBeforeDiscount: "Cena pred rabatom",
+  unitPriceNet: "Cena brez DDV",
+  discountPercent: "Rabat %",
+  discountAmount: "Rabat znesek",
+  vatRate: "DDV %",
+  netAmount: "Neto",
+  vatAmount: "DDV",
+  grossAmount: "Bruto",
+  taxableAmount: "Osnova za DDV",
+};
+
 function DataTable({ title, rows, columns }: { title: string; rows: Array<Record<string, string | null>>; columns: string[] }) {
-  return <div className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900"><div className="p-4 font-extrabold">{title}</div><div className="max-w-full overflow-x-auto overscroll-x-contain"><table className="w-max min-w-full text-xs"><thead className="bg-slate-50 dark:bg-slate-800"><tr>{columns.map((c) => <th key={c} className="whitespace-nowrap px-3 py-2 text-left">{c}</th>)}</tr></thead><tbody>{rows.map((row, i) => <tr key={i} className="border-t border-slate-100 dark:border-slate-800">{columns.map((c) => <td key={c} className="max-w-[260px] truncate whitespace-nowrap px-3 py-2">{row[c] ?? "—"}</td>)}</tr>)}</tbody></table></div></div>;
+  return <div className="w-full min-w-0 max-w-full overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900"><div className="p-4 font-extrabold">{title}</div><div className="max-w-full overflow-x-auto overscroll-x-contain"><table className="w-max min-w-full text-xs"><thead className="bg-slate-50 dark:bg-slate-800"><tr>{columns.map((c) => <th key={c} className="whitespace-nowrap px-3 py-2 text-left">{tableColumnLabels[c] ?? c}</th>)}</tr></thead><tbody>{rows.map((row, i) => <tr key={i} className="border-t border-slate-100 dark:border-slate-800">{columns.map((c) => <td key={c} className="max-w-[260px] truncate whitespace-nowrap px-3 py-2">{row[c] ?? "—"}</td>)}</tr>)}</tbody></table></div></div>;
 }
 
 function Action({ children, busy, name, onClick, icon }: { children: React.ReactNode; busy: string | null; name: "save" | "approve" | "reject" | "reprocess"; onClick: () => void; icon: React.ReactNode }) {
