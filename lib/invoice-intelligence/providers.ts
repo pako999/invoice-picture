@@ -99,7 +99,8 @@ export async function readWithMistral(input: { base64: string; mimeType: string;
         "A quotation, sales quote, offer or estimate is still a readable accounting document: set documentType to proforma and extract every shared field that is visible.",
         "For a quotation or offer, place its quote/offer number in invoiceNumber because the schema has no separate quote-number field.",
         "Do not leave fields null merely because the document is a quotation or proforma. Return null only when the value is genuinely missing or unreadable. Never invent values.",
-        "Extract supplier, buyer, document number, delivery note number, supply/place of delivery, dates, payment reference and terms, currency, all line items, discounts, VAT breakdown, totals, IBAN and BIC whenever visible.",
+        "Extract supplier, buyer, document number, document status (for example Draft/Osnutek), delivery note number, supply/place of delivery, dates, payment reference and terms, shipping/delivery method, currency, all line items, discounts, VAT breakdown, totals, IBAN and BIC whenever visible.",
+        "If an invoice prints a total before discount/list total, extract it as totals.amountBeforeDiscount. Keep totals.netAmount as the post-discount taxable/net value.",
         "For EVERY visible line item extract productCode/SKU, full description/name, quantity, unit, unitPriceBeforeDiscount, unitPriceNet after discount, discountPercent, discountAmount, vatRate, netAmount, vatAmount and grossAmount. Never omit the description when it is visible in the table.",
         "Normalize dates to YYYY-MM-DD, currencies to ISO 4217, countries to ISO alpha-2.",
         "Return monetary values as decimal strings without currency symbols and keep credit-note signs correct.",
@@ -253,12 +254,14 @@ export function parseInvoiceTextDeterministically(text: string): NormalizedInvoi
   invoice.invoiceNumber = match(plainText, /(?:invoice\s*(?:number|no\.?|#)|receipt\s*(?:number|no\.?|#)|predra[čc]un\s*(?:[šs]t(?:evilka)?\.?|st\.?|#)?|ra[čc]un\s*(?:[šs]t(?:evilka)?\.?|st\.?|#)|[šs]t\.?\s*ra[čc]una|[šs]tevilka\s+fakture)\s*:?\s*([A-Z0-9][A-Z0-9.\-_/]{2,})/i)
     ?? match(plainText, /(?:sales\s+quote|quotation|quote|offer|estimate|ponudba|proforma|rechnung|fattura)\s*(?:no\.?|nr\.?|[šs]t\.?|number|[:#])\s*([A-Z0-9][A-Z0-9.\-_/]{2,})/i);
   invoice.purchaseOrderNumber = match(plainText, /(?:purchase\s+order|order\s+no\.?|naročilnica|narocilnica|ref\.?\s*sales\s*order)\s*[:#]?\s*([A-Z0-9][A-Z0-9\-_/]{1,})/i);
+  invoice.documentStatus = match(plainText, /(?:document\s+status|status)\s*:?\s*([^\n|]{2,40})/i);
+  invoice.shippingMethod = match(plainText, /(?:shipping\s+method|delivery\s+method|način\s+odpreme|nacin\s+odpreme)\s*:?\s*([^\n|]{2,80})/i);
   invoice.deliveryNoteNumber = match(plainText, /(?:delivery\s+note|dobavnica)\s*[:#]?\s*([A-Z0-9][A-Z0-9.\-_/]{1,})/i);
   invoice.supplyPlace = match(plainText, /(?:place\s+of\s+(?:supply|delivery)|kraj\s+izdaje\s+blaga|kraj\s+dobave)\s*:?\s*([^\n|]{2,100})/i);
   invoice.issueDate = match(plainText, /(?:issue date|document date|quote date|datum izdaje|datum računa|datum racuna|datum dokumenta|rechnungsdatum|data fattura|city,\s*document date|\bdatum\b)\s*:?\s*(\d{1,4}[./-]\d{1,2}[./-]\d{1,4})/i);
   invoice.issueDate ??= matchEnglishDate(plainText, /(?:date\s+of\s+issue|issue\s+date|invoice\s+date)/i);
-  invoice.serviceDate = match(plainText, /(?:service date|delivery\/performance date|performance date|delivery date|datum storitve|datum dobave)\s*:?\s*(\d{1,4}[./-]\d{1,2}[./-]\d{1,4})/i);
-  invoice.dueDate = match(plainText, /(?:due date|rok plačila|rok placila|fällig|scadenza)\s*:?\s*(\d{1,4}[./-]\d{1,2}[./-]\d{1,4})/i);
+  invoice.serviceDate = match(plainText, /(?:service date|delivery\/performance date|performance date|delivery date|datum storitve|datum dobave|datum izdaje blaga)\s*:?\s*(\d{1,4}[./-]\d{1,2}[./-]\d{1,4})/i);
+  invoice.dueDate = match(plainText, /(?:due date|rok plačila|rok placila|datum valute|fällig|scadenza)\s*:?\s*(\d{1,4}[./-]\d{1,2}[./-]\d{1,4})/i);
   invoice.dueDate ??= matchEnglishDate(plainText, /(?:date\s+due|due\s+date)/i);
   invoice.currency = match(plainText, /\b(EUR|USD|GBP|CHF|HRK|CZK|PLN|HUF|SEK|NOK|DKK|RON|BGN|RSD|BAM|CAD|AUD|JPY)\b/i)?.toUpperCase() ?? null;
   invoice.supplier.vatNumber = match(plainText, /(?:VAT\s*ID|VAT\s*No\.?|ID\s*za\s*DDV|Davčna\s*številka|Davcna\s*stevilka)\s*[:#]?\s*((?:SI\d{8}|HR\d{11}|DE\d{9}|ATU\d{8}|IT\d{11}|FR[A-Z0-9]{2}\d{9}|[A-Z0-9]{7,14}))/i)
@@ -266,6 +269,9 @@ export function parseInvoiceTextDeterministically(text: string): NormalizedInvoi
     ?? null;
   invoice.supplier.iban = match(plainText, /\b([A-Z]{2}\d{2}(?:\s?[A-Z0-9]){11,30})\b/i)?.replace(/\s/g, "") ?? null;
   invoice.supplier.bic = match(plainText, /(?:SWIFT\/BIC|BIC)\s*[:#]?\s*([A-Z0-9]{8,11})/i)?.toUpperCase() ?? null;
+  invoice.supplier.email = match(plainText, /(?:e-?mail)\s*:?\s*([A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,})/i);
+  invoice.supplier.phone = match(plainText, /(?:phone|tel\.?|telefon)\s*:?\s*(\+?[0-9][0-9\s./-]{6,})/i)
+    ?? match(plainText, /(?:^|\n)\s*(\+386[0-9\s./-]{7,})\s*(?:\n|$)/i);
   if (!invoice.currency && (invoice.supplier.vatNumber?.startsWith("SI") || invoice.supplier.iban?.startsWith("SI")) && /\b(?:slovenija|slovenia|ljubljana|maribor)\b/i.test(plainText)) {
     invoice.currency = "EUR";
   }
@@ -276,6 +282,7 @@ export function parseInvoiceTextDeterministically(text: string): NormalizedInvoi
   invoice.totals.grossAmount = invoice.totals.amountDue
     ?? match(plainText, /(?:total\s+amount(?:\s+(?:EUR|USD|GBP))?|total\s+amount\s+due|grand\s+total|gesamt|totale)[^\d\-]{0,30}(-?[\d.,]+)\s*(?:EUR|USD|GBP|€|\$|£)?/i);
   invoice.totals.vatAmount = match(plainText, /(?:VAT(?:\s+amount)?|DDV|MwSt|IVA)[^\d\-]{0,25}(-?[\d.,]+)/i);
+  invoice.totals.amountBeforeDiscount = match(plainText, /(?:value\s+before\s+discount|list\s+total|vrednost\s+skupaj)[^\d\-]{0,25}(-?[\d.,]+)/i);
   invoice.totals.netAmount = match(plainText, /(?:net amount|net total|osnova|neto|netto|imponibile|prodajna\s+vrednost)[^\d\-]{0,25}(-?[\d.,]+)/i);
   invoice.totals.discountAmount = match(plainText, /(?:discount|popust|rabat)[^\d\-]{0,25}(-?[\d.,]+)/i);
   invoice.totals.amountDue ??= invoice.totals.grossAmount;
@@ -445,7 +452,7 @@ function mergeMissingInvoiceFields(target: NormalizedInvoice, fallback: Normaliz
     }
   };
 
-  for (const key of ["invoiceNumber", "purchaseOrderNumber", "deliveryNoteNumber", "supplyPlace", "issueDate", "serviceDate", "dueDate", "paymentReference", "paymentTerms", "currency"] as const) assign(key);
+  for (const key of ["documentStatus", "invoiceNumber", "purchaseOrderNumber", "deliveryNoteNumber", "supplyPlace", "issueDate", "serviceDate", "dueDate", "paymentReference", "paymentTerms", "shippingMethod", "currency"] as const) assign(key);
   if (target.documentType === "unknown" && fallback.documentType !== "unknown") {
     target.documentType = fallback.documentType;
     recovered += 1;
@@ -463,7 +470,7 @@ function mergeMissingInvoiceFields(target: NormalizedInvoice, fallback: Normaliz
       recovered += 1;
     }
   }
-  for (const key of ["netAmount", "discountAmount", "vatAmount", "grossAmount", "amountPaid", "amountDue"] as const) {
+  for (const key of ["amountBeforeDiscount", "netAmount", "discountAmount", "vatAmount", "grossAmount", "amountPaid", "amountDue"] as const) {
     if ((target.totals[key] == null || target.totals[key] === "") && fallback.totals[key]) {
       target.totals[key] = fallback.totals[key];
       recovered += 1;
