@@ -62,6 +62,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     overallConfidenceBps: invoiceDocuments.overallConfidenceBps,
     validationStatus: invoiceDocuments.validationStatus,
     warningsJson: invoiceDocuments.warningsJson,
+    originalBase64: invoiceDocuments.originalBase64,
+    bulkJobId: invoiceDocuments.bulkJobId,
     processedAt: invoiceDocuments.processedAt,
     createdAt: invoiceDocuments.createdAt,
   }).from(invoiceDocuments).where(and(eq(invoiceDocuments.id, documentId), eq(invoiceDocuments.clerkUserId, userId))).limit(1);
@@ -74,12 +76,23 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     db.select().from(invoiceCorrections).where(eq(invoiceCorrections.documentId, documentId)).orderBy(desc(invoiceCorrections.createdAt)).limit(100),
   ]);
 
+  const estimatedPages = document.originalBase64 && document.mimeType === "application/pdf"
+    ? estimateSourcePages({ base64: document.originalBase64, mimeType: document.mimeType, filename: document.filename })
+    : null;
+  const legacyMultiPagePdf = document.mimeType === "application/pdf"
+    && document.bulkJobId == null
+    && estimatedPages != null
+    && estimatedPages > 1;
+
   const expires = Date.now() + 5 * 60_000;
   const signature = createDocumentSignature(documentId, userId, expires);
   await db.insert(invoiceAuditLogs).values({ documentId, clerkUserId: userId, action: "view", metadataJson: JSON.stringify({ route: "review" }) });
   return NextResponse.json({
     document: {
       ...document,
+      legacyMultiPagePdf,
+      estimatedPages,
+      originalBase64: undefined,
       normalized: parseJson(document.normalizedJson),
       approved: parseJson(document.approvedJson),
       warnings: parseJson(document.warningsJson) ?? [],
