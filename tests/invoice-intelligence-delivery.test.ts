@@ -16,7 +16,7 @@ test("generates UBL 2.1 invoice XML from approved data", () => {
   invoice.totals.vatAmount = "22.00";
   invoice.totals.grossAmount = "122.00";
   invoice.totals.amountDue = "122.00";
-  invoice.lineItems = [{ description: "Storitev", quantity: "1", unit: null, unitPriceNet: "100.00", discountPercent: null, discountAmount: null, vatRate: "22", netAmount: "100.00", vatAmount: "22.00", grossAmount: "122.00" }];
+  invoice.lineItems = [{ productCode: null, description: "Storitev", quantity: "1", unit: null, unitPriceBeforeDiscount: null, unitPriceNet: "100.00", discountPercent: null, discountAmount: null, vatRate: "22", netAmount: "100.00", vatAmount: "22.00", grossAmount: "122.00" }];
 
   const xml = generateUbl21Xml(invoice);
   assert.match(xml, /UBLVersionID>2\.1/);
@@ -45,7 +45,7 @@ test("generates eSLOG 2.0 from approved PDF/image data", () => {
   invoice.totals.vatAmount = "22.00";
   invoice.totals.grossAmount = "122.00";
   invoice.totals.amountDue = "122.00";
-  invoice.lineItems = [{ description: "Storitev", quantity: "1", unit: null, unitPriceNet: "100.00", discountPercent: null, discountAmount: null, vatRate: "22", netAmount: "100.00", vatAmount: "22.00", grossAmount: "122.00" }];
+  invoice.lineItems = [{ productCode: null, description: "Storitev", quantity: "1", unit: null, unitPriceBeforeDiscount: null, unitPriceNet: "100.00", discountPercent: null, discountAmount: null, vatRate: "22", netAmount: "100.00", vatAmount: "22.00", grossAmount: "122.00" }];
   invoice.vatBreakdown = [{ vatRate: "22", taxableAmount: "100.00", vatAmount: "22.00", grossAmount: "122.00" }];
 
   const result = resolveXmlDelivery({
@@ -82,7 +82,7 @@ test("generated eSLOG escapes values and includes accounting totals", () => {
   invoice.totals.vatAmount = "102.26";
   invoice.totals.grossAmount = "567.06";
   invoice.totals.amountDue = "567.06";
-  invoice.lineItems = [{ description: "Domači paket", quantity: "3", unit: null, unitPriceNet: "4.03", discountPercent: null, discountAmount: null, vatRate: "22", netAmount: "12.09", vatAmount: "2.66", grossAmount: "14.75" }];
+  invoice.lineItems = [{ productCode: null, description: "Domači paket", quantity: "3", unit: null, unitPriceBeforeDiscount: null, unitPriceNet: "4.03", discountPercent: null, discountAmount: null, vatRate: "22", netAmount: "12.09", vatAmount: "2.66", grossAmount: "14.75" }];
   invoice.vatBreakdown = [{ vatRate: "22", taxableAmount: "464.80", vatAmount: "102.26", grossAmount: "567.06" }];
 
   const xml = generateEslog20Xml(invoice);
