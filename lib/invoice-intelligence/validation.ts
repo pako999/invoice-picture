@@ -56,6 +56,7 @@ export function normalizeInvoiceValues(invoice: NormalizedInvoice): NormalizedIn
   for (const key of moneyKeys) invoice.totals[key] = normalizeDecimal(invoice.totals[key]);
   for (const item of invoice.lineItems) {
     item.quantity = normalizeDecimal(item.quantity);
+    item.unitPriceBeforeDiscount = normalizeDecimal(item.unitPriceBeforeDiscount);
     item.unitPriceNet = normalizeDecimal(item.unitPriceNet);
     item.discountPercent = normalizeDecimal(item.discountPercent);
     item.discountAmount = normalizeDecimal(item.discountAmount);
@@ -177,28 +178,51 @@ export function validateInvoice(invoice: NormalizedInvoice): ValidationResult {
 
     invoice.lineItems.forEach((item, index) => {
       const quantity = toScaled(item.quantity);
-      const unitPrice = toScaled(item.unitPriceNet);
+      const unitPriceBeforeDiscount = toScaled(item.unitPriceBeforeDiscount);
+      const unitPriceNet = toScaled(item.unitPriceNet);
       const statedNet = toScaled(item.netAmount);
       const statedDiscount = toScaled(item.discountAmount);
       const discountPercent = toScaled(item.discountPercent);
       const statedVat = toScaled(item.vatAmount);
       const statedGross = toScaled(item.grossAmount);
-      if (quantity != null && unitPrice != null && statedNet != null) {
-        const base = multiplyScaled(quantity, unitPrice);
-        let expectedDiscount = statedDiscount;
-        if (expectedDiscount == null && discountPercent != null) expectedDiscount = divideScaled(multiplyScaled(base, discountPercent), toScaled("100")!);
-        const expectedNet = base - (expectedDiscount ?? 0n);
-        const delta = expectedNet - statedNet;
-        if (!withinTolerance(delta)) {
-          warnings.push(`Line item ${index + 1} net amount does not match quantity × unit price minus discount`);
-          differences[`line${index + 1}DiscountMath`] = scaledToString(delta);
-        }
-        if (statedDiscount != null && discountPercent != null) {
-          const expectedFromPercent = divideScaled(multiplyScaled(base, discountPercent), toScaled("100")!);
-          const discountDelta = expectedFromPercent - statedDiscount;
-          if (!withinTolerance(discountDelta)) {
-            warnings.push(`Line item ${index + 1} discount amount does not match discount percent`);
-            differences[`line${index + 1}DiscountPercent`] = scaledToString(discountDelta);
+
+      if (!item.description?.trim()) warnings.push(`Line item ${index + 1} description is missing`);
+
+      if (quantity != null && statedNet != null) {
+        if (unitPriceBeforeDiscount != null) {
+          const base = multiplyScaled(quantity, unitPriceBeforeDiscount);
+          let expectedDiscount = statedDiscount;
+          if (expectedDiscount == null && discountPercent != null) {
+            expectedDiscount = divideScaled(multiplyScaled(base, discountPercent), toScaled("100")!);
+          }
+          const expectedNet = base - (expectedDiscount ?? 0n);
+          const delta = expectedNet - statedNet;
+          if (!withinTolerance(delta)) {
+            warnings.push(`Line item ${index + 1} net amount does not match quantity × pre-discount price minus discount`);
+            differences[`line${index + 1}DiscountMath`] = scaledToString(delta);
+          }
+          if (unitPriceNet != null) {
+            const expectedUnitNet = quantity === 0n ? unitPriceNet : divideScaled(expectedNet, quantity);
+            const unitDelta = expectedUnitNet - unitPriceNet;
+            if (!withinTolerance(unitDelta)) {
+              warnings.push(`Line item ${index + 1} net unit price does not match the stated discount`);
+              differences[`line${index + 1}UnitPriceAfterDiscount`] = scaledToString(unitDelta);
+            }
+          }
+          if (statedDiscount != null && discountPercent != null) {
+            const expectedFromPercent = divideScaled(multiplyScaled(base, discountPercent), toScaled("100")!);
+            const discountDelta = expectedFromPercent - statedDiscount;
+            if (!withinTolerance(discountDelta)) {
+              warnings.push(`Line item ${index + 1} discount amount does not match discount percent`);
+              differences[`line${index + 1}DiscountPercent`] = scaledToString(discountDelta);
+            }
+          }
+        } else if (unitPriceNet != null) {
+          const expectedNet = multiplyScaled(quantity, unitPriceNet);
+          const delta = expectedNet - statedNet;
+          if (!withinTolerance(delta)) {
+            warnings.push(`Line item ${index + 1} net amount does not match quantity × net unit price`);
+            differences[`line${index + 1}NetMath`] = scaledToString(delta);
           }
         }
       }
