@@ -20,9 +20,9 @@ type Detail = {
 };
 
 type InvoiceData = {
-  documentType: string; documentLanguage: string | null; invoiceNumber: string | null; purchaseOrderNumber: string | null;
+  documentType: string; documentLanguage: string | null; documentStatus: string | null; invoiceNumber: string | null; purchaseOrderNumber: string | null;
   deliveryNoteNumber: string | null; supplyPlace: string | null;
-  issueDate: string | null; serviceDate: string | null; dueDate: string | null; paymentReference: string | null; paymentTerms: string | null; currency: string | null;
+  issueDate: string | null; serviceDate: string | null; dueDate: string | null; paymentReference: string | null; paymentTerms: string | null; shippingMethod: string | null; currency: string | null;
   supplier: Record<string, string | null>; buyer: Record<string, string | null>;
   totals: Record<string, string | null>;
   lineItems: Array<Record<string, string | null>>;
@@ -32,10 +32,10 @@ type InvoiceData = {
 };
 
 const fieldGroups: Array<{ title: string; fields: Array<[string, string]> }> = [
-  { title: "Dokument", fields: [["invoiceNumber", "Številka računa"], ["purchaseOrderNumber", "Naročilnica"], ["deliveryNoteNumber", "Dobavnica"], ["supplyPlace", "Kraj dobave/izdaje blaga"], ["issueDate", "Datum izdaje"], ["serviceDate", "Datum storitve"], ["dueDate", "Rok plačila"], ["currency", "Valuta"], ["paymentReference", "Sklic"], ["paymentTerms", "Plačilni pogoji"]] },
+  { title: "Dokument", fields: [["invoiceNumber", "Številka računa"], ["documentStatus", "Status dokumenta"], ["purchaseOrderNumber", "Naročilnica"], ["deliveryNoteNumber", "Dobavnica"], ["supplyPlace", "Kraj dobave/izdaje blaga"], ["issueDate", "Datum izdaje"], ["serviceDate", "Datum storitve"], ["dueDate", "Rok plačila"], ["currency", "Valuta"], ["paymentReference", "Sklic"], ["paymentTerms", "Plačilni pogoji"], ["shippingMethod", "Način odpreme"]] },
   { title: "Dobavitelj", fields: [["supplier.name", "Naziv"], ["supplier.vatNumber", "ID za DDV"], ["supplier.registrationNumber", "Matična"], ["supplier.address", "Naslov"], ["supplier.postalCode", "Pošta"], ["supplier.city", "Mesto"], ["supplier.countryCode", "Država"], ["supplier.iban", "IBAN"], ["supplier.bic", "BIC"], ["supplier.email", "E-mail"], ["supplier.phone", "Telefon"]] },
   { title: "Kupec", fields: [["buyer.name", "Naziv"], ["buyer.vatNumber", "ID za DDV"], ["buyer.registrationNumber", "Matična"], ["buyer.address", "Naslov"], ["buyer.postalCode", "Pošta"], ["buyer.city", "Mesto"], ["buyer.countryCode", "Država"]] },
-  { title: "Zneski", fields: [["totals.netAmount", "Neto"], ["totals.discountAmount", "Popust"], ["totals.vatAmount", "DDV"], ["totals.grossAmount", "Bruto"], ["totals.amountPaid", "Plačano"], ["totals.amountDue", "Za plačilo"]] },
+  { title: "Zneski", fields: [["totals.amountBeforeDiscount", "Vrednost pred rabatom"], ["totals.netAmount", "Neto"], ["totals.discountAmount", "Popust"], ["totals.vatAmount", "DDV"], ["totals.grossAmount", "Bruto"], ["totals.amountPaid", "Plačano"], ["totals.amountDue", "Za plačilo"]] },
 ];
 
 export function InvoiceReviewClient({ documentId }: { documentId: number }) {

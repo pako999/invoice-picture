@@ -26,11 +26,11 @@ import { BulkAdmissionError } from "@/lib/bulk-invoices/admission";
 import { queueInvoiceDelivery } from "@/lib/invoice-intelligence/delivery";
 
 const allowedPaths = new Set([
-  "documentType", "documentLanguage", "supplier.name", "supplier.address", "supplier.postalCode", "supplier.city", "supplier.countryCode",
+  "documentType", "documentLanguage", "documentStatus", "supplier.name", "supplier.address", "supplier.postalCode", "supplier.city", "supplier.countryCode",
   "supplier.vatNumber", "supplier.registrationNumber", "supplier.email", "supplier.phone", "supplier.iban", "supplier.bic",
   "buyer.name", "buyer.address", "buyer.postalCode", "buyer.city", "buyer.countryCode", "buyer.vatNumber", "buyer.registrationNumber",
-  "invoiceNumber", "purchaseOrderNumber", "deliveryNoteNumber", "supplyPlace", "issueDate", "serviceDate", "dueDate", "paymentReference", "paymentTerms", "currency",
-  "totals.netAmount", "totals.discountAmount", "totals.vatAmount", "totals.grossAmount", "totals.amountPaid", "totals.amountDue",
+  "invoiceNumber", "purchaseOrderNumber", "deliveryNoteNumber", "supplyPlace", "issueDate", "serviceDate", "dueDate", "paymentReference", "paymentTerms", "shippingMethod", "currency",
+  "totals.amountBeforeDiscount", "totals.netAmount", "totals.discountAmount", "totals.vatAmount", "totals.grossAmount", "totals.amountPaid", "totals.amountDue",
 ]);
 
 const patchSchema = z.object({

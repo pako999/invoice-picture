@@ -52,7 +52,7 @@ function scaledToString(v: bigint | null, scale = SCALE) {
 }
 
 export function normalizeInvoiceValues(invoice: NormalizedInvoice): NormalizedInvoice {
-  const moneyKeys = ["netAmount", "discountAmount", "vatAmount", "grossAmount", "amountPaid", "amountDue"] as const;
+  const moneyKeys = ["amountBeforeDiscount", "netAmount", "discountAmount", "vatAmount", "grossAmount", "amountPaid", "amountDue"] as const;
   for (const key of moneyKeys) invoice.totals[key] = normalizeDecimal(invoice.totals[key]);
   for (const item of invoice.lineItems) {
     item.quantity = normalizeDecimal(item.quantity);
@@ -261,6 +261,9 @@ export function validateInvoice(invoice: NormalizedInvoice): ValidationResult {
   if (invoice.supplier.name && invoice.buyer.name && invoice.supplier.name.trim().toLowerCase() === invoice.buyer.name.trim().toLowerCase()) warnings.push("Supplier and buyer names are identical; parties may be reversed");
 
   if (invoice.documentType === "credit_note" && gross != null && gross > 0n) warnings.push("Credit note gross amount is positive; verify sign convention");
+  if (invoice.documentStatus && /(?:draft|osnutek|entwurf|bozza)/i.test(invoice.documentStatus)) {
+    warnings.push("Document is marked as draft; manual review is required before delivery");
+  }
 
   return {
     status: errors.length ? "failed" : warnings.length ? "needs_review" : "valid",
