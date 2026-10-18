@@ -361,41 +361,60 @@ function stripMarkdownFormatting(value: string) {
 
 function parseMarkdownLineItems(text: string): NormalizedInvoice["lineItems"] {
   const rows = text.split(/\r?\n/).filter((line) => line.includes("|")).map(markdownCells).filter((cells) => cells.length >= 3);
-  const headerIndex = rows.findIndex((cells) => cells.some((cell) => /(?:opis|description|izdelek|artikel|product|storitev)/i.test(cell)) && cells.some((cell) => /(?:koli[čc]ina|qty|quantity)/i.test(cell)));
+  const headerIndex = rows.findIndex((cells) =>
+    cells.some((cell) => /(?:opis|description|izdelek|artikel|product|storitev)/i.test(cell))
+    && cells.some((cell) => /(?:koli[čc]ina|qty|quantity)/i.test(cell))
+  );
   if (headerIndex < 0) return [];
 
   const headers = rows[headerIndex].map(normalizeHeader);
-  const index = (patterns: RegExp[], excluded: RegExp[] = []) => headers.findIndex((header) => patterns.some((pattern) => pattern.test(header)) && !excluded.some((pattern) => pattern.test(header)));
+  const index = (patterns: RegExp[], excluded: RegExp[] = []) =>
+    headers.findIndex((header) => patterns.some((pattern) => pattern.test(header)) && !excluded.some((pattern) => pattern.test(header)));
+
   const description = index([/opis/, /description/, /izdelek/, /artikel/, /product/, /storit/]);
-  const code = index([/^sifra$/, /^sku$/, /productcode/, /articlecode/]);
+  const code = index([/^sifra$/, /^sku$/, /productcode/, /articlecode/, /itemcode/]);
   const quantity = index([/kolicina/, /^qty$/, /quantity/]);
   const unit = index([/^em$/, /^enota$/, /^unit$/]);
-  const discount = index([/rabat/, /popust/, /discount/]);
+  const discountPercent = index([/^rabat$/, /^popust$/, /^discount$/, /discountpercent/, /discpercent/], [/znesek/, /amount/]);
+  const discountAmount = index([/rabatznesek/, /popustznesek/, /discountamount/]);
   const vatRate = index([/^ddv$/, /ddvstopnja/, /^vat$/, /vatrate/], [/znesek/, /amount/]);
-  const netAmount = index([/vrbrezddv/, /vrednostbrezddv/, /netamount/, /lineamount/]);
-  const unitPrice = index([/^cena$/, /cenazaenoto/, /unitprice/, /^price$/], [/brezddv/, /vrednost/, /amount/]);
+  const vatAmount = index([/znesekddv/, /ddvznesek/, /vatamount/, /taxamount/]);
+  const netAmount = index([/vrbrezddv/, /vrednostbrezddv/, /netamount/, /lineamount/, /lineextensionamount/]);
+  const grossAmount = index([/vrzddv/, /vrednostzddv/, /grossamount/, /linegross/]);
+  const unitPriceBeforeDiscount = index(
+    [/^cena$/, /listprice/, /unitpricebeforediscount/, /pricebeforediscount/, /cenapredrabat/],
+    [/brezddv/, /porabatu/, /afterdiscount/, /net/, /vrednost/, /amount/],
+  );
+  const unitPriceNet = index([/cenabrezddv/, /unitpricenet/, /netunitprice/, /priceafterdiscount/, /cenaporabatu/]);
+
   if (description < 0 || quantity < 0) return [];
 
   const output: NormalizedInvoice["lineItems"] = [];
   for (const cells of rows.slice(headerIndex + 1)) {
     if (cells.every((cell) => /^:?-{3,}:?$/.test(cell.replace(/\s/g, "")))) continue;
     if (cells.length < headers.length - 1) continue;
+
     const descriptionText = cleanCell(cells[description]);
     if (!descriptionText || /^(?:skupaj|total|osnova|ddv)$/i.test(descriptionText)) break;
-    const productCode = code >= 0 ? cleanCell(cells[code]) : "";
     const quantityValue = cleanDecimalCell(cells[quantity]);
     if (!quantityValue) continue;
+
+    const before = unitPriceBeforeDiscount >= 0 ? cleanDecimalCell(cells[unitPriceBeforeDiscount]) : null;
+    const after = unitPriceNet >= 0 ? cleanDecimalCell(cells[unitPriceNet]) : null;
+
     output.push({
-      description: [productCode, descriptionText].filter(Boolean).join(" – "),
+      productCode: code >= 0 ? cleanCell(cells[code]) || null : null,
+      description: descriptionText,
       quantity: quantityValue,
       unit: unit >= 0 ? cleanCell(cells[unit]) || null : null,
-      unitPriceNet: unitPrice >= 0 ? cleanDecimalCell(cells[unitPrice]) : null,
-      discountPercent: discount >= 0 ? cleanDecimalCell(cells[discount]) : null,
-      discountAmount: null,
+      unitPriceBeforeDiscount: before,
+      unitPriceNet: after ?? (discountPercent < 0 ? before : null),
+      discountPercent: discountPercent >= 0 ? cleanDecimalCell(cells[discountPercent]) : null,
+      discountAmount: discountAmount >= 0 ? cleanDecimalCell(cells[discountAmount]) : null,
       vatRate: vatRate >= 0 ? cleanDecimalCell(cells[vatRate]) : null,
       netAmount: netAmount >= 0 ? cleanDecimalCell(cells[netAmount]) : null,
-      vatAmount: null,
-      grossAmount: null,
+      vatAmount: vatAmount >= 0 ? cleanDecimalCell(cells[vatAmount]) : null,
+      grossAmount: grossAmount >= 0 ? cleanDecimalCell(cells[grossAmount]) : null,
     });
   }
   return output;
