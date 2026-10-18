@@ -20,6 +20,7 @@ const exact: Record<string, string> = {
   "Supplier and buyer VAT numbers are identical; parties may be reversed": "ID za DDV dobavitelja in kupca sta enaka; preveri, ali sta stranki zamenjani.",
   "Supplier and buyer names are identical; parties may be reversed": "Naziv dobavitelja in kupca je enak; preveri, ali sta stranki zamenjani.",
   "Credit note gross amount is positive; verify sign convention": "Bruto znesek dobropisa je pozitiven; preveri predznak zneska.",
+  "Document is marked as draft; manual review is required before delivery": "Dokument je označen kot osnutek; pred pošiljanjem je obvezen ročni pregled.",
 };
 
 function translateWarning(message: string) {
