@@ -52,7 +52,7 @@ function scaledToString(v: bigint | null, scale = SCALE) {
 }
 
 export function normalizeInvoiceValues(invoice: NormalizedInvoice): NormalizedInvoice {
-  const moneyKeys = ["netAmount", "discountAmount", "vatAmount", "grossAmount", "amountPaid", "amountDue"] as const;
+  const moneyKeys = ["amountBeforeDiscount", "netAmount", "discountAmount", "vatAmount", "grossAmount", "amountPaid", "amountDue"] as const;
   for (const key of moneyKeys) invoice.totals[key] = normalizeDecimal(invoice.totals[key]);
   for (const item of invoice.lineItems) {
     item.quantity = normalizeDecimal(item.quantity);
