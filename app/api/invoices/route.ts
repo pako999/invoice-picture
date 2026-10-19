@@ -53,31 +53,31 @@ export async function GET() {
         subject: invoices.subject,
         // Images are already compressed thumbnails. PDF data can be much
         // larger, so it is fetched only when the user hovers or opens it.
-        imageData: sql<string | null>`case when ${invoices.imageMime} = 'application/pdf' then null else ${invoices.imageData} end`,
+        imageData: sql<string | null>`case when "invoices"."imageMime" = 'application/pdf' then null else "invoices"."imageData" end`,
         imageMime: invoices.imageMime,
         filename: invoices.filename,
         status: sql<"sent" | "pending" | "failed">`
           case
-            when ${invoices.status} = 'pending' and exists (
+            when "invoices"."status" = 'pending' and exists (
               select 1
               from "invoiceDocuments" d
               join "invoiceProcessingJobs" j on j."documentId" = d."id"
-              where d."sourceInvoiceId" = ${invoices.id}
+              where d."sourceInvoiceId" = "invoices"."id"
                 and d."status" = 'failed'
                 and j."status" = 'failed'
                 and j."attempts" >= j."maxAttempts"
             ) then 'failed'::invoice_status
-            else ${invoices.status}
+            else "invoices"."status"
           end
         `,
         errorMessage: sql<string | null>`
           coalesce(
-            ${invoices.errorMessage},
+            "invoices"."errorMessage",
             (
               select j."lastError"
               from "invoiceDocuments" d
               join "invoiceProcessingJobs" j on j."documentId" = d."id"
-              where d."sourceInvoiceId" = ${invoices.id}
+              where d."sourceInvoiceId" = "invoices"."id"
                 and j."status" = 'failed'
                 and j."attempts" >= j."maxAttempts"
               order by d."id" desc
@@ -89,7 +89,7 @@ export async function GET() {
           (
             select d."id"
             from "invoiceDocuments" d
-            where d."sourceInvoiceId" = ${invoices.id}
+            where d."sourceInvoiceId" = "invoices"."id"
             order by d."id" desc
             limit 1
           )
@@ -98,7 +98,7 @@ export async function GET() {
           (
             select d."status"::text
             from "invoiceDocuments" d
-            where d."sourceInvoiceId" = ${invoices.id}
+            where d."sourceInvoiceId" = "invoices"."id"
             order by d."id" desc
             limit 1
           )
