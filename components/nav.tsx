@@ -144,9 +144,9 @@ export function Nav() {
   return (
     <>
       <header className="sticky top-0 z-50 bg-white/90 dark:bg-slate-900/90 backdrop-blur border-b border-gray-200 dark:border-slate-700">
-        <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between gap-4">
-          <Link href={localeUrl(locale, "")} className="flex-shrink-0 text-lg" onClick={handleLogoClick}>
-            <LogoWordmark />
+        <div className="mx-auto flex h-14 w-full min-w-0 max-w-5xl items-center justify-between gap-2 px-3 sm:gap-4 sm:px-4">
+          <Link href={localeUrl(locale, "")} className="min-w-0 shrink text-base sm:text-lg" onClick={handleLogoClick}>
+            <LogoWordmark className="max-w-full whitespace-nowrap" />
           </Link>
 
           {!isSignedIn && isLanding && (
@@ -189,7 +189,7 @@ export function Nav() {
             </nav>
           )}
 
-          <div className="flex items-center gap-2 ml-auto">
+          <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
             {/* Language switcher (compact, desktop only) */}
             <div className="hidden md:flex items-center gap-0.5 mr-1 border border-gray-200 dark:border-slate-700 rounded-lg p-0.5">
               <button
