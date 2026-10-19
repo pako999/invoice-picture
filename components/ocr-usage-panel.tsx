@@ -51,16 +51,16 @@ export function OcrUsagePanel({ locale = "sl" }: { locale?: "sl" | "en" }) {
     : (en ? "Plans & limits" : "Paketi in limiti");
 
   return (
-    <section className={`mx-auto my-4 max-w-5xl rounded-2xl border p-4 shadow-sm ${alert ? usage.warningLevel === "blocked" ? "border-red-300 bg-red-50" : "border-amber-300 bg-amber-50" : "border-blue-100 bg-blue-50/60"}`}>
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
+    <section className={`mx-3 my-4 w-auto min-w-0 max-w-5xl overflow-hidden rounded-2xl border p-4 shadow-sm sm:mx-auto ${alert ? usage.warningLevel === "blocked" ? "border-red-300 bg-red-50" : "border-amber-300 bg-amber-50" : "border-blue-100 bg-blue-50/60"}`}>
+      <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
           <p className="text-xs font-bold uppercase tracking-wider text-blue-700">AI OCR · {usage.planName}</p>
           <h2 className="mt-1 text-base font-extrabold text-slate-950">{en ? "Monthly OCR usage" : "Mesečna OCR poraba"}</h2>
           {alert && <p className={`mt-1 text-sm font-medium ${usage.warningLevel === "blocked" ? "text-red-800" : "text-amber-900"}`}>{en ? usage.noticeEn : usage.noticeSl}</p>}
         </div>
-        <Link href={href} className="rounded-xl bg-slate-950 px-4 py-2 text-sm font-bold text-white">{cta}</Link>
+        <Link href={href} className="inline-flex w-full min-w-0 items-center justify-center rounded-xl bg-slate-950 px-4 py-2 text-center text-sm font-bold text-white sm:w-auto sm:shrink-0">{cta}</Link>
       </div>
-      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+      <div className="mt-4 grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
         <Meter label={en ? "OCR documents" : "OCR dokumenti"} value={usage.monthDocuments} limit={usage.monthlyDocumentLimit} />
         <Meter label={en ? "OCR pages" : "OCR strani"} value={usage.monthPages} limit={usage.monthlyPageLimit} />
       </div>
@@ -72,5 +72,5 @@ export function OcrUsagePanel({ locale = "sl" }: { locale?: "sl" | "en" }) {
 
 function Meter({ label, value, limit }: { label: string; value: number; limit: number }) {
   const percent = limit > 0 ? Math.min(100, value / limit * 100) : 100;
-  return <div><div className="mb-1 flex justify-between text-sm"><span className="font-semibold">{label}</span><strong>{value}/{limit}</strong></div><div className="h-2.5 overflow-hidden rounded-full bg-white ring-1 ring-slate-200"><div className={`h-full rounded-full ${percent >= 100 ? "bg-red-600" : percent >= 80 ? "bg-amber-500" : "bg-blue-600"}`} style={{ width: `${percent}%` }} /></div></div>;
+  return <div className="min-w-0"><div className="mb-1 flex min-w-0 items-center justify-between gap-3 text-sm"><span className="min-w-0 font-semibold">{label}</span><strong className="shrink-0">{value}/{limit}</strong></div><div className="h-2.5 overflow-hidden rounded-full bg-white ring-1 ring-slate-200"><div className={`h-full rounded-full ${percent >= 100 ? "bg-red-600" : percent >= 80 ? "bg-amber-500" : "bg-blue-600"}`} style={{ width: `${percent}%` }} /></div></div>;
 }
