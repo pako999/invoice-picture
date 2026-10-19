@@ -147,19 +147,19 @@ export function InvoiceReviewGallery() {
   }
 
   return (
-    <main className="mx-auto max-w-7xl px-3 py-6 sm:px-6 sm:py-8 lg:px-8">
-      <div className="mb-7 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
+    <main className="mx-auto w-full min-w-0 max-w-7xl overflow-x-hidden px-3 py-6 sm:px-6 sm:py-8 lg:px-8">
+      <div className="mb-7 flex min-w-0 flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
           <p className="text-sm font-semibold uppercase tracking-wider text-blue-600">Invoice Intelligence</p>
-          <h1 className="text-3xl font-extrabold text-slate-950 dark:text-white">Pregled in potrditev računov</h1>
-          <p className="mt-1 text-slate-500">Oglejte si več računov hkrati, odprite original ter račun potrdite ali izbrišite.</p>
+          <h1 className="text-2xl font-extrabold leading-tight text-slate-950 sm:text-3xl dark:text-white">Pregled in potrditev računov</h1>
+          <p className="mt-1 break-words text-sm text-slate-500 sm:text-base">Oglejte si več računov hkrati, odprite original ter račun potrdite ali izbrišite.</p>
         </div>
         <button type="button" onClick={() => void load()} disabled={loading} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 font-semibold text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-white">
           <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} /> Osveži
         </button>
       </div>
 
-      <section className="mb-7 grid grid-cols-2 gap-3 lg:grid-cols-5">
+      <section className="mb-7 grid min-w-0 grid-cols-2 gap-3 lg:grid-cols-5">
         <Stat label="Skupaj" value={stats.total} icon={<FileSearch className="h-5 w-5" />} />
         <Stat label="Potrjeno" value={stats.approved} icon={<CheckCircle2 className="h-5 w-5 text-emerald-600" />} />
         <Stat label="Za pregled" value={stats.needs_review} icon={<AlertTriangle className="h-5 w-5 text-amber-600" />} />
@@ -167,8 +167,8 @@ export function InvoiceReviewGallery() {
         <Stat label="Napake" value={stats.failed} icon={<XCircle className="h-5 w-5 text-red-600" />} />
       </section>
 
-      <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex gap-2 overflow-x-auto pb-1" aria-label="Filtriraj račune">
+      <div className="mb-5 flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex max-w-full min-w-0 gap-2 overflow-x-auto pb-1" aria-label="Filtriraj račune">
           {filters.map(([value, label]) => <button key={value} type="button" onClick={() => setFilter(value)} className={`shrink-0 rounded-full px-4 py-2 text-sm font-semibold ${filter === value ? "bg-slate-950 text-white dark:bg-blue-600" : "border border-slate-200 bg-white text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"}`}>{label}</button>)}
         </div>
         <div className="inline-flex w-fit rounded-xl border border-slate-200 bg-white p-1 shadow-sm dark:border-slate-700 dark:bg-slate-900" aria-label="Način prikaza">
