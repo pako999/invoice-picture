@@ -102,6 +102,7 @@ export async function readWithMistral(input: { base64: string; mimeType: string;
         "Extract supplier, buyer, document number, document status (for example Draft/Osnutek), delivery note number, supply/place of delivery, dates, payment reference and terms, shipping/delivery method, currency, all line items, discounts, VAT breakdown, totals, IBAN and BIC whenever visible.",
         "If an invoice prints a total before discount/list total, extract it as totals.amountBeforeDiscount. Keep totals.netAmount as the post-discount taxable/net value.",
         "For EVERY visible line item extract productCode/SKU, full description/name, quantity, unit, unitPriceBeforeDiscount, unitPriceNet after discount, discountPercent, discountAmount, vatRate, netAmount, vatAmount and grossAmount. Never omit the description when it is visible in the table.",
+        "Only rows from the actual items/services table are line items. Never use payment instructions, QR-code captions, slogans, footer text or labels such as 'Slikaj in plačaj', 'Scan and pay', 'Plačilo', 'Payment', 'Sklic' or 'IBAN' as a line-item description.",
         "Normalize dates to YYYY-MM-DD, currencies to ISO 4217, countries to ISO alpha-2.",
         "Return monetary values as decimal strings without currency symbols and keep credit-note signs correct.",
         "Supplier means the issuer/seller; buyer means the customer/recipient.",
@@ -583,7 +584,14 @@ function mergeMissingInvoiceFields(target: NormalizedInvoice, fallback: Normaliz
     for (let i = 0; i < Math.min(target.lineItems.length, fallback.lineItems.length); i += 1) {
       const current = target.lineItems[i];
       const candidate = fallback.lineItems[i];
-      for (const key of ["productCode", "description", "quantity", "unit", "unitPriceBeforeDiscount", "unitPriceNet", "discountPercent", "discountAmount", "vatRate", "netAmount", "vatAmount", "grossAmount"] as const) {
+      const sameRow = lineItemsNumericallyMatch(current, candidate);
+      if (sameRow && candidate.description && !isPaymentInstruction(candidate.description)) {
+        if (!current.description || isPaymentInstruction(current.description) || current.description !== candidate.description) {
+          current.description = candidate.description;
+          recovered += 1;
+        }
+      }
+      for (const key of ["productCode", "quantity", "unit", "unitPriceBeforeDiscount", "unitPriceNet", "discountPercent", "discountAmount", "vatRate", "netAmount", "vatAmount", "grossAmount"] as const) {
         if ((current[key] == null || current[key] === "") && candidate[key] != null && candidate[key] !== "") {
           current[key] = candidate[key];
           recovered += 1;
@@ -597,6 +605,35 @@ function mergeMissingInvoiceFields(target: NormalizedInvoice, fallback: Normaliz
   }
   for (const warning of fallback.warnings) if (!target.warnings.includes(warning)) target.warnings.push(warning);
   return recovered;
+}
+
+function isPaymentInstruction(value: string | null) {
+  if (!value) return false;
+  return /^(?:slikaj\s+in\s+pla[čc]aj|scan\s+(?:and|&)\s+pay|pla[čc]ilo|payment|sklic|iban|trr|qr(?:\s+code)?|upi(?:\s+qr)?)\b/i.test(value.trim());
+}
+
+function lineItemsNumericallyMatch(
+  left: NormalizedInvoice["lineItems"][number],
+  right: NormalizedInvoice["lineItems"][number],
+) {
+  const normalize = (value: string | null) => {
+    if (!value) return null;
+    const compact = value.replace(/\s/g, "").replace(/\.(?=\d{3}(?:\D|$))/g, "").replace(",", ".");
+    const number = Number(compact);
+    return Number.isFinite(number) ? number : null;
+  };
+  const keys = ["quantity", "unitPriceBeforeDiscount", "unitPriceNet", "discountPercent", "vatRate", "netAmount"] as const;
+  let compared = 0;
+  let matched = 0;
+  for (const key of keys) {
+    const a = normalize(left[key]);
+    const b = normalize(right[key]);
+    if (a == null || b == null) continue;
+    compared += 1;
+    const tolerance = Math.max(0.0001, Math.abs(b) * 0.0005);
+    if (Math.abs(a - b) <= tolerance) matched += 1;
+  }
+  return compared >= 2 && matched >= Math.min(2, compared);
 }
 
 function mapAzureInvoice(fields: Record<string, any>): NormalizedInvoice {
