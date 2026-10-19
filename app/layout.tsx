@@ -110,7 +110,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }} />
           <Nav />
           <TrialBanner />
-          <main className="pb-20 md:pb-0">{children}</main>
+          <main className="w-full min-w-0 overflow-x-hidden pb-20 md:pb-0">{children}</main>
           <Footer />
           <CookieBanner />
         </body>
