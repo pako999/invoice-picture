@@ -20,6 +20,55 @@ test("Slovenian OCR fallback reads a plain Datum label and infers EUR", () => {
   assert.equal(invoice.currency, "EUR");
 });
 
+test("Slovenian OCR fallback recovers document, supplier and buyer fields from Surfshop-style invoice", () => {
+  const invoice = normalizeInvoiceValues(parseInvoiceTextDeterministically(`
+SURFSHOP
+Amodor d.o.o.
+Gortanova ulica 21, Športni Park Slovan
++38615425131
+1000 Ljubljana
+TRR: SI56 1010 0004 6516 054
+ID za DDV: SI79907962
+Email: amodor@siol.net
+
+Sport Group d.o.o.
+Osojnikova 4
+2000 MARIBOR
+SLOVENIJA
+
+Račun št.: 1719-FAKT1-197
+Datum: 29.07.2026
+Datum valute: 29.07.2026
+Kraj izdaje blaga: Ljubljana
+Datum izdaje blaga: 29.07.2026
+Dobavnica: 197/2026
+ID za DDV kupca: SI72133449
+Sklic: 1972026
+Plačilni pogoji: TRR
+Za plačilo: 719,39 EUR
+`));
+
+  assert.equal(invoice.invoiceNumber, "1719-FAKT1-197");
+  assert.equal(invoice.issueDate, "2026-07-29");
+  assert.equal(invoice.dueDate, "2026-07-29");
+  assert.equal(invoice.serviceDate, "2026-07-29");
+  assert.equal(invoice.deliveryNoteNumber, "197/2026");
+  assert.equal(invoice.supplyPlace, "Ljubljana");
+  assert.equal(invoice.paymentReference, "1972026");
+  assert.equal(invoice.paymentTerms, "TRR");
+  assert.equal(invoice.currency, "EUR");
+  assert.equal(invoice.supplier.name, "Amodor d.o.o.");
+  assert.equal(invoice.supplier.vatNumber, "SI79907962");
+  assert.equal(invoice.supplier.postalCode, "1000");
+  assert.equal(invoice.supplier.city, "Ljubljana");
+  assert.equal(invoice.buyer.name, "Sport Group d.o.o.");
+  assert.equal(invoice.buyer.vatNumber, "SI72133449");
+  assert.equal(invoice.buyer.address, "Osojnikova 4");
+  assert.equal(invoice.buyer.postalCode, "2000");
+  assert.equal(invoice.buyer.city, "MARIBOR");
+  assert.equal(invoice.buyer.countryCode, "SI");
+});
+
 test("Slovenian OCR markdown fallback removes formatting and extracts product rows", () => {
   const invoice = normalizeInvoiceValues(parseInvoiceTextDeterministically(`
 **SURFSHOP**
