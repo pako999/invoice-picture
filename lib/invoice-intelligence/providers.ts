@@ -310,6 +310,7 @@ export function parseInvoiceTextDeterministically(text: string): NormalizedInvoi
   enrichPartyFromNearbyLines(invoice.supplier, invoice.supplier.name, lines);
   enrichPartyFromNearbyLines(invoice.buyer, invoice.buyer.name, lines);
   invoice.lineItems = parseMarkdownLineItems(text);
+  if (!invoice.lineItems.length) invoice.lineItems = parsePlainTextLineItems(plainText);
   if (isQuote) invoice.warnings.push("Quotation/proforma document requires manual review before delivery.");
   invoice.confidence = { overall: 0.72, fields: {} };
   invoice.validationStatus = "pending";
@@ -417,6 +418,52 @@ function stripMarkdownFormatting(value: string) {
     .replace(/\*\*|__|`/g, "")
     .replace(/^\s{0,3}#{1,6}\s*/gm, "")
     .replace(/^\s*>\s?/gm, "");
+}
+
+function parsePlainTextLineItems(text: string): NormalizedInvoice["lineItems"] {
+  const lines = stripMarkdownFormatting(text)
+    .split(/\r?\n/)
+    .map((line) => line.replace(/\s+/g, " ").trim())
+    .filter(Boolean);
+
+  const output: NormalizedInvoice["lineItems"] = [];
+  const headerIndex = lines.findIndex((line) =>
+    /(?:opis\s+blaga|opravljene\s+storitve|description|artikel|product)/i.test(line)
+    && /(?:koli[čc]ina|qty|quantity)/i.test(line)
+  );
+  const scan = headerIndex >= 0 ? lines.slice(headerIndex + 1) : lines;
+
+  for (const line of scan) {
+    if (/^(?:skupaj|vrednost\s+skupaj|rabat|prodajna\s+vrednost|ddv|za\s+pla[čc]ilo)/i.test(line)) {
+      if (output.length) break;
+      continue;
+    }
+
+    // Slovenian invoice row without markdown columns, e.g.
+    // 1. 44260-3421 DTK JAIME SLS 2026 , board only 1,000 Kos 982,7869 40% 589,6721 22,0 589,67
+    const row = line.match(
+      /^\s*(\d{1,4})[.)]?\s+([A-Z0-9][A-Z0-9._\-/]{1,40})\s+(.+?)\s+(-?\d[\d.,]*)\s+([A-Za-zČŠŽčšž]{1,12})\s+(-?\d[\d.,]*)\s+(-?\d[\d.,]*)%\s+(-?\d[\d.,]*)\s+(-?\d[\d.,]*)\s+(-?\d[\d.,]*)\s*$/i
+    );
+    if (!row) continue;
+
+    const [, , productCode, description, quantity, unit, unitPriceBeforeDiscount, discountPercent, unitPriceNet, vatRate, netAmount] = row;
+    output.push({
+      productCode: productCode || null,
+      description: description.trim().replace(/\s+,/g, ","),
+      quantity,
+      unit,
+      unitPriceBeforeDiscount,
+      unitPriceNet,
+      discountPercent,
+      discountAmount: null,
+      vatRate,
+      netAmount,
+      vatAmount: null,
+      grossAmount: null,
+    });
+  }
+
+  return output;
 }
 
 function parseMarkdownLineItems(text: string): NormalizedInvoice["lineItems"] {
