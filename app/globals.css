@@ -35,13 +35,25 @@
 
 * { box-sizing: border-box; }
 
-html { font-size: var(--font-size); }
+html {
+  font-size: var(--font-size);
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
 
 body {
   font-family: var(--font-sans);
   background: #ffffff;
   color: #111827;
   margin: 0;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+img, iframe, video, canvas, svg {
+  max-width: 100%;
 }
 
 /* Decorative background grid for hero */
