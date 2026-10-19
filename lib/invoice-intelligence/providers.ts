@@ -264,8 +264,16 @@ export function parseInvoiceTextDeterministically(text: string): NormalizedInvoi
   invoice.dueDate = match(plainText, /(?:due date|rok plačila|rok placila|datum valute|fällig|scadenza)\s*:?\s*(\d{1,4}[./-]\d{1,2}[./-]\d{1,4})/i);
   invoice.dueDate ??= matchEnglishDate(plainText, /(?:date\s+due|due\s+date)/i);
   invoice.currency = match(plainText, /\b(EUR|USD|GBP|CHF|HRK|CZK|PLN|HUF|SEK|NOK|DKK|RON|BGN|RSD|BAM|CAD|AUD|JPY)\b/i)?.toUpperCase() ?? null;
+  const vatNumbers = Array.from(plainText.matchAll(/\b(SI\d{8}|HR\d{11}|DE\d{9}|ATU\d{8}|IT\d{11}|FR[A-Z0-9]{2}\d{9})\b/gi))
+    .map((found) => found[1].toUpperCase())
+    .filter((value, index, all) => all.indexOf(value) === index);
   invoice.supplier.vatNumber = match(plainText, /(?:VAT\s*ID|VAT\s*No\.?|ID\s*za\s*DDV|Davčna\s*številka|Davcna\s*stevilka)\s*[:#]?\s*((?:SI\d{8}|HR\d{11}|DE\d{9}|ATU\d{8}|IT\d{11}|FR[A-Z0-9]{2}\d{9}|[A-Z0-9]{7,14}))/i)
-    ?? match(plainText, /\b((?:SI\d{8}|HR\d{11}|DE\d{9}|ATU\d{8}|IT\d{11}|FR[A-Z0-9]{2}\d{9}))\b/i)?.toUpperCase()
+    ?.toUpperCase()
+    ?? vatNumbers[0]
+    ?? null;
+  const buyerVatLabel = match(plainText, /(?:ID\s*(?:št\.?|st\.?)?\s*za\s*DDV\s*(?:kupca|naročnika)?|VAT\s*(?:ID|No\.?)\s*(?:buyer|customer))\s*[:#]?\s*((?:SI\d{8}|HR\d{11}|DE\d{9}|ATU\d{8}|IT\d{11}|FR[A-Z0-9]{2}\d{9}|[A-Z0-9]{7,14}))/i);
+  invoice.buyer.vatNumber = buyerVatLabel?.toUpperCase()
+    ?? vatNumbers.find((value) => value !== invoice.supplier.vatNumber)
     ?? null;
   invoice.supplier.iban = match(plainText, /\b([A-Z]{2}\d{2}(?:\s?[A-Z0-9]){11,30})\b/i)?.replace(/\s/g, "") ?? null;
   invoice.supplier.bic = match(plainText, /(?:SWIFT\/BIC|BIC)\s*[:#]?\s*([A-Z0-9]{8,11})/i)?.toUpperCase() ?? null;
@@ -276,7 +284,7 @@ export function parseInvoiceTextDeterministically(text: string): NormalizedInvoi
     invoice.currency = "EUR";
   }
   invoice.paymentReference = match(plainText, /(?:payment ref(?:erence)?|sklic)\s*[:#]?\s*([A-Z0-9][A-Z0-9\s\-_/]{2,})/i);
-  invoice.paymentTerms = match(plainText, /(?:method of payment|payment terms|način plačila|nacin placila)\s*[:#]?\s*([^\n|]{3,80})/i);
+  invoice.paymentTerms = match(plainText, /(?:method of payment|payment terms|način plačila|nacin placila|plačilni pogoji|placilni pogoji)\s*[:#]?\s*([^\n|]{2,80})/i);
   invoice.totals.amountDue = match(plainText, /(?:amount\s+due|za\s+plačilo|za\s+placilo|skupaj\s*(?:\(\s*z\s+ddv\s*\)|z\s+ddv)|total\s+in\s+(?:EUR|USD|GBP))[^\d\-]{0,30}(-?[\d.,]+)\s*(?:EUR|USD|GBP|€|\$|£)?/i)
     ?? match(plainText, /(?:[$€£]\s*)(-?[\d.,]+)\s*(?:USD|EUR|GBP)?\s*(?:due|paid)/i);
   invoice.totals.grossAmount = invoice.totals.amountDue
@@ -291,7 +299,16 @@ export function parseInvoiceTextDeterministically(text: string): NormalizedInvoi
     ?? lines.find((line) => /\b(?:d\.?o\.?o\.?|s\.?p\.?|inc\.?|llc|ltd\.?|gmbh|ag|s\.?a\.?)\b/i.test(line) && line.length <= 120)
     ?? supplierLines.find((line) => line.length >= 3 && line.length <= 100 && !/invoice|račun|racun|rechnung|fattura|quote|quotation|offer|ponudba|predračun|predracun/i.test(line))
     ?? null;
-  invoice.buyer.name = match(plainText, /(?:buyer|customer|recipient|kupec|prejemnik)\s*[:#]?\s*([^\n|]{3,120})/i);
+  invoice.buyer.name = match(plainText, /(?:buyer|customer|recipient|kupec|prejemnik|naročnik|narocnik)\s*[:#]?\s*([^\n|]{3,120})/i);
+  const legalEntityLines = lines.filter((line) =>
+    /\b(?:d\.?o\.?o\.?|s\.?p\.?|inc\.?|llc|ltd\.?|gmbh|ag|s\.?a\.?)\b/i.test(line)
+    && line.length <= 120
+  );
+  if (!invoice.buyer.name) {
+    invoice.buyer.name = legalEntityLines.find((line) => !samePartyName(line, invoice.supplier.name)) ?? null;
+  }
+  enrichPartyFromNearbyLines(invoice.supplier, invoice.supplier.name, lines);
+  enrichPartyFromNearbyLines(invoice.buyer, invoice.buyer.name, lines);
   invoice.lineItems = parseMarkdownLineItems(text);
   if (isQuote) invoice.warnings.push("Quotation/proforma document requires manual review before delivery.");
   invoice.confidence = { overall: 0.72, fields: {} };
@@ -331,6 +348,42 @@ export function reconcileMistralInvoiceWithOcrText(invoice: NormalizedInvoice, t
 
   mergeMissingInvoiceFields(invoice, fallback);
   return invoice;
+}
+
+function enrichPartyFromNearbyLines(
+  party: NormalizedInvoice["supplier"] | NormalizedInvoice["buyer"],
+  partyName: string | null,
+  lines: string[],
+) {
+  if (!partyName) return;
+  const index = lines.findIndex((line) => samePartyName(line, partyName));
+  if (index < 0) return;
+  const nearby = lines.slice(index + 1, Math.min(lines.length, index + 7));
+
+  if (!party.address) {
+    party.address = nearby.find((line) =>
+      /\d/.test(line)
+      && /\b(?:ulica|ul\.?|cesta|pot|trg|street|st\.?|road|rd\.?|avenue|ave\.?|gasse|straße|strasse)\b/i.test(line)
+      && !/\b(?:TRR|IBAN|DDV|VAT|telefon|phone|e-?mail)\b/i.test(line)
+    ) ?? null;
+  }
+
+  const postal = nearby.map((line) =>
+    line.match(/\b(\d{4,5})\s+([A-Za-zČŠŽĆĐčšžćđ][A-Za-zČŠŽĆĐčšžćđ .'-]{1,50})\b/)
+  ).find(Boolean);
+  if (postal) {
+    party.postalCode ??= postal[1];
+    party.city ??= postal[2].trim().replace(/\s{2,}/g, " ");
+  }
+
+  const countryLine = nearby.find((line) => /^(?:SLOVENIJA|SLOVENIA|CROATIA|HRVATSKA|AUSTRIA|ÖSTERREICH|GERMANY|DEUTSCHLAND|ITALY|ITALIA)$/i.test(line));
+  if (!party.countryCode && countryLine) {
+    if (/sloven/i.test(countryLine)) party.countryCode = "SI";
+    else if (/croatia|hrvatska/i.test(countryLine)) party.countryCode = "HR";
+    else if (/austria|österreich/i.test(countryLine)) party.countryCode = "AT";
+    else if (/germany|deutschland/i.test(countryLine)) party.countryCode = "DE";
+    else if (/italy|italia/i.test(countryLine)) party.countryCode = "IT";
+  }
 }
 
 function samePartyName(left: string | null, right: string | null) {
