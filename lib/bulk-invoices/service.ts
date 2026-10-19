@@ -504,10 +504,27 @@ export async function extractBulkInvoiceFromDocument(documentUrl: string, ocrCon
   if (!apiKey) throw new Error("MISTRAL_API_KEY is not configured");
   const parsedUrl = new URL(documentUrl);
   if (parsedUrl.protocol !== "https:") throw new Error("Bulk OCR document URL must use HTTPS");
+
+  // Mistral OCR accepts base64 PDFs only when the complete encoded PDF is
+  // embedded in a data URL. Fetch the private child PDF first, encode the
+  // actual bytes, then send data:application/pdf;base64,{base64_pdf}.
+  const sourceResponse = await fetch(documentUrl, {
+    signal: AbortSignal.timeout(60_000),
+  });
+  if (!sourceResponse.ok) {
+    throw new Error(`Could not download bulk PDF for OCR (${sourceResponse.status})`);
+  }
+  const pdfBytes = Buffer.from(await sourceResponse.arrayBuffer());
+  if (!pdfBytes.length || pdfBytes.subarray(0, 4).toString("ascii") !== "%PDF") {
+    throw new Error("Bulk OCR source is not a valid PDF");
+  }
+  const pdfDataUrl = `data:application/pdf;base64,${pdfBytes.toString("base64")}`;
+
   const model = process.env.MISTRAL_OCR_MODEL || "mistral-ocr-latest";
   const requestBody = JSON.stringify({
     model,
-    document: { type: "document_url", document_url: documentUrl },
+    document: { type: "document_url", document_url: pdfDataUrl },
+    include_image_base64: true,
     include_blocks: true,
     confidence_scores_granularity: "block",
     document_annotation_prompt: [
