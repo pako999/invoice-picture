@@ -69,6 +69,38 @@ Za plačilo: 719,39 EUR
   assert.equal(invoice.buyer.countryCode, "SI");
 });
 
+test("Slovenian OCR fallback parses plain-text line items without markdown pipes", () => {
+  const invoice = normalizeInvoiceValues(parseInvoiceTextDeterministically(`
+Račun št.: 1719-FAKT1-197
+Datum: 29.07.2026
+Datum valute: 29.07.2026
+Kraj izdaje blaga: Ljubljana
+Dobavnica: 197/2026
+ID za DDV kupca: SI72133449
+Sklic: 1972026
+
+Zap. Šifra Opis blaga oz.opravljene storitve Količina EM Cena Rabat Cena brez DDV DDV Vr.brez DDV
+1. 44260-3421 DTK JAIME SLS 2026 , board only 1,000 Kos 982,7869 40% 589,6721 22,0 589,67
+
+Vrednost skupaj: 982,79
+Rabat: 393,11
+Prodajna vrednost: 589,67
+DDV 22 % 129,73
+Za plačilo: 719,40 EUR
+`));
+
+  assert.equal(invoice.lineItems.length, 1);
+  assert.equal(invoice.lineItems[0].productCode, "44260-3421");
+  assert.equal(invoice.lineItems[0].description, "DTK JAIME SLS 2026, board only");
+  assert.equal(invoice.lineItems[0].quantity, "1.000");
+  assert.equal(invoice.lineItems[0].unit, "Kos");
+  assert.equal(invoice.lineItems[0].unitPriceBeforeDiscount, "982.7869");
+  assert.equal(invoice.lineItems[0].discountPercent, "40");
+  assert.equal(invoice.lineItems[0].unitPriceNet, "589.6721");
+  assert.equal(invoice.lineItems[0].vatRate, "22.0");
+  assert.equal(invoice.lineItems[0].netAmount, "589.67");
+});
+
 test("Slovenian OCR markdown fallback removes formatting and extracts product rows", () => {
   const invoice = normalizeInvoiceValues(parseInvoiceTextDeterministically(`
 **SURFSHOP**
