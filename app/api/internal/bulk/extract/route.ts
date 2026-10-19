@@ -13,7 +13,8 @@ import { normalizeDeliveryMode } from "@/lib/invoice-intelligence/delivery-forma
 const schema=z.object({
  jobId:z.number().int().positive(),
  batchSize:z.number().int().min(1).max(BULK_EXTRACT_BATCH_SIZE).default(BULK_EXTRACT_BATCH_SIZE),
- documents:z.array(z.object({groupIndex:z.number().int().min(0),documentUrl:z.string().url()})).max(BULK_EXTRACT_BATCH_SIZE).optional()
+ documents:z.array(z.object({groupIndex:z.number().int().min(0),documentUrl:z.string().url()})).max(BULK_EXTRACT_BATCH_SIZE).optional(),
+ forceDocumentOcr:z.boolean().optional().default(false)
 });
 
 export async function POST(req:Request){
@@ -80,7 +81,7 @@ export async function POST(req:Request){
     // real-time OCR endpoint a second time. Direct OCR is only a safety
     // fallback for empty/unusable page text.
     const started=Date.now();let extracted;
-    if(hasUsableBulkOcrMarkdown(markdown)){
+    if(hasUsableBulkOcrMarkdown(markdown) && !data.forceDocumentOcr){
       if(!group.extractionBatchId){const batch=await createMistralInvoiceExtractionBatch(markdown,avg);await sql`UPDATE "bulkInvoiceGroups" SET "extractionBatchId"=${batch.batchId},"extractionBatchCreatedAt"=now(),"updatedAt"=now() WHERE "id"=${group.id}`;await sql`UPDATE "bulkInvoiceJobs" SET "lockedAt"=NULL,"lastError"=NULL,"updatedAt"=now() WHERE "id"=${data.jobId}`;return NextResponse.json({success:true,batchSubmitted:true,batchId:batch.batchId},{status:202});}
       const state=await pollMistralInvoiceExtractionBatch({batchId:String(group.extractionBatchId),markdown,ocrConfidence:avg});
       if(["QUEUED","RUNNING","CANCELLATION_REQUESTED"].includes(state.status)){await sql`UPDATE "bulkInvoiceJobs" SET "lockedAt"=NULL,"updatedAt"=now() WHERE "id"=${data.jobId}`;return NextResponse.json({success:true,batchPending:true,status:state.status},{status:202});}
