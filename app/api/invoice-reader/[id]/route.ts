@@ -24,6 +24,9 @@ import { estimateSourcePages } from "@/lib/invoice-intelligence/safety";
 import { enqueueExistingPdfAsBulkJob } from "@/lib/bulk-invoices/enqueue-existing-pdf";
 import { BulkAdmissionError } from "@/lib/bulk-invoices/admission";
 import { queueInvoiceDelivery } from "@/lib/invoice-intelligence/delivery";
+import { BULK_PDF_GATEWAY_URL } from "@/lib/bulk-invoices/config";
+
+export const maxDuration = 300;
 
 const allowedPaths = new Set([
   "documentType", "documentLanguage", "documentStatus", "supplier.name", "supplier.address", "supplier.postalCode", "supplier.city", "supplier.countryCode",
@@ -191,6 +194,102 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         completedAt: null,
         updatedAt: new Date(),
       }).where(eq(bulkInvoiceJobs.id, document.bulkJobId));
+
+      // Reprocessing a single bulk child must not depend only on the scheduled
+      // Neon worker. Kick the exact group immediately and poll the Mistral
+      // extraction batch within this request so the review screen cannot stay
+      // in "queued" forever when the worker is delayed or unavailable.
+      const token = await getToken();
+      const internalSecret = process.env.BULK_INTERNAL_SECRET;
+      if (!token) return NextResponse.json({ error: "Seja je potekla." }, { status: 401 });
+      if (!internalSecret) {
+        return NextResponse.json({ error: "Bulk OCR worker ni pravilno nastavljen." }, { status: 503 });
+      }
+
+      const signedResponse = await fetch(`${BULK_PDF_GATEWAY_URL}/sign-download`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ key: document.storageObjectKey }),
+        signal: AbortSignal.timeout(15_000),
+      });
+      const signedBody = await signedResponse.json().catch(() => ({})) as { url?: string; error?: string };
+      if (!signedResponse.ok || !signedBody.url) {
+        return NextResponse.json({ error: signedBody.error ?? "Dokumenta ni bilo mogoče pripraviti za OCR." }, { status: 502 });
+      }
+
+      const extractUrl = new URL("/api/internal/bulk/extract", req.url).toString();
+      const startedAt = Date.now();
+      const deadline = startedAt + 240_000;
+      let lastExtractBody: Record<string, unknown> = {};
+
+      while (Date.now() < deadline) {
+        const extractResponse = await fetch(extractUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-bulk-secret": internalSecret,
+          },
+          body: JSON.stringify({
+            jobId: document.bulkJobId,
+            batchSize: 1,
+            documents: [{ groupIndex: document.bulkGroupIndex, documentUrl: signedBody.url }],
+          }),
+          signal: AbortSignal.timeout(180_000),
+        });
+        lastExtractBody = await extractResponse.json().catch(() => ({})) as Record<string, unknown>;
+
+        if (extractResponse.ok && extractResponse.status !== 202) {
+          const [fresh] = await db.select({ status: invoiceDocuments.status })
+            .from(invoiceDocuments)
+            .where(eq(invoiceDocuments.id, documentId))
+            .limit(1);
+          if (fresh && fresh.status !== "queued" && fresh.status !== "processing") {
+            await db.insert(invoiceAuditLogs).values({
+              documentId,
+              clerkUserId: userId,
+              action: "reprocess_completed_inline",
+              metadataJson: JSON.stringify({ bulkJobId: document.bulkJobId, elapsedMs: Date.now() - startedAt }),
+            });
+            return NextResponse.json({ success: true, status: fresh.status, processedInline: true });
+          }
+        }
+
+        if (!extractResponse.ok && extractResponse.status !== 429) {
+          const error = typeof lastExtractBody.error === "string" ? lastExtractBody.error : "OCR ponovna obdelava ni uspela.";
+          await db.update(invoiceDocuments).set({
+            status: "failed",
+            validationStatus: "failed",
+            warningsJson: JSON.stringify([error]),
+            processedAt: new Date(),
+            updatedAt: new Date(),
+          }).where(eq(invoiceDocuments.id, documentId));
+          return NextResponse.json({ error }, { status: extractResponse.status >= 400 ? extractResponse.status : 500 });
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, extractResponse.status === 429 ? 5_000 : 2_000));
+      }
+
+      // Keep the durable queue as a recovery path, but never pretend that OCR
+      // is actively processing forever. The UI can show a retryable timeout.
+      const timeoutMessage = "OCR obdelava traja predolgo. Poskusite ponovno; opravilo ostaja v varni čakalni vrsti.";
+      await db.update(invoiceDocuments).set({
+        status: "failed",
+        validationStatus: "failed",
+        warningsJson: JSON.stringify([timeoutMessage]),
+        processedAt: new Date(),
+        updatedAt: new Date(),
+      }).where(eq(invoiceDocuments.id, documentId));
+      await db.update(bulkInvoiceGroups).set({
+        status: "reprocess",
+        updatedAt: new Date(),
+      }).where(and(
+        eq(bulkInvoiceGroups.jobId, document.bulkJobId),
+        eq(bulkInvoiceGroups.groupIndex, document.bulkGroupIndex),
+      ));
+      return NextResponse.json({ error: timeoutMessage, retryable: true }, { status: 504 });
     } else {
       await db.insert(invoiceProcessingJobs).values({ documentId, status: "queued", attempts: 0, availableAt: new Date(), lockedAt: null, lastError: null })
         .onConflictDoUpdate({ target: invoiceProcessingJobs.documentId, set: { status: "queued", attempts: 0, availableAt: new Date(), lockedAt: null, lastError: null, updatedAt: new Date() } });
