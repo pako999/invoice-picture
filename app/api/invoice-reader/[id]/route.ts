@@ -171,7 +171,16 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     await db.update(invoiceDocuments).set({
       status: "queued",
       validationStatus: "pending",
+      provider: null,
+      model: null,
+      rawText: null,
+      rawProviderResponse: null,
+      normalizedJson: null,
+      approvedJson: null,
+      overallConfidenceBps: null,
       warningsJson: null,
+      processingCostMicros: null,
+      processingStartedAt: null,
       processedAt: null,
       approvedAt: null,
       rejectedAt: null,
@@ -181,6 +190,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     if (document.bulkJobId != null && document.bulkGroupIndex != null && document.storageObjectKey) {
       await db.update(bulkInvoiceGroups).set({
         status: "reprocess",
+        extractionBatchId: null,
+        extractionBatchCreatedAt: null,
         updatedAt: new Date(),
       }).where(and(
         eq(bulkInvoiceGroups.jobId, document.bulkJobId),
@@ -236,6 +247,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
             jobId: document.bulkJobId,
             batchSize: 1,
             documents: [{ groupIndex: document.bulkGroupIndex, documentUrl: signedBody.url }],
+            forceDocumentOcr: true,
           }),
           signal: AbortSignal.timeout(180_000),
         });
