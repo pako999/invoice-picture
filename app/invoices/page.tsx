@@ -43,9 +43,9 @@ function StatusBadge({ status }: { status: Invoice["status"] }) {
 
 function InvoicesTabs({ active, onChange }: { active: "ocr" | "archive"; onChange: (next: "ocr" | "archive") => void }) {
   return (
-    <nav className="mx-auto mt-5 flex max-w-7xl gap-2 overflow-x-auto px-3 sm:px-6 lg:px-8" aria-label="Vrsta računov">
-      <button type="button" onClick={() => onChange("ocr")} aria-current={active === "ocr" ? "page" : undefined} className={`shrink-0 rounded-xl px-5 py-3 text-sm font-extrabold transition ${active === "ocr" ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20" : "border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"}`}>OCR računi in potrjevanje</button>
-      <button type="button" onClick={() => onChange("archive")} aria-current={active === "archive" ? "page" : undefined} className={`shrink-0 rounded-xl px-5 py-3 text-sm font-extrabold transition ${active === "archive" ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20" : "border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"}`}>Poslani arhiv</button>
+    <nav className="mx-auto mt-5 grid w-full min-w-0 max-w-7xl grid-cols-2 gap-2 overflow-hidden px-3 sm:px-6 lg:px-8" aria-label="Vrsta računov">
+      <button type="button" onClick={() => onChange("ocr")} aria-current={active === "ocr" ? "page" : undefined} className={`min-w-0 rounded-xl px-2.5 py-3 text-xs font-extrabold leading-tight transition sm:px-5 sm:text-sm ${active === "ocr" ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20" : "border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"}`}>OCR računi in potrjevanje</button>
+      <button type="button" onClick={() => onChange("archive")} aria-current={active === "archive" ? "page" : undefined} className={`min-w-0 rounded-xl px-2.5 py-3 text-xs font-extrabold leading-tight transition sm:px-5 sm:text-sm ${active === "archive" ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20" : "border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"}`}>Poslani arhiv</button>
     </nav>
   );
 }
