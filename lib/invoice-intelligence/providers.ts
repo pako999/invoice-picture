@@ -78,7 +78,11 @@ export async function readWithMistral(input: { base64: string; mimeType: string;
   const apiKey = process.env.MISTRAL_API_KEY;
   if (!apiKey) throw new Error("MISTRAL_API_KEY is not configured");
   const model = process.env.MISTRAL_OCR_MODEL || "mistral-ocr-latest";
-  const dataUrl = `data:${input.mimeType};base64,${input.base64}`;
+  const cleanBase64 = input.base64.includes("base64,")
+    ? input.base64.slice(input.base64.indexOf("base64,") + "base64,".length).replace(/\s+/g, "")
+    : input.base64.replace(/\s+/g, "");
+  if (!cleanBase64) throw new Error("OCR input is missing base64 document data");
+  const dataUrl = `data:${input.mimeType};base64,${cleanBase64}`;
   const document = input.mimeType.startsWith("image/")
     ? { type: "image_url", image_url: dataUrl }
     : { type: "document_url", document_url: dataUrl };
