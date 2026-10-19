@@ -51,6 +51,7 @@ export async function ocrBulkPages(args: {
     document: { type: "document_url", document_url: args.documentUrl },
     pages,
     include_blocks: true,
+    table_format: "html",
     confidence_scores_granularity: "page",
   });
 
@@ -71,7 +72,7 @@ export async function ocrBulkPages(args: {
         return {
           pages: responsePages.map((page: Record<string, any>, i: number) => ({
             pageNumber: Number.isInteger(page.index) ? Number(page.index) : args.startPage + i,
-            markdown: typeof page.markdown === "string" ? page.markdown : "",
+            markdown: pageOcrText(page),
             confidence: pageConfidence(page),
           })),
           model: String(raw.model || process.env.MISTRAL_OCR_MODEL || "mistral-ocr-latest"),
@@ -161,6 +162,7 @@ export async function createMistralOcrBatch(args: {
             document: { type: "document_url", document_url: args.documentUrl },
             pages,
             include_blocks: true,
+            table_format: "html",
             confidence_scores_granularity: "page",
           },
         }],
@@ -235,7 +237,7 @@ export async function pollMistralOcrBatch(args: {
     error: null,
     pages: responsePages.map((page: Record<string, any>, i: number) => ({
       pageNumber: Number.isInteger(page.index) ? Number(page.index) : args.startPage + i,
-      markdown: typeof page.markdown === "string" ? page.markdown : "",
+      markdown: pageOcrText(page),
       confidence: pageConfidence(page),
     })),
   };
@@ -557,7 +559,7 @@ export async function extractBulkInvoiceFromDocument(documentUrl: string, ocrCon
       const annotationRaw = raw.document_annotation;
       const annotation = typeof annotationRaw === "string" ? JSON.parse(annotationRaw) : annotationRaw;
       const pages = Array.isArray(raw.pages) ? raw.pages : [];
-      const markdown = pages.map((page: Record<string, unknown>) => typeof page.markdown === "string" ? page.markdown : "").join("\n\n");
+      const markdown = pages.map((page: Record<string, any>) => pageOcrText(page)).join("\n\n");
       const invoice = normalizeInvoiceValues(reconcileMistralInvoiceWithOcrText(normalizedInvoiceSchema.parse(annotation), markdown));
       if (ocrConfidence != null) invoice.confidence.overall = Math.min(invoice.confidence.overall ?? 1, ocrConfidence);
       const validation = validateInvoice(invoice);
@@ -629,6 +631,16 @@ function envInt(name: string, fallback: number, min: number, max: number) {
   const parsed = Number.parseInt(process.env[name] ?? "", 10);
   if (!Number.isFinite(parsed)) return fallback;
   return Math.max(min, Math.min(max, parsed));
+}
+
+function pageOcrText(page: Record<string, any>) {
+  const markdown = typeof page.markdown === "string" ? page.markdown : "";
+  const tables = Array.isArray(page.tables)
+    ? page.tables.map((table: Record<string, any>) =>
+        String(table.html ?? table.content ?? table.markdown ?? table.text ?? "")
+      ).filter(Boolean)
+    : [];
+  return [markdown, ...tables].filter(Boolean).join("\n\n");
 }
 
 function pageConfidence(page: Record<string, any>) {
