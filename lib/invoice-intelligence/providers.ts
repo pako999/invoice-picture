@@ -91,9 +91,9 @@ export async function readWithMistral(input: { base64: string; mimeType: string;
       model,
       document,
       ...(pages ? { pages } : {}),
+      include_image_base64: true,
       include_blocks: true,
       confidence_scores_granularity: "block",
-      table_format: "markdown",
       document_annotation_prompt: [
         "Extract structured accounting data from invoices, credit notes, receipts, proforma invoices, quotations, sales quotes, offers and estimates.",
         "A quotation, sales quote, offer or estimate is still a readable accounting document: set documentType to proforma and extract every shared field that is visible.",
