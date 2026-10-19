@@ -47,7 +47,7 @@ export async function ocrBulkPages(args: {
   const pages = Array.from({ length: endPage - args.startPage + 1 }, (_, i) => args.startPage + i);
   const reservation = await reserveOcrProviderBudget({ clerkUserId: args.clerkUserId, provider: "mistral", pages: pages.length });
   const requestBody = JSON.stringify({
-    model: process.env.MISTRAL_OCR_MODEL || "mistral-ocr-latest",
+    model: process.env.MISTRAL_OCR_MODEL || "mistral-ocr-4-1",
     document: { type: "document_url", document_url: args.documentUrl },
     pages,
     include_blocks: true,
@@ -75,7 +75,7 @@ export async function ocrBulkPages(args: {
             markdown: pageOcrText(page),
             confidence: pageConfidence(page),
           })),
-          model: String(raw.model || process.env.MISTRAL_OCR_MODEL || "mistral-ocr-latest"),
+          model: String(raw.model || process.env.MISTRAL_OCR_MODEL || "mistral-ocr-4-1"),
           nextPage: endPage + 1,
           done: endPage + 1 >= args.pageCount,
         };
@@ -135,7 +135,7 @@ export async function createMistralOcrBatch(args: {
   );
   if (pagesThisBatch <= 0) throw new Error("Bulk OCR has no remaining pages to submit");
   const pages = Array.from({ length: pagesThisBatch }, (_, i) => args.startPage + i);
-  const model = process.env.MISTRAL_OCR_MODEL || "mistral-ocr-latest";
+  const model = process.env.MISTRAL_OCR_MODEL || "mistral-ocr-4-1";
   const reservation = await reserveOcrProviderBudget({
     clerkUserId: args.clerkUserId,
     provider: "mistral",
@@ -205,7 +205,7 @@ export async function pollMistralOcrBatch(args: {
   }
 
   const status = String(raw.status || "").toUpperCase() as MistralOcrBatchState["status"];
-  const model = String(raw.model || process.env.MISTRAL_OCR_MODEL || "mistral-ocr-latest");
+  const model = String(raw.model || process.env.MISTRAL_OCR_MODEL || "mistral-ocr-4-1");
   if (status === "QUEUED" || status === "RUNNING" || status === "CANCELLATION_REQUESTED") {
     return { status, pages: [], model, error: null };
   }
@@ -522,7 +522,7 @@ export async function extractBulkInvoiceFromDocument(documentUrl: string, ocrCon
   }
   const pdfDataUrl = `data:application/pdf;base64,${pdfBytes.toString("base64")}`;
 
-  const model = process.env.MISTRAL_OCR_MODEL || "mistral-ocr-latest";
+  const model = process.env.MISTRAL_OCR_MODEL || "mistral-ocr-4-1";
   const requestBody = JSON.stringify({
     model,
     document: { type: "document_url", document_url: pdfDataUrl },
