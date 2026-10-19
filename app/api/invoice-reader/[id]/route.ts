@@ -24,6 +24,7 @@ import { estimateSourcePages } from "@/lib/invoice-intelligence/safety";
 import { enqueueExistingPdfAsBulkJob } from "@/lib/bulk-invoices/enqueue-existing-pdf";
 import { BulkAdmissionError } from "@/lib/bulk-invoices/admission";
 import { queueInvoiceDelivery } from "@/lib/invoice-intelligence/delivery";
+import { processInvoiceDocument } from "@/lib/invoice-intelligence/processor";
 import { BULK_PDF_GATEWAY_URL } from "@/lib/bulk-invoices/config";
 
 export const maxDuration = 300;
@@ -303,8 +304,62 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       ));
       return NextResponse.json({ error: timeoutMessage, retryable: true }, { status: 504 });
     } else {
-      await db.insert(invoiceProcessingJobs).values({ documentId, status: "queued", attempts: 0, availableAt: new Date(), lockedAt: null, lastError: null })
-        .onConflictDoUpdate({ target: invoiceProcessingJobs.documentId, set: { status: "queued", attempts: 0, availableAt: new Date(), lockedAt: null, lastError: null, updatedAt: new Date() } });
+      const now = new Date();
+      await db.insert(invoiceProcessingJobs).values({
+        documentId,
+        status: "processing",
+        attempts: 1,
+        availableAt: now,
+        lockedAt: now,
+        lastError: null,
+      }).onConflictDoUpdate({
+        target: invoiceProcessingJobs.documentId,
+        set: {
+          status: "processing",
+          attempts: 1,
+          availableAt: now,
+          lockedAt: now,
+          lastError: null,
+          updatedAt: now,
+        },
+      });
+
+      try {
+        const processed = await processInvoiceDocument(documentId);
+        await db.update(invoiceProcessingJobs).set({
+          status: "completed",
+          lastError: null,
+          lockedAt: null,
+          updatedAt: new Date(),
+        }).where(eq(invoiceProcessingJobs.documentId, documentId));
+        await db.insert(invoiceAuditLogs).values({
+          documentId,
+          clerkUserId: userId,
+          action: "reprocess_completed_inline",
+          metadataJson: JSON.stringify({ bulk: false, provider: processed.provider }),
+        });
+        return NextResponse.json({ success: true, status: processed.status, processedInline: true });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        await db.update(invoiceProcessingJobs).set({
+          status: "failed",
+          lastError: message.slice(0, 2000),
+          lockedAt: null,
+          availableAt: new Date(Date.now() + 2 * 60_000),
+          updatedAt: new Date(),
+        }).where(eq(invoiceProcessingJobs.documentId, documentId));
+        await db.update(invoiceDocuments).set({
+          status: "failed",
+          validationStatus: "failed",
+          warningsJson: JSON.stringify([message]),
+          processedAt: new Date(),
+          updatedAt: new Date(),
+        }).where(eq(invoiceDocuments.id, documentId));
+        return NextResponse.json({
+          error: `Ponovna OCR obdelava ni uspela: ${message}`,
+          retryable: true,
+        }, { status: 502 });
+      }
     }
 
     if (document.sourceInvoiceId != null) {
