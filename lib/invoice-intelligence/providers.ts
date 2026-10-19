@@ -97,6 +97,7 @@ export async function readWithMistral(input: { base64: string; mimeType: string;
       ...(pages ? { pages } : {}),
       include_image_base64: true,
       include_blocks: true,
+      table_format: "html",
       confidence_scores_granularity: "block",
       document_annotation_prompt: [
         "Extract structured accounting data from invoices, credit notes, receipts, proforma invoices, quotations, sales quotes, offers and estimates.",
@@ -129,7 +130,7 @@ export async function readWithMistral(input: { base64: string; mimeType: string;
   const annotation = typeof annotationRaw === "string" ? JSON.parse(annotationRaw) : annotationRaw;
   const invoice = normalizeInvoiceValues(normalizedInvoiceSchema.parse(annotation));
   const responsePages = Array.isArray(raw.pages) ? raw.pages : [];
-  const rawText = responsePages.map((p: Record<string, unknown>) => typeof p.markdown === "string" ? p.markdown : "").join("\n\n");
+  const rawText = responsePages.map((p: Record<string, any>) => pageOcrText(p)).join("\n\n");
 
   if (rawText.trim()) {
     const before = JSON.stringify(invoice.lineItems);
@@ -414,6 +415,16 @@ function matchEnglishDate(text: string, label: RegExp) {
   if (!found) return null;
   const monthIndex = ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"].indexOf(found[1].toLowerCase()) + 1;
   return `${found[3]}-${String(monthIndex).padStart(2, "0")}-${String(Number(found[2])).padStart(2, "0")}`;
+}
+
+function pageOcrText(page: Record<string, any>) {
+  const markdown = typeof page.markdown === "string" ? page.markdown : "";
+  const tables = Array.isArray(page.tables)
+    ? page.tables.map((table: Record<string, any>) =>
+        String(table.html ?? table.content ?? table.markdown ?? table.text ?? "")
+      ).filter(Boolean)
+    : [];
+  return [markdown, ...tables].filter(Boolean).join("\n\n");
 }
 
 function stripMarkdownFormatting(value: string) {
