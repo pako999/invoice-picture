@@ -50,9 +50,8 @@ export async function ocrBulkPages(args: {
     model: process.env.MISTRAL_OCR_MODEL || "mistral-ocr-latest",
     document: { type: "document_url", document_url: args.documentUrl },
     pages,
-    include_blocks: false,
+    include_blocks: true,
     confidence_scores_granularity: "page",
-    table_format: "markdown",
   });
 
   try {
@@ -161,9 +160,8 @@ export async function createMistralOcrBatch(args: {
           body: {
             document: { type: "document_url", document_url: args.documentUrl },
             pages,
-            include_blocks: false,
+            include_blocks: true,
             confidence_scores_granularity: "page",
-            table_format: "markdown",
           },
         }],
       }),
