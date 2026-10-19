@@ -85,7 +85,7 @@ export async function processInvoiceDocument(documentId: number, runBudget?: Ocr
         ));
       }
       mistralReservation = await reserveOcrProviderBudget({ clerkUserId: document.clerkUserId, provider: "mistral", pages: reservedProviderPages, runBudget });
-      result = await recordAttempt(documentId, "mistral", process.env.MISTRAL_OCR_MODEL || "mistral-ocr-latest", async () => readWithMistral(input, reservedProviderPages));
+      result = await recordAttempt(documentId, "mistral", process.env.MISTRAL_OCR_MODEL || "mistral-ocr-4-1", async () => readWithMistral(input, reservedProviderPages));
       if (result) {
         await releaseUnusedOcrProviderBudget({ reservation: mistralReservation, pages: Number.isFinite(result.pagesProcessed) ? Math.max(0, reservedProviderPages - result.pagesProcessed) : 0, runBudget });
         mistralReservation = null;
