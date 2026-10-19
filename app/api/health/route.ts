@@ -38,7 +38,7 @@ export async function GET() {
     hasDatabaseUrl: !!process.env.DATABASE_URL,
     invoiceReader: {
       primaryConfigured: mistralConfigured,
-      primaryModel: process.env.MISTRAL_OCR_MODEL || "mistral-ocr-latest",
+      primaryModel: process.env.MISTRAL_OCR_MODEL || "mistral-ocr-4-1",
       azureFallbackConfigured: azureConfigured,
       azureModel: azureConfigured ? (process.env.AZURE_DOCUMENT_INTELLIGENCE_MODEL || "prebuilt-invoice") : null,
       cronSecretConfigured: Boolean(process.env.CRON_SECRET),
