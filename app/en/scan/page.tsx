@@ -5,6 +5,7 @@ import type { Company } from "@/lib/schema";
 import type { CommercialPlan } from "@/lib/plans";
 import { OcrLimitUpgradeModal } from "@/components/ocr-limit-upgrade-modal";
 import { queuePdfUpload } from "@/lib/client-pdf-upload";
+import { DocumentUploadSection } from "@/components/document-upload-section";
 
 interface SubStatus {
   isFree: boolean;
@@ -431,91 +432,94 @@ export default function ScanPage() {
         </div>
       )}
 
-      {files.length > 0 ? (
-        <div className="mb-6 space-y-3">
-          <div className="flex items-center justify-between">
-            <p className="text-sm font-bold text-gray-700 dark:text-slate-300">Selected documents: {files.length}/{MAX_BATCH_FILES}</p>
-            <button onClick={clearFiles} disabled={status === "sending"} className="text-xs font-semibold text-red-600 hover:underline disabled:opacity-40">Remove all</button>
-          </div>
-          <p className="text-xs text-gray-500 dark:text-slate-400">A PDF may contain many invoices. The system detects invoice boundaries, splits them and processes each invoice separately.</p>
-          <div className="max-h-96 overflow-y-auto space-y-2">
-            {files.map((selected) => (
-              <div key={selected.id} className="relative flex items-center gap-3 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-3">
-                {isPdf(selected.file.type) ? (
-                  <div className="w-11 h-11 bg-red-100 dark:bg-red-900/30 rounded-xl flex items-center justify-center flex-shrink-0 text-2xl">📋</div>
-                ) : (
-                  /* eslint-disable-next-line @next/next/no-img-element */
-                  <img src={selected.url} alt="invoice" className="w-11 h-11 rounded-xl object-cover flex-shrink-0" />
-                )}
-                <div className="min-w-0 flex-1">
-                  <p className="font-semibold text-gray-900 dark:text-white text-sm truncate">{selected.file.name}</p>
-                  <p className="text-xs text-gray-400">{(selected.file.size / 1024 / 1024).toFixed(1)} MB</p>
-                </div>
-                <button onClick={() => removeFile(selected.id)} disabled={status === "sending"} className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-red-500 disabled:opacity-40 text-lg font-bold">×</button>
-              </div>
-            ))}
-          </div>
-          {files.length < MAX_BATCH_FILES && (
-            <button onClick={() => fileInputRef.current?.click()} disabled={status === "sending"} className="w-full py-3 rounded-xl border border-dashed border-blue-300 text-blue-600 text-sm font-semibold hover:bg-blue-50 disabled:opacity-40">＋ Add more documents</button>
-          )}
-        </div>
-      ) : (
-        <div
-          onClick={(e) => {
-            if ((e.target as HTMLElement).closest("button, input")) return;
-            fileInputRef.current?.click();
-          }}
-          onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
-          onDragLeave={() => setDragging(false)}
-          onDrop={onDrop}
-          className={`mb-6 rounded-2xl border-2 border-dashed transition-colors select-none cursor-pointer
-            ${dragging
-              ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
-              : "border-gray-300 dark:border-slate-600"
-            }`}
-        >
-          <div className="flex flex-col items-center justify-center gap-3 py-10">
-            <span className="text-5xl">📄</span>
-            <div className="text-center">
-              <p className="text-sm font-semibold text-gray-700 dark:text-slate-300">Drop documents here</p>
-              <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">Click or drop up to 500 documents · JPG · PNG · WEBP · <strong>PDF</strong> — 10 MB each</p>
-              <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">One PDF can contain 100+ invoices — the system automatically separates and processes them individually.</p>
+      <DocumentUploadSection>
+        {files.length > 0 ? (
+          <div className="mb-6 space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-bold text-gray-700 dark:text-slate-300">Selected documents: {files.length}/{MAX_BATCH_FILES}</p>
+              <button onClick={clearFiles} disabled={status === "sending"} className="text-xs font-semibold text-red-600 hover:underline disabled:opacity-40">Remove all</button>
             </div>
+            <p className="text-xs text-gray-500 dark:text-slate-400">A PDF may contain many invoices. The system detects invoice boundaries, splits them and processes each invoice separately.</p>
+            <div className="max-h-96 overflow-y-auto space-y-2">
+              {files.map((selected) => (
+                <div key={selected.id} className="relative flex items-center gap-3 rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-3">
+                  {isPdf(selected.file.type) ? (
+                    <div className="w-11 h-11 bg-red-100 dark:bg-red-900/30 rounded-xl flex items-center justify-center flex-shrink-0 text-2xl">📋</div>
+                  ) : (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img src={selected.url} alt="invoice" className="w-11 h-11 rounded-xl object-cover flex-shrink-0" />
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-gray-900 dark:text-white text-sm truncate">{selected.file.name}</p>
+                    <p className="text-xs text-gray-400">{(selected.file.size / 1024 / 1024).toFixed(1)} MB</p>
+                  </div>
+                  <button onClick={() => removeFile(selected.id)} disabled={status === "sending"} className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-red-500 disabled:opacity-40 text-lg font-bold">×</button>
+                </div>
+              ))}
+            </div>
+            {files.length < MAX_BATCH_FILES && (
+              <button onClick={() => fileInputRef.current?.click()} disabled={status === "sending"} className="w-full py-3 rounded-xl border border-dashed border-blue-300 text-blue-600 text-sm font-semibold hover:bg-blue-50 disabled:opacity-40">＋ Add more documents</button>
+            )}
           </div>
+        ) : (
+          <div
+            onClick={(e) => {
+              if ((e.target as HTMLElement).closest("button, input")) return;
+              fileInputRef.current?.click();
+            }}
+            onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={onDrop}
+            className={`mb-6 rounded-2xl border-2 border-dashed transition-colors select-none cursor-pointer
+              ${dragging
+                ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
+                : "border-gray-300 dark:border-slate-600"
+              }`}
+          >
+            <div className="flex flex-col items-center justify-center gap-3 py-10">
+              <span className="text-5xl">📄</span>
+              <div className="text-center">
+                <p className="text-sm font-semibold text-gray-700 dark:text-slate-300">Drop documents here</p>
+                <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">Click or drop up to 500 documents · JPG · PNG · WEBP · <strong>PDF</strong> — 10 MB each</p>
+                <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">One PDF can contain 100+ invoices — the system automatically separates and processes them individually.</p>
+              </div>
+            </div>
 
-          <div className="flex border-t border-gray-200 dark:border-slate-700">
-            <button
-              onClick={(e) => { e.stopPropagation(); cameraInputRef.current?.click(); }}
-              className="flex-1 flex items-center justify-center gap-2 py-4 text-sm font-semibold text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800/60 transition-colors rounded-bl-2xl border-r border-gray-200 dark:border-slate-700"
-            >
-              📷 Camera
-            </button>
-            <button
-              onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
-              className="flex-1 flex items-center justify-center gap-2 py-4 text-sm font-semibold text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800/60 transition-colors rounded-br-2xl"
-            >
-              📁 Upload PDF or image
-            </button>
+            <div className="flex border-t border-gray-200 dark:border-slate-700">
+              <button
+                onClick={(e) => { e.stopPropagation(); cameraInputRef.current?.click(); }}
+                className="flex-1 flex items-center justify-center gap-2 py-4 text-sm font-semibold text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800/60 transition-colors rounded-bl-2xl border-r border-gray-200 dark:border-slate-700"
+              >
+                📷 Camera
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
+                className="flex-1 flex items-center justify-center gap-2 py-4 text-sm font-semibold text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800/60 transition-colors rounded-br-2xl"
+              >
+                📁 Upload PDF or image
+              </button>
+            </div>
+
+            <input
+              ref={cameraInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) addFiles([f]); e.target.value = ""; }}
+            />
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*,application/pdf"
+              multiple
+              className="hidden"
+              onChange={(e) => { if (e.target.files) addFiles(Array.from(e.target.files)); e.target.value = ""; }}
+            />
           </div>
+        )}
 
-          <input
-            ref={cameraInputRef}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            className="hidden"
-            onChange={(e) => { const f = e.target.files?.[0]; if (f) addFiles([f]); e.target.value = ""; }}
-          />
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*,application/pdf"
-            multiple
-            className="hidden"
-            onChange={(e) => { if (e.target.files) addFiles(Array.from(e.target.files)); e.target.value = ""; }}
-          />
-        </div>
-      )}
+      </DocumentUploadSection>
 
       <div className="mb-5">
         <label className="block text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider mb-1.5">

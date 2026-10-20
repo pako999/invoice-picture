@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { DocumentUploadSection } from "@/components/document-upload-section";
 
 type Locale = "sl" | "en";
 
@@ -79,24 +80,26 @@ export function BulkInvoiceJobList({ locale }: { locale: Locale }) {
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-10">
-      <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-slate-950 dark:text-white">
-            {locale === "sl" ? "PDF paketi računov" : "Invoice PDF batches"}
-          </h1>
-          <p className="mt-2 max-w-2xl text-slate-500 dark:text-slate-400">
-            {locale === "sl"
-              ? "En PDF lahko vsebuje več deset ali več sto računov. Sistem prepozna meje dokumentov, jih razdeli in vsak račun obdela posebej."
-              : "One PDF can contain dozens or hundreds of invoices. The system detects document boundaries, splits the file and processes each invoice separately."}
-          </p>
+      <DocumentUploadSection>
+        <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-extrabold tracking-tight text-slate-950 dark:text-white">
+              {locale === "sl" ? "PDF paketi računov" : "Invoice PDF batches"}
+            </h1>
+            <p className="mt-2 max-w-2xl text-slate-500 dark:text-slate-400">
+              {locale === "sl"
+                ? "En PDF lahko vsebuje več deset ali več sto računov. Sistem prepozna meje dokumentov, jih razdeli in vsak račun obdela posebej."
+                : "One PDF can contain dozens or hundreds of invoices. The system detects document boundaries, splits the file and processes each invoice separately."}
+            </p>
+          </div>
+          <Link
+            href={`${prefix}/scan#document-upload`}
+            className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-blue-700"
+          >
+            {locale === "sl" ? "Naloži PDF" : "Upload PDF"}
+          </Link>
         </div>
-        <Link
-          href={`${prefix}/scan`}
-          className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-blue-700"
-        >
-          {locale === "sl" ? "Naloži PDF" : "Upload PDF"}
-        </Link>
-      </div>
+      </DocumentUploadSection>
 
       {loading ? (
         <div className="rounded-2xl border border-slate-200 bg-white p-6 text-slate-500 dark:border-slate-700 dark:bg-slate-900">

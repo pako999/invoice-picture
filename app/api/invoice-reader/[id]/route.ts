@@ -361,21 +361,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         }, { status: 502 });
       }
     }
-
-    if (document.sourceInvoiceId != null) {
-      await db.update(invoices).set({
-        status: "pending",
-        errorMessage: null,
-        sentAt: null,
-      }).where(and(eq(invoices.id, document.sourceInvoiceId), eq(invoices.clerkUserId, userId)));
-    }
-    await db.insert(invoiceAuditLogs).values({
-      documentId,
-      clerkUserId: userId,
-      action: "reprocess",
-      metadataJson: JSON.stringify({ bulk: document.bulkJobId != null }),
-    });
-    return NextResponse.json({ success: true, status: "queued" });
   }
 
   if (data.action === "reject") {

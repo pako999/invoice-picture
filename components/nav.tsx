@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { usePathname, useRouter } from "next/navigation";
 import { SignInButton, SignUpButton, UserButton, useUser } from "@clerk/nextjs";
 import { LogoWordmark } from "@/components/logo";
+import { revealDocumentUpload } from "@/components/document-upload-section";
 import { getDict, type Dict } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n/config";
 import { localeUrl, slugMap } from "@/lib/i18n/config";
@@ -138,6 +139,19 @@ export function Nav() {
       window.requestAnimationFrame(() => {
         window.scrollTo({ top: 0, behavior: "smooth" });
       });
+    }
+  }
+
+  function mobileAppHref(href: string) {
+    return /\/(scan|bulk-invoices)$/.test(href) ? `${href}#document-upload` : href;
+  }
+
+  function handleMobileAppClick(event: React.MouseEvent<HTMLAnchorElement>, href: string) {
+    setMenuOpen(false);
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
+    if (path === href && mobileAppHref(href) !== href) {
+      event.preventDefault();
+      revealDocumentUpload();
     }
   }
 
@@ -277,8 +291,8 @@ export function Nav() {
                   return (
                     <Tag
                       key={l.href}
-                      href={l.href}
-                      onClick={() => setMenuOpen(false)}
+                      href={isSignedIn ? mobileAppHref(l.href) : l.href}
+                      onClick={(event: React.MouseEvent<HTMLAnchorElement>) => handleMobileAppClick(event, l.href)}
                       className={`flex items-center gap-3 px-4 py-4 rounded-2xl text-xl font-bold transition-colors ${
                         !isAnchor && path === l.href
                           ? "bg-blue-600 text-white"
@@ -357,7 +371,8 @@ export function Nav() {
           {appLinks.map((l) => {
             const active = path === l.href;
             return (
-              <Link key={l.href} href={l.href}
+              <Link key={l.href} href={mobileAppHref(l.href)}
+                onClick={(event) => handleMobileAppClick(event, l.href)}
                 className={`flex-1 flex flex-col items-center justify-center gap-1 py-2.5 transition-colors relative ${
                   active ? "text-blue-600 dark:text-blue-400"
                   : "text-gray-400 dark:text-slate-500 hover:text-gray-700 dark:hover:text-slate-300"
