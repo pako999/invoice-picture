@@ -81,24 +81,52 @@ export function BulkInvoiceJobList({ locale }: { locale: Locale }) {
   return (
     <div className="mx-auto max-w-5xl px-4 py-10">
       <DocumentUploadSection>
-        <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
-          <div>
+        <section className="mb-8 rounded-2xl border border-blue-200 bg-blue-50/60 p-5 dark:border-blue-900 dark:bg-blue-950/30 sm:p-8">
+          <div className="text-center">
             <h1 className="text-3xl font-extrabold tracking-tight text-slate-950 dark:text-white">
               {locale === "sl" ? "PDF paketi računov" : "Invoice PDF batches"}
             </h1>
-            <p className="mt-2 max-w-2xl text-slate-500 dark:text-slate-400">
+            <p className="mx-auto mt-3 max-w-2xl text-slate-600 dark:text-slate-300">
               {locale === "sl"
-                ? "En PDF lahko vsebuje več deset ali več sto računov. Sistem prepozna meje dokumentov, jih razdeli in vsak račun obdela posebej."
-                : "One PDF can contain dozens or hundreds of invoices. The system detects document boundaries, splits the file and processes each invoice separately."}
+                ? "Naložite PDF z več računi. Sistem samodejno prepozna, katere strani spadajo skupaj, in ga razdeli na posamezne račune — tudi če ima račun več strani."
+                : "Upload a PDF containing multiple invoices. The system automatically groups the pages and splits it into individual invoices, including multi-page invoices."}
             </p>
+            <Link
+              href={`${prefix}/scan#document-upload`}
+              className="mx-auto mt-5 inline-flex min-h-12 w-full items-center justify-center rounded-xl bg-blue-600 px-8 py-3.5 text-base font-extrabold text-white shadow-sm transition hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-600 sm:w-auto"
+            >
+              {locale === "sl" ? "Naloži PDF" : "Upload PDF"}
+            </Link>
           </div>
-          <Link
-            href={`${prefix}/scan#document-upload`}
-            className="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-blue-700"
-          >
-            {locale === "sl" ? "Naloži PDF" : "Upload PDF"}
-          </Link>
-        </div>
+          <div className="mt-6 border-t border-blue-200 pt-5 dark:border-blue-900">
+            <h2 className="font-bold text-slate-950 dark:text-white">
+              {locale === "sl" ? "Kako želite obdelati in poslati račune?" : "How should invoices be processed and delivered?"}
+            </h2>
+            <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+              {locale === "sl" ? "Pred nalaganjem v nastavitvah podjetja izberite prejemnikov e-poštni naslov in način pošiljanja:" : "Before uploading, choose the recipient email and delivery method in your company settings:"}
+            </p>
+            <ul className="mt-3 space-y-2 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+              {(locale === "sl" ? [
+                ["Ločeni PDF-ji", "Vsak račun pošljemo v svojem e-poštnem sporočilu. AI prepozna razdelitev, podatkov računa pa ne zajema."],
+                ["OCR e-pošta", "Originalni PDF ali sliko pošljemo na OCR e-poštni naslov vašega računovodskega programa."],
+                ["XML po e-pošti", "Po OCR obdelavi, pregledu in potrditvi pošljemo vsak račun kot XML v obliki eSLOG 2.0 ali UBL 2.1."],
+                ["XML v ZIP-u", "Ko potrdite vse račune iz PDF paketa, pošljemo en ZIP z ločeno XML datoteko za vsak račun."],
+                ["API JSON", "Po OCR obdelavi in potrditvi pošljemo strukturirane podatke ter originalni dokument na vaš API naslov."],
+              ] : [
+                ["Separate PDFs", "Each invoice is sent in its own email. AI detects the split without extracting invoice fields."],
+                ["OCR email", "The original PDF or image is sent to your accounting software’s OCR email address."],
+                ["XML by email", "After OCR, review and approval, each invoice is emailed as eSLOG 2.0 or UBL 2.1 XML."],
+                ["XML ZIP", "Once every invoice in the PDF batch is approved, one ZIP is sent with a separate XML file for each invoice."],
+                ["API JSON", "After OCR and approval, structured data and the original document are sent to your API endpoint."],
+              ]).map(([title, description]) => (
+                <li key={title}><strong className="text-slate-800 dark:text-slate-100">{title}:</strong> {description}</li>
+              ))}
+            </ul>
+            <Link href={`${prefix}/settings`} className="mt-4 inline-flex min-h-11 items-center font-bold text-blue-700 underline underline-offset-4 hover:text-blue-900 dark:text-blue-300">
+              {locale === "sl" ? "Odpri nastavitve podjetja →" : "Open company settings →"}
+            </Link>
+          </div>
+        </section>
       </DocumentUploadSection>
 
       {loading ? (
