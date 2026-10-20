@@ -39,11 +39,23 @@ export async function POST(req:Request){
   WHERE j."id" IN (SELECT DISTINCT "jobId" FROM orphaned)
  `;
 
- const rows=await sql`
+ const claim=await sql.transaction([
+  sql`SELECT pg_advisory_xact_lock(hashtextextended('bulk-worker-admission',0))`,
+  sql`
   WITH candidate AS (
-    SELECT "id" FROM "bulkInvoiceJobs"
+    SELECT "id" FROM "bulkInvoiceJobs" candidate_job
     WHERE "status"='processing'
       AND "stage" NOT IN ('boundary_review','quota_wait','completed','failed')
+      AND (
+        "stage" <> 'queued' OR (
+          (SELECT count(*) FROM "bulkInvoiceJobs" active
+           WHERE active."clerkUserId"=candidate_job."clerkUserId" AND active."status"='processing'
+             AND active."stage" NOT IN ('queued','boundary_review','quota_wait','completed','failed')) < 2
+          AND (SELECT count(*) FROM "bulkInvoiceJobs" active
+               WHERE active."status"='processing'
+                 AND active."stage" NOT IN ('queued','boundary_review','quota_wait','completed','failed')) < 120
+        )
+      )
       AND ("lockedAt" IS NULL OR "lockedAt" < now()-interval '15 minutes')
       AND (
         "lastError" IS NULL
@@ -54,10 +66,12 @@ export async function POST(req:Request){
     LIMIT 1 FOR UPDATE SKIP LOCKED
   )
   UPDATE "bulkInvoiceJobs" j
-  SET "lockedAt"=now(),"attempts"="attempts"+1,"updatedAt"=now()
+  SET "stage"=CASE WHEN j."stage"='queued' THEN 'uploaded' ELSE j."stage" END,
+      "lockedAt"=now(),"attempts"="attempts"+1,"updatedAt"=now()
   FROM candidate c WHERE j."id"=c."id"
   RETURNING j."id",j."clerkUserId",j."companyId",j."objectKey",j."filename",j."byteSize",
     j."status",j."stage",j."pageCount",j."ocrNextPage",j."classifyCursor",j."totalInvoices",j."processedInvoices"
- `;
+ `]);
+ const rows=claim[1];
  return NextResponse.json({job:rows[0]??null});
 }

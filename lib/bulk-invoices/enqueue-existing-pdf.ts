@@ -63,7 +63,7 @@ export async function enqueueExistingPdfAsBulkJob(args: EnqueueExistingPdfArgs) 
     filename,
     byteSize: bytes.length,
     status: "processing",
-    stage: "uploaded",
+    stage: "queued",
   }).returning({ id: bulkInvoiceJobs.id });
   if (!job) throw new Error("PDF paketa ni bilo mogoče ustvariti.");
   return job.id;

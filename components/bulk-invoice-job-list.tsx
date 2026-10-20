@@ -29,6 +29,7 @@ type BulkJob = {
 };
 
 const STAGE_SL: Record<string, string> = {
+  queued: "V čakalni vrsti",
   uploaded: "Priprava PDF-ja",
   ocr: "OCR strani",
   classify: "Prepoznavanje računov",
@@ -41,6 +42,7 @@ const STAGE_SL: Record<string, string> = {
 };
 
 const STAGE_EN: Record<string, string> = {
+  queued: "Queued",
   uploaded: "Preparing PDF",
   ocr: "OCR pages",
   classify: "Detecting invoices",
@@ -184,6 +186,11 @@ export function BulkInvoiceJobList({ locale }: { locale: Locale }) {
                   <Stat label={locale === "sl" ? "Napredek" : "Progress"} value={progress == null ? "—" : `${progress}%`} />
                 </div>
 
+                {job.stage === "queued" && (
+                  <p className="mt-3 text-sm text-blue-700 dark:text-blue-300">
+                    {locale === "sl" ? "PDF je sprejet. Obdelava se začne samodejno, ko se sprosti mesto; hkrati obdelujemo največ dva vaša paketa." : "PDF accepted. Processing starts automatically when a slot is available; up to two of your batches run at once."}
+                  </p>
+                )}
                 {job.deliveredInvoices > 0 && (
                   <div className="mt-3 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300">
                     {deliveryMessage(job, locale)}
@@ -212,6 +219,7 @@ export function BulkInvoiceJobList({ locale }: { locale: Locale }) {
 }
 
 function progressFor(job: BulkJob) {
+  if (job.stage === "queued") return 0;
   if (job.stage === "completed") return 100;
   if (job.stage === "ocr" && job.pageCount) return Math.min(99, Math.round((job.ocrNextPage / job.pageCount) * 100));
   if (job.stage === "extract" && job.totalInvoices) return Math.min(99, Math.round((job.processedInvoices / job.totalInvoices) * 100));

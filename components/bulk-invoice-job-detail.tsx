@@ -506,6 +506,7 @@ function stageLabel(stage: string, locale: Locale, deliveryMode: Job["deliveryMo
     if (stage === "extract") return locale === "sl" ? "Pošiljanje ločenih PDF-jev brez zajema podatkov" : "Sending separate PDFs without extracting fields";
   }
   const sl: Record<string, string> = {
+    queued: "V čakalni vrsti — obdelava se začne samodejno, ko se sprosti mesto.",
     uploaded: "Priprava PDF-ja",
     ocr: "OCR vseh strani",
     classify: "AI prepoznava meje posameznih računov",
@@ -517,6 +518,7 @@ function stageLabel(stage: string, locale: Locale, deliveryMode: Job["deliveryMo
     failed: "Obdelava ni uspela",
   };
   const en: Record<string, string> = {
+    queued: "Queued — processing starts automatically when a slot is available.",
     uploaded: "Preparing PDF",
     ocr: "OCR of all pages",
     classify: "AI is detecting individual invoice boundaries",

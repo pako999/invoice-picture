@@ -23,10 +23,10 @@ export async function assertBulkJobAdmission(clerkUserId: string) {
     sql`SELECT count(*)::int AS count FROM "bulkInvoiceJobs" WHERE "clerkUserId"=${clerkUserId} AND "status"='processing'`,
     sql`SELECT count(*)::int AS count FROM "bulkInvoiceJobs" WHERE "status"='processing'`,
   ]);
-  if (Number(userCounts[0]?.count ?? 0) >= 2) {
-    throw new BulkAdmissionError("Hkrati lahko obdelujete največ 2 velika PDF paketa.", 429, "bulk_backpressure");
+  if (Number(userCounts[0]?.count ?? 0) >= 20) {
+    throw new BulkAdmissionError("V čakalni vrsti imate že 20 PDF paketov. Počakajte, da se kateri zaključi.", 429, "bulk_backpressure");
   }
-  if (Number(globalCounts[0]?.count ?? 0) >= 120) {
+  if (Number(globalCounts[0]?.count ?? 0) >= 500) {
     throw new BulkAdmissionError("Sistem trenutno obdeluje veliko bulk PDF-jev. Poskusite ponovno čez nekaj minut.", 429, "bulk_backpressure");
   }
 }
