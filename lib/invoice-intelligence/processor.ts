@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, lte, ne } from "drizzle-orm";
+import { and, asc, eq, inArray, lt, lte, ne } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import {
   invoiceAuditLogs,
@@ -196,7 +196,12 @@ export async function runQueuedInvoiceJobs(limit = 3) {
   const safeDocumentLimit = Math.max(1, Math.min(limit, safety.maxDocumentsPerCron));
   const runBudget = createOcrRunBudget();
   const jobs = await db.select().from(invoiceProcessingJobs)
-    .where(and(inArray(invoiceProcessingJobs.status, ["queued", "failed"]), lte(invoiceProcessingJobs.availableAt, now)))
+    .where(and(
+      inArray(invoiceProcessingJobs.status, ["queued", "failed"]),
+      lte(invoiceProcessingJobs.availableAt, now),
+      // Exclude exhausted jobs BEFORE LIMIT so they cannot starve new uploads.
+      lt(invoiceProcessingJobs.attempts, invoiceProcessingJobs.maxAttempts),
+    ))
     .orderBy(asc(invoiceProcessingJobs.availableAt))
     .limit(safeDocumentLimit);
 
@@ -208,7 +213,11 @@ export async function runQueuedInvoiceJobs(limit = 3) {
       lockedAt: new Date(),
       attempts: job.attempts + 1,
       updatedAt: new Date(),
-    }).where(and(eq(invoiceProcessingJobs.id, job.id), inArray(invoiceProcessingJobs.status, ["queued", "failed"]))).returning({ id: invoiceProcessingJobs.id });
+    }).where(and(
+      eq(invoiceProcessingJobs.id, job.id),
+      inArray(invoiceProcessingJobs.status, ["queued", "failed"]),
+      lt(invoiceProcessingJobs.attempts, invoiceProcessingJobs.maxAttempts),
+    )).returning({ id: invoiceProcessingJobs.id });
     if (!locked) continue;
 
     try {

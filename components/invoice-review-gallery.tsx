@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   AlertTriangle, Check, CheckCircle2, Clock3, ExternalLink, Eye, FileSearch,
@@ -33,23 +33,40 @@ export function InvoiceReviewGallery() {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(() => new Set());
   const [showBulkDelete, setShowBulkDelete] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
+  const loadRequest = useRef(0);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (background = false) => {
+    const request = ++loadRequest.current;
+    if (!background) setLoading(true);
     setError("");
     try {
-      const res = await fetch("/api/invoice-reader", { cache: "no-store" });
+      const res = await fetch(filter === "all" ? "/api/invoice-reader" : `/api/invoice-reader?status=${filter === "processing" ? "active" : filter}`, { cache: "no-store" });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? "Računov ni bilo mogoče naložiti.");
+      if (request !== loadRequest.current) return;
       setPayload(json);
     } catch (loadError) {
+      if (request !== loadRequest.current) return;
       setError(loadError instanceof Error ? loadError.message : "Računov ni bilo mogoče naložiti.");
     } finally {
-      setLoading(false);
+      if (request === loadRequest.current) setLoading(false);
     }
-  }, []);
+  }, [filter]);
 
   useEffect(() => { void load(); }, [load]);
+  const hasPending = Boolean((payload?.stats.queued ?? 0) + (payload?.stats.processing ?? 0));
+  useEffect(() => {
+    if (!hasPending) return;
+    const refresh = () => {
+      if (document.visibilityState === "visible") void load(true);
+    };
+    const timer = window.setInterval(refresh, 10_000);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, [hasPending, load]);
   useEffect(() => {
     if (!preview && !confirmAction && !showBulkDelete) return;
     const previousOverflow = document.body.style.overflow;
@@ -69,7 +86,8 @@ export function InvoiceReviewGallery() {
 
   useEffect(() => { setSelectedIds(new Set()); }, [filter]);
 
-  const docs = useMemo(() => payload?.documents.filter((item) => filter === "all" || item.status === filter) ?? [], [payload, filter]);
+  const docs = useMemo(() => payload?.documents.filter((item) => filter === "all"
+    || (filter === "processing" ? item.status === "queued" || item.status === "processing" : item.status === filter)) ?? [], [payload, filter]);
   const stats = payload?.stats ?? {};
   const allVisibleSelected = docs.length > 0 && docs.every((item) => selectedIds.has(item.id));
 
@@ -163,7 +181,7 @@ export function InvoiceReviewGallery() {
         <Stat label="Skupaj" value={stats.total} icon={<FileSearch className="h-5 w-5" />} />
         <Stat label="Potrjeno" value={stats.approved} icon={<CheckCircle2 className="h-5 w-5 text-emerald-600" />} />
         <Stat label="Za pregled" value={stats.needs_review} icon={<AlertTriangle className="h-5 w-5 text-amber-600" />} />
-        <Stat label="V obdelavi" value={(stats.queued ?? 0) + (stats.processing ?? 0)} icon={<Clock3 className="h-5 w-5 text-blue-600" />} />
+        <Stat label="Obdelava" value={(stats.queued ?? 0) + (stats.processing ?? 0)} detail={`${stats.queued ?? 0} v vrsti · ${stats.processing ?? 0} aktivno`} icon={<Clock3 className="h-5 w-5 text-blue-600" />} />
         <Stat label="Napake" value={stats.failed} icon={<XCircle className="h-5 w-5 text-red-600" />} />
       </section>
 
@@ -176,6 +194,13 @@ export function InvoiceReviewGallery() {
           <ViewButton active={view === "list"} onClick={() => setView("list")} icon={<List className="h-4 w-4" />}>Seznam</ViewButton>
         </div>
       </div>
+
+      {filter === "processing" || filter === "queued" ? (
+        <p className="mb-5 text-sm text-slate-500" role="status">
+          V čakalni vrsti: <strong>{stats.queued ?? 0}</strong> · OCR trenutno obdeluje: <strong>{stats.processing ?? 0}</strong>.
+          {hasPending ? " Prikaz se samodejno osvežuje." : ""}
+        </p>
+      ) : null}
 
       {!loading && docs.length > 0 ? (
         <div className="mb-5 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:flex-row sm:items-center sm:justify-between dark:border-slate-700 dark:bg-slate-900">
@@ -229,6 +254,7 @@ function InvoiceCard({ document: item, selected, busy, onToggle, onPreview, onHo
       <div className="min-w-0 px-1 pb-1 pt-3">
         <div className="flex min-w-0 items-start justify-between gap-2"><h2 className="min-w-0 truncate font-extrabold text-slate-900 dark:text-white" title={item.filename}>{item.filename}</h2><Status status={item.status} /></div>
         <p className="mt-1 truncate text-xs text-slate-500">{item.documentType || "Dokument"} · {new Date(item.createdAt).toLocaleString("sl-SI")}</p>
+        <ProcessingState status={item.status} />
         <p className="mt-1 text-xs text-slate-500">Zanesljivost: <strong className="text-slate-800 dark:text-slate-200">{confidence(item)}</strong></p>
         {warnings[0] ? <p className="mt-1 truncate text-xs text-amber-700" title={warnings[0]}>{warnings[0]}</p> : null}
       </div>
@@ -238,7 +264,7 @@ function InvoiceCard({ document: item, selected, busy, onToggle, onPreview, onHo
 }
 
 function InvoiceRow({ document: item, selected, busy, onToggle, onPreview, onApprove, onDelete }: { document: Doc; selected: boolean; busy: boolean; onToggle: () => void; onPreview: () => void; onApprove: () => void; onDelete: () => void }) {
-  return <article className={`grid grid-cols-[auto_6rem_minmax(0,1fr)] items-center gap-3 p-3 sm:grid-cols-[auto_6rem_minmax(0,1fr)_auto] ${selected ? "bg-blue-50/80 dark:bg-blue-950/20" : ""}`}><label className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl" title="Izberi račun"><input type="checkbox" checked={selected} onChange={onToggle} className="h-5 w-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500" aria-label={`Izberi račun ${item.filename}`} /></label><button type="button" onClick={onPreview} className="relative aspect-[4/3] w-24 overflow-hidden rounded-lg border border-slate-200 bg-slate-100 focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-slate-700" aria-label={`Predogled: ${item.filename}`}><DocumentPreview document={item} compact /></button><div className="min-w-0"><div className="flex min-w-0 items-center gap-2"><h2 className="truncate font-bold text-slate-900 dark:text-white">{item.filename}</h2><Status status={item.status} /></div><p className="mt-1 truncate text-sm text-slate-500">{item.documentType || "Dokument"} · {item.provider || "čaka na obdelavo"} · {new Date(item.createdAt).toLocaleString("sl-SI")} · {confidence(item)}</p></div><div className="col-span-3 sm:col-span-1"><CardActions document={item} busy={busy} onPreview={onPreview} onApprove={onApprove} onDelete={onDelete} compact /></div></article>;
+  return <article className={`grid grid-cols-[auto_6rem_minmax(0,1fr)] items-center gap-3 p-3 sm:grid-cols-[auto_6rem_minmax(0,1fr)_auto] ${selected ? "bg-blue-50/80 dark:bg-blue-950/20" : ""}`}><label className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl" title="Izberi račun"><input type="checkbox" checked={selected} onChange={onToggle} className="h-5 w-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500" aria-label={`Izberi račun ${item.filename}`} /></label><button type="button" onClick={onPreview} className="relative aspect-[4/3] w-24 overflow-hidden rounded-lg border border-slate-200 bg-slate-100 focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-slate-700" aria-label={`Predogled: ${item.filename}`}><DocumentPreview document={item} compact /></button><div className="min-w-0"><div className="flex min-w-0 items-center gap-2"><h2 className="truncate font-bold text-slate-900 dark:text-white">{item.filename}</h2><Status status={item.status} /></div><p className="mt-1 truncate text-sm text-slate-500">{item.documentType || "Dokument"} · {item.provider || "čaka na obdelavo"} · {new Date(item.createdAt).toLocaleString("sl-SI")} · {confidence(item)}</p><ProcessingState status={item.status} /></div><div className="col-span-3 sm:col-span-1"><CardActions document={item} busy={busy} onPreview={onPreview} onApprove={onApprove} onDelete={onDelete} compact /></div></article>;
 }
 
 function CardActions({ document: item, busy, onPreview, onApprove, onDelete, compact = false }: { document: Doc; busy: boolean; onPreview: () => void; onApprove: () => void; onDelete: () => void; compact?: boolean }) {
@@ -276,7 +302,14 @@ function BulkDeleteDialog({ count, busy, onCancel, onConfirm }: { count: number;
 }
 
 function ViewButton({ active, onClick, icon, children }: { active: boolean; onClick: () => void; icon: React.ReactNode; children: React.ReactNode }) { return <button type="button" onClick={onClick} aria-pressed={active} className={`inline-flex min-h-9 items-center gap-2 rounded-lg px-3 text-sm font-bold ${active ? "bg-slate-950 text-white dark:bg-blue-600" : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"}`}>{icon}{children}</button>; }
-function Stat({ label, value, icon }: { label: string; value: number | null | undefined; icon: React.ReactNode }) { return <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4 dark:border-slate-700 dark:bg-slate-900"><div className="mb-2 flex items-center justify-between text-slate-500"><span className="text-[11px] font-bold uppercase tracking-wide sm:text-xs">{label}</span>{icon}</div><div className="text-2xl font-extrabold text-slate-950 sm:text-3xl dark:text-white">{value ?? 0}</div></div>; }
+function Stat({ label, value, icon, detail }: { label: string; value: number | null | undefined; icon: React.ReactNode; detail?: string }) { return <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4 dark:border-slate-700 dark:bg-slate-900"><div className="mb-2 flex items-center justify-between text-slate-500"><span className="text-[11px] font-bold uppercase tracking-wide sm:text-xs">{label}</span>{icon}</div><div className="text-2xl font-extrabold text-slate-950 sm:text-3xl dark:text-white">{value ?? 0}</div>{detail ? <p className="mt-1 text-xs text-slate-500">{detail}</p> : null}</div>; }
+function ProcessingState({ status }: { status: string }) {
+  if (status !== "queued" && status !== "processing") return null;
+  return <p className="mt-1 flex items-center gap-1.5 text-xs font-semibold text-blue-700" role="status">
+    {status === "processing" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Clock3 className="h-3.5 w-3.5" />}
+    {status === "processing" ? "OCR obdelava poteka." : "Čaka na začetek OCR obdelave."}
+  </p>;
+}
 function Status({ status }: { status: string }) { const labels: Record<string, string> = { approved: "Potrjeno", needs_review: "Za pregled", failed: "Napaka", queued: "V vrsti", processing: "Obdelava", uploaded: "Naloženo" }; const cls = status === "approved" ? "bg-emerald-100 text-emerald-700" : status === "needs_review" ? "bg-amber-100 text-amber-700" : status === "failed" ? "bg-red-100 text-red-700" : "bg-blue-100 text-blue-700"; return <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${cls}`}>{labels[status] ?? status.replace("_", " ")}</span>; }
 function parseWarnings(value: string | null) { if (!value) return [] as string[]; try { const parsed = JSON.parse(value); return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string") : []; } catch { return []; } }
 function confidence(document: Doc) { return document.overallConfidenceBps == null ? "—" : `${Math.round(document.overallConfidenceBps / 100)}%`; }
