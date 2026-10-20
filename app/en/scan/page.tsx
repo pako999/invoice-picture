@@ -356,6 +356,7 @@ export default function ScanPage() {
         </div>
       )}
 
+      <DocumentUploadSection>
       {companies.length > 0 ? (
         <div className="mb-6 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl overflow-hidden">
           <div className="px-4 py-2 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
@@ -432,7 +433,6 @@ export default function ScanPage() {
         </div>
       )}
 
-      <DocumentUploadSection>
         {files.length > 0 ? (
           <div className="mb-6 space-y-3">
             <div className="flex items-center justify-between">

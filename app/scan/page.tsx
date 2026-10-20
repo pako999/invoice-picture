@@ -359,6 +359,7 @@ export default function ScanPage() {
         </div>
       )}
 
+      <DocumentUploadSection>
       {/* Company selector or email banner */}
       {companies.length > 0 ? (
         <div className="mb-6 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-xl overflow-hidden">
@@ -440,7 +441,6 @@ export default function ScanPage() {
       )}
 
       {/* Preview */}
-      <DocumentUploadSection>
         {files.length > 0 ? (
           <div className="mb-6 space-y-3">
             <div className="flex items-center justify-between">
