@@ -1,5 +1,8 @@
 import { getDb } from "@/lib/db";
-import { bulkInvoiceJobs } from "@/lib/schema";
+import { bulkInvoiceJobs, companies } from "@/lib/schema";
+import { and, eq } from "drizzle-orm";
+import { getCompanyDeliverySettings } from "@/lib/invoice-intelligence/delivery-settings";
+import type { DeliveryMode } from "@/lib/invoice-intelligence/delivery-format";
 import { BULK_PDF_GATEWAY_URL, BULK_PDF_MAX_BYTES } from "@/lib/bulk-invoices/config";
 import { assertBulkJobAdmission } from "@/lib/bulk-invoices/admission";
 
@@ -23,6 +26,18 @@ export async function enqueueExistingPdfAsBulkJob(args: EnqueueExistingPdfArgs) 
 
   await assertBulkJobAdmission(args.clerkUserId);
 
+  const db = getDb();
+  let deliveryMode: DeliveryMode = "email_ocr";
+  let recipientEmail = args.recipientEmail;
+  if (args.companyId != null) {
+    const [company] = await db.select({ recipientEmail: companies.recipientEmail }).from(companies)
+      .where(and(eq(companies.id, args.companyId), eq(companies.clerkUserId, args.clerkUserId)))
+      .limit(1);
+    if (!company) throw new Error("Podjetje ni bilo najdeno.");
+    recipientEmail = company.recipientEmail;
+    deliveryMode = (await getCompanyDeliverySettings(args.companyId, args.clerkUserId)).mode;
+  }
+
   const filename = sanitizeFilename(args.filename);
   const signed = await requestUploadTarget(args.clerkToken, filename, bytes.length);
   const uploadHeaders = normalizeHeaders(signed.headers);
@@ -38,12 +53,12 @@ export async function enqueueExistingPdfAsBulkJob(args: EnqueueExistingPdfArgs) 
   });
   if (!upload.ok) throw new Error(`Ponovni prenos PDF-ja ni uspel (${upload.status}).`);
 
-  const db = getDb();
   const [job] = await db.insert(bulkInvoiceJobs).values({
     clerkUserId: args.clerkUserId,
     companyId: args.companyId,
     sourceInvoiceId: args.sourceInvoiceId,
-    recipientEmail: args.recipientEmail,
+    recipientEmail,
+    deliveryMode,
     objectKey: signed.objectKey,
     filename,
     byteSize: bytes.length,
