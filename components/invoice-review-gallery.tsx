@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   AlertTriangle, Check, CheckCircle2, Clock3, ExternalLink, Eye, FileSearch,
-  Grid2X2, List, Loader2, Maximize2, RefreshCw, Trash2, X, XCircle,
+  Grid2X2, List, Loader2, RefreshCw, Trash2, XCircle,
 } from "lucide-react";
 
 type Doc = {
@@ -26,7 +26,6 @@ export function InvoiceReviewGallery() {
   const [view, setView] = useState<"grid" | "list">("grid");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [preview, setPreview] = useState<Doc | null>(null);
   const [hovered, setHovered] = useState<Doc | null>(null);
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
@@ -80,21 +79,20 @@ export function InvoiceReviewGallery() {
     };
   }, [hasPending, load]);
   useEffect(() => {
-    if (!preview && !confirmAction && !showBulkDelete) return;
+    if (!confirmAction && !showBulkDelete) return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
       if (showBulkDelete && !bulkDeleting) setShowBulkDelete(false);
       else if (confirmAction) setConfirmAction(null);
-      else setPreview(null);
     };
     window.addEventListener("keydown", closeOnEscape);
     return () => {
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", closeOnEscape);
     };
-  }, [bulkDeleting, confirmAction, preview, showBulkDelete]);
+  }, [bulkDeleting, confirmAction, showBulkDelete]);
 
   useEffect(() => { setSelectedIds(new Set()); }, [filter]);
 
@@ -136,7 +134,6 @@ export function InvoiceReviewGallery() {
       setSelectedIds(new Set());
       setShowBulkDelete(false);
       setHovered(null);
-      setPreview((current) => current && ids.includes(current.id) ? null : current);
       await load();
     } catch (deleteError) {
       setShowBulkDelete(false);
@@ -166,7 +163,6 @@ export function InvoiceReviewGallery() {
         next.delete(selected.id);
         return next;
       });
-      setPreview((current) => current?.id === selected.id ? null : current);
       await load();
     } catch (actionError) {
       setConfirmAction(null);
@@ -182,7 +178,7 @@ export function InvoiceReviewGallery() {
         <div className="min-w-0">
           <p className="text-sm font-semibold uppercase tracking-wider text-blue-600">Invoice Intelligence</p>
           <h1 className="text-2xl font-extrabold leading-tight text-slate-950 sm:text-3xl dark:text-white">Pregled in potrditev računov</h1>
-          <p className="mt-1 break-words text-sm text-slate-500 sm:text-base">Oglejte si več računov hkrati, odprite original ter račun potrdite ali izbrišite.</p>
+          <p className="mt-1 break-words text-sm text-slate-500 sm:text-base">Oglejte si več računov hkrati, odprite podatke ter račun potrdite ali izbrišite.</p>
         </div>
         <button type="button" onClick={() => void load()} disabled={loading} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 font-semibold text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-white">
           <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} /> Osveži
@@ -236,33 +232,32 @@ export function InvoiceReviewGallery() {
         <div className="rounded-2xl border border-slate-200 bg-white p-12 text-center shadow-sm dark:border-slate-700 dark:bg-slate-900"><CheckCircle2 className="mx-auto mb-3 h-10 w-10 text-emerald-500" /><p className="font-semibold text-slate-800 dark:text-white">Ni dokumentov v tem pogledu.</p></div>
       ) : view === "grid" ? (
         <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" aria-label="Računi">
-          {docs.map((item) => <InvoiceCard key={item.id} document={item} selected={selectedIds.has(item.id)} busy={busyId === item.id} onToggle={() => toggleSelected(item.id)} onPreview={() => setPreview(item)} onHover={setHovered} onApprove={() => setConfirmAction({ kind: "approve", document: item })} onDelete={() => setConfirmAction({ kind: "delete", document: item })} />)}
+          {docs.map((item) => <InvoiceCard key={item.id} document={item} selected={selectedIds.has(item.id)} busy={busyId === item.id} onToggle={() => toggleSelected(item.id)} onHover={setHovered} onApprove={() => setConfirmAction({ kind: "approve", document: item })} onDelete={() => setConfirmAction({ kind: "delete", document: item })} />)}
         </section>
       ) : (
         <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900" aria-label="Računi">
-          <div className="divide-y divide-slate-100 dark:divide-slate-800">{docs.map((item) => <InvoiceRow key={item.id} document={item} selected={selectedIds.has(item.id)} busy={busyId === item.id} onToggle={() => toggleSelected(item.id)} onPreview={() => setPreview(item)} onApprove={() => setConfirmAction({ kind: "approve", document: item })} onDelete={() => setConfirmAction({ kind: "delete", document: item })} />)}</div>
+          <div className="divide-y divide-slate-100 dark:divide-slate-800">{docs.map((item) => <InvoiceRow key={item.id} document={item} selected={selectedIds.has(item.id)} busy={busyId === item.id} onToggle={() => toggleSelected(item.id)} onApprove={() => setConfirmAction({ kind: "approve", document: item })} onDelete={() => setConfirmAction({ kind: "delete", document: item })} />)}</div>
         </section>
       )}
 
-      {hovered && !preview && !confirmAction ? <HoverPreview document={hovered} /> : null}
-      {preview ? <PreviewModal document={preview} onClose={() => setPreview(null)} /> : null}
+      {hovered && !confirmAction ? <HoverPreview document={hovered} /> : null}
       {confirmAction ? <ConfirmDialog action={confirmAction} busy={busyId === confirmAction.document.id} onCancel={() => setConfirmAction(null)} onConfirm={() => void runConfirmedAction()} /> : null}
       {showBulkDelete ? <BulkDeleteDialog count={selectedIds.size} busy={bulkDeleting} onCancel={() => setShowBulkDelete(false)} onConfirm={() => void deleteSelected()} /> : null}
     </main>
   );
 }
 
-function InvoiceCard({ document: item, selected, busy, onToggle, onPreview, onHover, onApprove, onDelete }: { document: Doc; selected: boolean; busy: boolean; onToggle: () => void; onPreview: () => void; onHover: (document: Doc | null) => void; onApprove: () => void; onDelete: () => void }) {
+function InvoiceCard({ document: item, selected, busy, onToggle, onHover, onApprove, onDelete }: { document: Doc; selected: boolean; busy: boolean; onToggle: () => void; onHover: (document: Doc | null) => void; onApprove: () => void; onDelete: () => void }) {
   const warnings = parseWarnings(item.warningsJson);
   return (
     <article className={`relative flex min-w-0 flex-col rounded-2xl border bg-white p-3 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg dark:bg-slate-900 ${selected ? "border-blue-500 ring-2 ring-blue-500/30 dark:border-blue-400" : "border-slate-200 dark:border-slate-700"}`}>
       <label className="absolute left-5 top-5 z-10 flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl border border-slate-200 bg-white/95 shadow-md dark:border-slate-600 dark:bg-slate-900/95" title="Izberi račun">
         <input type="checkbox" checked={selected} onChange={onToggle} className="h-5 w-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500" aria-label={`Izberi račun ${item.filename}`} />
       </label>
-      <button type="button" onClick={onPreview} onPointerEnter={(event) => { if (event.pointerType === "mouse") onHover(item); }} onPointerLeave={() => onHover(null)} className="group relative aspect-[4/3] w-full overflow-hidden rounded-xl border border-slate-200 bg-slate-100 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-slate-700 dark:bg-slate-950" aria-label={`Odpri celoten predogled: ${item.filename}`}>
+      <Link href={`/invoice-review/${item.id}`} onPointerEnter={(event) => { if (event.pointerType === "mouse") onHover(item); }} onPointerLeave={() => onHover(null)} className="group relative block aspect-[4/3] w-full overflow-hidden rounded-xl border border-slate-200 bg-slate-100 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-slate-700 dark:bg-slate-950" aria-label={`Preglej podatke: ${item.filename}`}>
         <DocumentPreview document={item} compact />
-        <span className="absolute inset-0 flex items-center justify-center bg-slate-950/0 transition group-hover:bg-slate-950/20"><span className="translate-y-2 rounded-full bg-white/95 p-3 text-slate-900 opacity-0 shadow-xl transition group-hover:translate-y-0 group-hover:opacity-100"><Maximize2 className="h-5 w-5" /></span></span>
-      </button>
+        <span className="absolute inset-0 flex items-center justify-center bg-slate-950/0 transition group-hover:bg-slate-950/20"><span className="translate-y-2 rounded-full bg-white/95 p-3 text-slate-900 opacity-0 shadow-xl transition group-hover:translate-y-0 group-hover:opacity-100"><FileSearch className="h-5 w-5" /></span></span>
+      </Link>
       <div className="min-w-0 px-1 pb-1 pt-3">
         <div className="flex min-w-0 items-start justify-between gap-2"><h2 className="min-w-0 truncate font-extrabold text-slate-900 dark:text-white" title={item.filename}>{item.filename}</h2><Status status={item.status} /></div>
         <p className="mt-1 truncate text-xs text-slate-500">{item.documentType || "Dokument"} · {new Date(item.createdAt).toLocaleString("sl-SI")}</p>
@@ -270,19 +265,19 @@ function InvoiceCard({ document: item, selected, busy, onToggle, onPreview, onHo
         <p className="mt-1 text-xs text-slate-500">Zanesljivost: <strong className="text-slate-800 dark:text-slate-200">{confidence(item)}</strong></p>
         {warnings[0] ? <p className="mt-1 truncate text-xs text-amber-700" title={warnings[0]}>{warnings[0]}</p> : null}
       </div>
-      <CardActions document={item} busy={busy} onPreview={onPreview} onApprove={onApprove} onDelete={onDelete} />
+      <CardActions document={item} busy={busy} onApprove={onApprove} onDelete={onDelete} />
     </article>
   );
 }
 
-function InvoiceRow({ document: item, selected, busy, onToggle, onPreview, onApprove, onDelete }: { document: Doc; selected: boolean; busy: boolean; onToggle: () => void; onPreview: () => void; onApprove: () => void; onDelete: () => void }) {
-  return <article className={`grid grid-cols-[auto_6rem_minmax(0,1fr)] items-center gap-3 p-3 sm:grid-cols-[auto_6rem_minmax(0,1fr)_auto] ${selected ? "bg-blue-50/80 dark:bg-blue-950/20" : ""}`}><label className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl" title="Izberi račun"><input type="checkbox" checked={selected} onChange={onToggle} className="h-5 w-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500" aria-label={`Izberi račun ${item.filename}`} /></label><button type="button" onClick={onPreview} className="relative aspect-[4/3] w-24 overflow-hidden rounded-lg border border-slate-200 bg-slate-100 focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-slate-700" aria-label={`Predogled: ${item.filename}`}><DocumentPreview document={item} compact /></button><div className="min-w-0"><div className="flex min-w-0 items-center gap-2"><h2 className="truncate font-bold text-slate-900 dark:text-white">{item.filename}</h2><Status status={item.status} /></div><p className="mt-1 truncate text-sm text-slate-500">{item.documentType || "Dokument"} · {item.provider || "čaka na obdelavo"} · {new Date(item.createdAt).toLocaleString("sl-SI")} · {confidence(item)}</p><ProcessingState status={item.status} /></div><div className="col-span-3 sm:col-span-1"><CardActions document={item} busy={busy} onPreview={onPreview} onApprove={onApprove} onDelete={onDelete} compact /></div></article>;
+function InvoiceRow({ document: item, selected, busy, onToggle, onApprove, onDelete }: { document: Doc; selected: boolean; busy: boolean; onToggle: () => void; onApprove: () => void; onDelete: () => void }) {
+  return <article className={`grid grid-cols-[auto_6rem_minmax(0,1fr)] items-center gap-3 p-3 sm:grid-cols-[auto_6rem_minmax(0,1fr)_auto] ${selected ? "bg-blue-50/80 dark:bg-blue-950/20" : ""}`}><label className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl" title="Izberi račun"><input type="checkbox" checked={selected} onChange={onToggle} className="h-5 w-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500" aria-label={`Izberi račun ${item.filename}`} /></label><Link href={`/invoice-review/${item.id}`} className="relative block aspect-[4/3] w-24 overflow-hidden rounded-lg border border-slate-200 bg-slate-100 focus-visible:ring-2 focus-visible:ring-blue-500 dark:border-slate-700" aria-label={`Preglej podatke: ${item.filename}`}><DocumentPreview document={item} compact /></Link><div className="min-w-0"><div className="flex min-w-0 items-center gap-2"><h2 className="truncate font-bold text-slate-900 dark:text-white">{item.filename}</h2><Status status={item.status} /></div><p className="mt-1 truncate text-sm text-slate-500">{item.documentType || "Dokument"} · {item.provider || "čaka na obdelavo"} · {new Date(item.createdAt).toLocaleString("sl-SI")} · {confidence(item)}</p><ProcessingState status={item.status} /></div><div className="col-span-3 sm:col-span-1"><CardActions document={item} busy={busy} onApprove={onApprove} onDelete={onDelete} compact /></div></article>;
 }
 
-function CardActions({ document: item, busy, onPreview, onApprove, onDelete, compact = false }: { document: Doc; busy: boolean; onPreview: () => void; onApprove: () => void; onDelete: () => void; compact?: boolean }) {
+function CardActions({ document: item, busy, onApprove, onDelete, compact = false }: { document: Doc; busy: boolean; onApprove: () => void; onDelete: () => void; compact?: boolean }) {
   return (
     <div className={`grid gap-2 ${compact ? "grid-cols-3 sm:flex" : "mt-auto grid-cols-3 pt-3"}`}>
-      <button type="button" onClick={onPreview} className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg border border-slate-200 px-2 text-xs font-bold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"><Eye className="h-4 w-4" /><span className={compact ? "sr-only" : ""}>Poglej</span></button>
+      <Link href={`/invoice-review/${item.id}`} className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg border border-slate-200 px-2 text-xs font-bold text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"><Eye className="h-4 w-4" /><span className={compact ? "sr-only" : ""}>Poglej</span></Link>
       {item.status === "needs_review" ? <button type="button" onClick={onApprove} disabled={busy} className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-2 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50"><Check className="h-4 w-4" /><span className={compact ? "sr-only" : ""}>Potrdi</span></button> : <Link href={`/invoice-review/${item.id}`} className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg bg-blue-600 px-2 text-xs font-bold text-white hover:bg-blue-700"><ExternalLink className="h-4 w-4" /><span className={compact ? "sr-only" : ""}>Odpri</span></Link>}
       <button type="button" onClick={onDelete} disabled={busy} className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg border border-red-200 px-2 text-xs font-bold text-red-700 hover:bg-red-50 disabled:opacity-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950/30"><Trash2 className="h-4 w-4" /><span className={compact ? "sr-only" : ""}>Izbriši</span></button>
       {!compact ? <Link href={`/invoice-review/${item.id}`} className="col-span-3 inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-slate-950 px-3 text-xs font-bold text-white hover:bg-slate-800 dark:bg-blue-600 dark:hover:bg-blue-700">Preglej podatke <ExternalLink className="h-3.5 w-3.5" /></Link> : null}
@@ -297,11 +292,7 @@ function DocumentPreview({ document: item, compact = false }: { document: Doc; c
 }
 
 function HoverPreview({ document: item }: { document: Doc }) {
-  return <aside className="pointer-events-none fixed bottom-4 right-4 top-20 z-[70] hidden w-[min(46vw,46rem)] overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-2xl lg:block dark:border-slate-600 dark:bg-slate-900" aria-hidden="true"><div className="flex h-12 items-center justify-between border-b border-slate-200 px-4 dark:border-slate-700"><span className="max-w-[80%] truncate text-sm font-bold">{item.filename}</span><span className="text-xs font-semibold text-slate-500">Kliknite za celozaslonski pogled</span></div><div className="h-[calc(100%-3rem)]"><DocumentPreview document={item} /></div></aside>;
-}
-
-function PreviewModal({ document: item, onClose }: { document: Doc; onClose: () => void }) {
-  return <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/80 p-2 backdrop-blur-sm sm:p-5" role="presentation" onMouseDown={onClose}><section role="dialog" aria-modal="true" aria-labelledby="invoice-preview-title" className="flex h-[95dvh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-slate-900" onMouseDown={(event) => event.stopPropagation()}><header className="flex min-h-14 items-center justify-between gap-3 border-b border-slate-200 px-3 sm:px-5 dark:border-slate-700"><div className="min-w-0"><h2 id="invoice-preview-title" className="truncate font-extrabold text-slate-950 dark:text-white">{item.filename}</h2><p className="text-xs text-slate-500">{new Date(item.createdAt).toLocaleString("sl-SI")}</p></div><div className="flex shrink-0 items-center gap-2"><Link href={`/invoice-review/${item.id}`} className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-blue-600 px-3 text-sm font-bold text-white hover:bg-blue-700">Preglej podatke <ExternalLink className="h-4 w-4" /></Link><button type="button" onClick={onClose} className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-100 dark:border-slate-700 dark:text-white dark:hover:bg-slate-800" aria-label="Zapri predogled"><X className="h-5 w-5" /></button></div></header><div className="min-h-0 flex-1 bg-slate-100 dark:bg-slate-950"><DocumentPreview document={item} /></div></section></div>;
+  return <aside className="pointer-events-none fixed bottom-4 right-4 top-20 z-[70] hidden w-[min(46vw,46rem)] overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-2xl lg:block dark:border-slate-600 dark:bg-slate-900" aria-hidden="true"><div className="flex h-12 items-center justify-between border-b border-slate-200 px-4 dark:border-slate-700"><span className="max-w-[80%] truncate text-sm font-bold">{item.filename}</span><span className="text-xs font-semibold text-slate-500">Kliknite za pregled podatkov</span></div><div className="h-[calc(100%-3rem)]"><DocumentPreview document={item} /></div></aside>;
 }
 
 function ConfirmDialog({ action, busy, onCancel, onConfirm }: { action: Exclude<ConfirmAction, null>; busy: boolean; onCancel: () => void; onConfirm: () => void }) {
