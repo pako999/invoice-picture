@@ -7,6 +7,7 @@ import {
   type NormalizedInvoice,
   type ReaderResult,
 } from "./types";
+import { VAT_EXTRACTION_PROMPT } from "./extraction-prompt";
 import { normalizeInvoiceValues } from "./validation";
 import { mistralPagesForInput } from "./safety";
 
@@ -100,6 +101,7 @@ export async function readWithMistral(input: { base64: string; mimeType: string;
       table_format: "html",
       confidence_scores_granularity: "block",
       document_annotation_prompt: [
+        VAT_EXTRACTION_PROMPT,
         "Extract structured accounting data from invoices, credit notes, receipts, proforma invoices, quotations, sales quotes, offers and estimates.",
         "A quotation, sales quote, offer or estimate is still a readable accounting document: set documentType to proforma and extract every shared field that is visible.",
         "For a quotation or offer, place its quote/offer number in invoiceNumber because the schema has no separate quote-number field.",
@@ -293,8 +295,9 @@ export function parseInvoiceTextDeterministically(text: string): NormalizedInvoi
   invoice.paymentTerms = match(plainText, /(?:method of payment|payment terms|način plačila|nacin placila|plačilni pogoji|placilni pogoji)\s*[:#]?\s*([^\n|]{2,80})/i);
   invoice.totals.amountDue = match(plainText, /(?:amount\s+due|za\s+plačilo|za\s+placilo|skupaj\s*(?:\(\s*z\s+ddv\s*\)|z\s+ddv)|total\s+in\s+(?:EUR|USD|GBP))[^\d\-]{0,30}(-?[\d.,]+)\s*(?:EUR|USD|GBP|€|\$|£)?/i)
     ?? match(plainText, /(?:[$€£]\s*)(-?[\d.,]+)\s*(?:USD|EUR|GBP)?\s*(?:due|paid)/i);
-  invoice.totals.grossAmount = invoice.totals.amountDue
-    ?? match(plainText, /(?:total\s+amount(?:\s+(?:EUR|USD|GBP))?|total\s+amount\s+due|grand\s+total|gesamt|totale)[^\d\-]{0,30}(-?[\d.,]+)\s*(?:EUR|USD|GBP|€|\$|£)?/i);
+  invoice.totals.grossAmount = match(plainText, /(?:skupaj\s+(?:z\s+(?:vključenim\s+)?ddv|bruto)|(?:total|amount)\s+(?:incl(?:uding)?\.?\s+VAT|including\s+tax)|bruto\s+znesek)[^\d\-\n|]{0,30}(-?[\d.,]+)/i)
+    ?? match(plainText, /(?:total\s+amount(?:\s+(?:EUR|USD|GBP))?|grand\s+total|gesamt|totale)[^\d\-\n|]{0,30}(-?[\d.,]+)\s*(?:EUR|USD|GBP|€|\$|£)?/i)
+    ?? invoice.totals.amountDue;
   invoice.totals.vatAmount = match(plainText, /(?:VAT(?:\s+amount)?|DDV|MwSt|IVA)[^\d\-]{0,25}(-?[\d.,]+)/i);
   invoice.totals.amountBeforeDiscount = match(plainText, /(?:value\s+before\s+discount|list\s+total|vrednost\s+skupaj)[^\d\-]{0,25}(-?[\d.,]+)/i);
   invoice.totals.netAmount = match(plainText, /(?:net amount|net total|osnova|neto|netto|imponibile|prodajna\s+vrednost)[^\d\-]{0,25}(-?[\d.,]+)/i);
@@ -483,7 +486,7 @@ function parsePlainTextLineItems(text: string): NormalizedInvoice["lineItems"] {
 }
 
 function parseMarkdownLineItems(text: string): NormalizedInvoice["lineItems"] {
-  const rows = text.split(/\r?\n/).filter((line) => line.includes("|")).map(markdownCells).filter((cells) => cells.length >= 3);
+  const rows = htmlTablesToMarkdown(text).split(/\r?\n/).filter((line) => line.includes("|")).map(markdownCells).filter((cells) => cells.length >= 3);
   const headerIndex = rows.findIndex((cells) =>
     cells.some((cell) => /(?:opis|description|izdelek|artikel|product|storitev)/i.test(cell))
     && cells.some((cell) => /(?:koli[čc]ina|qty|quantity)/i.test(cell))
@@ -502,8 +505,8 @@ function parseMarkdownLineItems(text: string): NormalizedInvoice["lineItems"] {
   const discountAmount = index([/rabatznesek/, /popustznesek/, /discountamount/]);
   const vatRate = index([/^ddv$/, /ddvstopnja/, /^vat$/, /vatrate/], [/znesek/, /amount/]);
   const vatAmount = index([/znesekddv/, /ddvznesek/, /vatamount/, /taxamount/]);
-  const netAmount = index([/vrbrezddv/, /vrednostbrezddv/, /netamount/, /lineamount/, /lineextensionamount/]);
-  const grossAmount = index([/vrzddv/, /vrednostzddv/, /grossamount/, /linegross/]);
+  const netAmount = index([/vrbrezddv/, /vrednostbrezddv/, /netamount/, /^lineamount$/, /lineextensionamount/, /^znesekbrezddv$/]);
+  const grossAmount = index([/vrzddv/, /vrednostzddv/, /grossamount/, /linegross/, /^znesekzddv$/, /^znesekzvkljucenimddv$/, /^skupajzddv$/, /^bruto$/, /^taxinclusiveamount$/, /^totalincl(?:uding)?vat$/, /^amountincl(?:uding)?vat$/]);
   const unitPriceBeforeDiscount = index(
     [/^cena$/, /listprice/, /unitpricebeforediscount/, /pricebeforediscount/, /cenapredrabat/],
     [/brezddv/, /porabatu/, /afterdiscount/, /net/, /vrednost/, /amount/],
@@ -541,6 +544,24 @@ function parseMarkdownLineItems(text: string): NormalizedInvoice["lineItems"] {
     });
   }
   return output;
+}
+
+// OCR 4 returns HTML tables separately from page markdown. Parse simple grids
+// without guessing the column positions of merged headers/cells.
+function htmlTablesToMarkdown(text: string) {
+  return text.replace(/<table\b[^>]*>[\s\S]*?<\/table>/gi, (table) => {
+    if (/(?:rowspan|colspan)\s*=\s*["']?([2-9]|[1-9]\d)/i.test(table)) return "";
+    const rows = Array.from(table.matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi), (row) => {
+      const cells = Array.from(row[1].matchAll(/<t[dh]\b[^>]*>([\s\S]*?)<\/t[dh]>/gi), (cell) =>
+        cell[1].replace(/<[^>]*>/g, " ")
+          .replace(/&nbsp;|&#160;/gi, " ").replace(/&amp;/gi, "&")
+          .replace(/&#(\d+);/g, (_, code) => String.fromCodePoint(Math.min(0x10ffff, Number(code))))
+          .replace(/\|/g, " ").replace(/\s+/g, " ").trim()
+      );
+      return cells.length ? `| ${cells.join(" | ")} |` : "";
+    });
+    return `\n${rows.filter(Boolean).join("\n")}\n`;
+  });
 }
 
 function markdownCells(line: string) {
