@@ -41,10 +41,22 @@ export function InvoiceReviewGallery() {
     setError("");
     try {
       const res = await fetch(filter === "all" ? "/api/invoice-reader" : `/api/invoice-reader?status=${filter === "processing" ? "active" : filter}`, { cache: "no-store" });
-      const json = await res.json();
+      const json = await res.json() as Payload & { error?: string };
       if (!res.ok) throw new Error(json.error ?? "Računov ni bilo mogoče naložiti.");
       if (request !== loadRequest.current) return;
-      setPayload(json);
+      setPayload((current) => {
+        if (!background || !current) return json;
+        const previous = new Map(current.documents.map((item) => [item.id, item.previewUrl]));
+        return {
+          ...json,
+          documents: json.documents.map((item) => {
+            const url = previous.get(item.id);
+            const expiry = url?.match(/[?&]exp=(\d+)/)?.[1];
+            // Status polling must not re-download unchanged PDFs every 10s.
+            return url && Number(expiry) > Date.now() + 30_000 ? { ...item, previewUrl: url } : item;
+          }),
+        };
+      });
     } catch (loadError) {
       if (request !== loadRequest.current) return;
       setError(loadError instanceof Error ? loadError.message : "Računov ni bilo mogoče naložiti.");
