@@ -149,10 +149,10 @@ function PreviewModal({ inv, onClose, onRestore }: {
               <p className="max-w-md text-center text-xs">Datoteka se samo doda temu arhiviranemu računu. E-pošta se ne pošlje ponovno in kvota se ne porabi.</p>
               {restoreError && <p className="text-sm font-medium text-red-500">{restoreError}</p>}
             </div>
-          ) : inv.imageData ? (
+          ) : inv.imageData || inv.previewUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={`data:${inv.imageMime};base64,${inv.imageData}`}
+              src={inv.imageData ? `data:${inv.imageMime};base64,${inv.imageData}` : inv.previewUrl!}
               alt="Račun"
               className="max-w-full max-h-full object-contain rounded-xl border border-gray-200 dark:border-slate-700"
             />
@@ -913,11 +913,12 @@ export default function InvoicesPage() {
                     </>
                   )}
                 </div>
-              ) : inv.imageData ? (
+              ) : inv.imageData || inv.previewUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
-                  src={`data:${inv.imageMime};base64,${inv.imageData}`}
+                  src={inv.imageData ? `data:${inv.imageMime};base64,${inv.imageData}` : inv.previewUrl!}
                   alt="thumb"
+                  loading="lazy"
                   className="w-16 h-16 group-hover:w-40 group-hover:h-52 rounded-xl object-contain bg-gray-50 dark:bg-slate-950 flex-shrink-0 border border-gray-200 dark:border-slate-700 transition-all duration-200"
                 />
               ) : (

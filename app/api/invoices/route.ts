@@ -51,9 +51,9 @@ export async function GET() {
         recipientEmail: invoices.recipientEmail,
         companyId: invoices.companyId,
         subject: invoices.subject,
-        // Images are already compressed thumbnails. PDF data can be much
-        // larger, so it is fetched only when the user hovers or opens it.
-        imageData: sql<string | null>`case when "invoices"."imageMime" = 'application/pdf' then null else "invoices"."imageData" end`,
+        // Archive JSON contains metadata only. Load image/PDF bytes through
+        // the authorized file route instead of embedding every image as Base64.
+        imageData: sql<null>`null`,
         imageMime: invoices.imageMime,
         filename: invoices.filename,
         status: sql<"sent" | "pending" | "failed">`
@@ -113,7 +113,7 @@ export async function GET() {
     return NextResponse.json(rows.map((row) => ({
       ...row,
       previewUrl: `/api/invoices/${row.id}/file`,
-    })));
+    })), { headers: { "Cache-Control": "private, no-store" } });
   } catch (error) {
     console.error("invoice_archive_load_failed", error);
     return NextResponse.json({ error: "Arhiva računov ni bilo mogoče naložiti." }, { status: 500 });

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { getDb } from "@/lib/db";
 import { bulkInvoiceGroups, invoiceDocuments, invoiceProcessingJobs, invoices } from "@/lib/schema";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, getTableColumns, sql } from "drizzle-orm";
 import { z } from "zod";
 
 const MAX_PDF_BYTES = 10 * 1024 * 1024;
@@ -22,7 +22,11 @@ export async function GET(
   const { id } = await params;
   const db = getDb();
   const [invoice] = await db
-    .select()
+    .select({
+      ...getTableColumns(invoices),
+      imageData: sql<null>`null`,
+      hasImageData: sql<boolean>`${invoices.imageData} is not null and ${invoices.imageData} <> ''`,
+    })
     .from(invoices)
     .where(and(eq(invoices.id, Number(id)), eq(invoices.clerkUserId, userId)))
     .limit(1);
@@ -34,7 +38,7 @@ export async function GET(
       id: invoiceDocuments.id,
       status: invoiceDocuments.status,
       warningsJson: invoiceDocuments.warningsJson,
-      originalBase64: invoiceDocuments.originalBase64,
+      hasOriginal: sql<boolean>`${invoiceDocuments.originalBase64} is not null and ${invoiceDocuments.originalBase64} <> ''`,
       storageObjectKey: invoiceDocuments.storageObjectKey,
     })
     .from(invoiceDocuments)
@@ -55,14 +59,15 @@ export async function GET(
     && document?.status === "failed"
     && processingJob?.status === "failed"
     && processingJob.attempts >= processingJob.maxAttempts;
-  const previewAvailable = Boolean(invoice.imageData || invoice.bulkGroupId || document?.originalBase64 || document?.storageObjectKey);
+  const { hasImageData, ...metadata } = invoice;
+  const previewAvailable = Boolean(hasImageData || invoice.bulkGroupId || document?.hasOriginal || document?.storageObjectKey);
   return NextResponse.json({
-    ...invoice,
+    ...metadata,
     status: terminalOcrFailure ? "failed" : invoice.status,
     errorMessage: invoice.errorMessage || (terminalOcrFailure ? friendlyOcrError(processingJob?.lastError, document?.warningsJson) : null),
     documentId: document?.id ?? null,
     previewUrl: previewAvailable ? `/api/invoices/${invoice.id}/file` : null,
-  });
+  }, { headers: { "Cache-Control": "private, no-store" } });
 }
 
 export async function PATCH(
