@@ -73,6 +73,7 @@ export const metadata: Metadata = {
 const organizationJsonLd = {
   "@context": "https://schema.org",
   "@type": "Organization",
+  "@id": `${SITE_URL}#organization`,
   name: "Slikaj Račun",
   legalName: "Sport Group d.o.o.",
   url: SITE_URL,

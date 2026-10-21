@@ -1,11 +1,9 @@
-"use client";
-import { useState } from "react";
 import Link from "next/link";
+import { OcrLearningLinks } from "@/components/ocr-learning-links";
 import { HomeHero } from "@/components/home-hero";
 import { PAID_PLANS, PLAN_CONFIGS } from "@/lib/plans";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CommercialPlanCheckout } from "@/components/commercial-plan-checkout";
 import { CommercialPricingGrid } from "@/components/commercial-pricing-grid";
 import {
   Check,
@@ -33,26 +31,14 @@ const integrations = [
 ];
 
 export default function HomeEn() {
-  const [isYearly, setIsYearly] = useState(false);
-
-  const basicMonthly = PLAN_CONFIGS.basic.monthlyPrice!;
-  const basicYearly  = PLAN_CONFIGS.basic.yearlyPrice!;
-  const proMonthly   = PLAN_CONFIGS.pro.monthlyPrice!;
-  const proYearly    = PLAN_CONFIGS.pro.yearlyPrice!;
-
-  const basicPrice = (isYearly ? basicYearly : basicMonthly).toFixed(2);
-  const proPrice   = (isYearly ? proYearly   : proMonthly).toFixed(2);
-  const basicMonthlySavings = (basicMonthly * 12 - basicYearly).toFixed(2);
-  const proMonthlySavings   = (proMonthly * 12 - proYearly).toFixed(2);
-
   const softwareJsonLd = {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
     name: "Slikaj Račun",
     applicationCategory: "BusinessApplication",
-    operatingSystem: "Web, iOS, Android",
+    operatingSystem: "Web",
     description:
-      "Photograph a paper invoice and send it to your accounting software's email in one click. Works with Minimax, Birokrat, Pantheon, SAOP, E-računi and Metakocka.",
+      "AI invoice OCR for photos and PDFs: extract and review fields, split multi-invoice PDFs, then export eSLOG or UBL or send the original to accounting.",
     url: "https://www.posljiracun.si/en",
     inLanguage: "en",
     offers: PAID_PLANS.map(code => ({
@@ -89,13 +75,13 @@ export default function HomeEn() {
             <Badge className="mb-4 bg-indigo-100 text-indigo-700 hover:bg-indigo-200 border-0">Integrations</Badge>
             <h2 className="text-4xl sm:text-5xl tracking-tight mb-4 font-bold">Works with your accounting program</h2>
             <p className="text-xl text-slate-600 max-w-3xl mx-auto">
-              The app forwards the invoice photo to your program's import email. The OCR work — reading amounts, dates, and suppliers — is done by your accounting program itself.
+              Slikaj Račun extracts invoice fields with AI OCR. Send the original or reviewed structured data through an import method supported by your accounting software.
             </p>
             <div className="mt-6 bg-amber-50 border border-amber-200 rounded-lg p-4 text-left max-w-3xl mx-auto">
               <div className="flex gap-3">
                 <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
                 <p className="text-sm text-amber-900">
-                  Your accounting program must have email-based invoice import with OCR enabled.
+                  Original forwarding needs a receiving email. For structured fields, check the XML or API import supported by your accounting software.
                 </p>
               </div>
             </div>
@@ -186,7 +172,7 @@ export default function HomeEn() {
                   <CardTitle>3. One click — sent</CardTitle>
                 </div>
                 <CardDescription>
-                  Tap Send. The invoice arrives at your program's email in seconds. OCR happens in your accounting program — not on our servers.
+                  Review the OCR fields, approve the document and send the original or structured export to your configured accounting destination. Check delivery status afterwards.
                 </CardDescription>
               </CardHeader>
             </Card>
@@ -222,7 +208,7 @@ export default function HomeEn() {
                 </div>
                 <CardTitle>📧 Forwarded to your program</CardTitle>
                 <CardDescription>
-                  The app delivers the photo to the email assigned by your accounting software. OCR is performed by the program — Minimax, Birokrat, Pantheon and others.
+                  The app provides AI OCR, review and delivery of original documents, XML or API data. Confirm the receiving program’s supported import method.
                 </CardDescription>
               </CardHeader>
             </Card>
@@ -256,7 +242,7 @@ export default function HomeEn() {
                 <div className="w-12 h-12 bg-teal-100 rounded-lg flex items-center justify-center mb-4">
                   <Bot className="w-6 h-6 text-teal-600" />
                 </div>
-                <CardTitle>🤖 OCR in your program</CardTitle>
+                <CardTitle>🤖 AI invoice OCR</CardTitle>
                 <CardDescription>
                   We don't read the invoice — your accounting program does. That means the data stays in their certified pipeline.
                 </CardDescription>
@@ -278,6 +264,8 @@ export default function HomeEn() {
         </div>
       </section>
 
+      <OcrLearningLinks locale="en" />
+
       {/* Current commercial pricing */}
       <section id="cenik" className="bg-gradient-to-b from-slate-50 to-white py-24">
         <div className="mx-auto mb-10 max-w-7xl px-4 text-center sm:px-6 lg:px-8">
@@ -290,184 +278,7 @@ export default function HomeEn() {
         <CommercialPricingGrid locale="en" compact />
       </section>
 
-      {/* Legacy pricing kept temporarily for backwards-compatible checkout code. */}
-      <section id="legacy-cenik" className="hidden" aria-hidden="true">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <Badge className="mb-4 bg-blue-100 text-blue-700 hover:bg-blue-200 border-0">Pricing</Badge>
-            <h2 className="text-4xl sm:text-5xl tracking-tight mb-4 font-bold">Start today</h2>
-            <p className="text-xl text-slate-600 max-w-2xl mx-auto mb-6">
-              Save valuable time on manual invoice entry. One click replaces minutes of typing.
-            </p>
 
-            <div className="flex items-center justify-center gap-4 mb-8">
-              <span className={`text-lg ${!isYearly ? "font-semibold text-slate-900" : "text-slate-600"}`}>
-                Monthly
-              </span>
-              <button
-                onClick={() => setIsYearly(!isYearly)}
-                className={`relative inline-flex h-8 w-16 items-center rounded-full transition-colors ${
-                  isYearly ? "bg-blue-600" : "bg-slate-300"
-                }`}
-                aria-label="Toggle pricing period"
-              >
-                <span
-                  className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${
-                    isYearly ? "translate-x-9" : "translate-x-1"
-                  }`}
-                />
-              </button>
-              <span className={`text-lg ${isYearly ? "font-semibold text-slate-900" : "text-slate-600"}`}>
-                Yearly
-              </span>
-              {isYearly && (
-                <Badge className="bg-green-100 text-green-700 border-green-200 border">
-                  Save 20%
-                </Badge>
-              )}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-            {/* Free */}
-            <Card className="border-slate-200">
-              <CardHeader>
-                <CardTitle className="text-2xl">Free</CardTitle>
-                <CardDescription>For occasional use</CardDescription>
-                <div className="mt-4">
-                  <span className="text-5xl font-bold">€0</span>
-                  <span className="text-slate-600"> / month</span>
-                </div>
-                <p className="text-sm text-slate-500 mt-1">Free forever</p>
-              </CardHeader>
-              <CardContent>
-                <Link
-                  href="/sign-up"
-                  className="w-full mb-6 flex items-center justify-center px-4 py-2.5 rounded-lg border border-slate-300 hover:bg-slate-50 text-sm font-semibold transition-colors"
-                >
-                  Start free →
-                </Link>
-                <ul className="space-y-3">
-                  {[
-                    { text: "Up to 3 invoices per month", ok: true },
-                    { text: "1 company", ok: true },
-                    { text: "Send to any email", ok: true },
-                    { text: "Works with Minimax, Birokrat, Pantheon…", ok: true },
-                    { text: "Sent-invoice archive with preview", ok: true },
-                    { text: "Unlimited invoice sending", ok: false },
-                    { text: "Multiple companies", ok: false },
-                  ].map((f) => (
-                    <li key={f.text} className="flex items-start gap-2">
-                      {f.ok
-                        ? <Check className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                        : <X className="w-5 h-5 text-slate-300 flex-shrink-0 mt-0.5" />}
-                      <span className={`text-sm ${f.ok ? "" : "text-slate-400"}`}>{f.text}</span>
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
-
-            {/* Basic */}
-            <Card className="border-2 border-blue-600 shadow-xl relative">
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                <Badge className="bg-blue-600 text-white border-0">Most popular</Badge>
-              </div>
-              <CardHeader>
-                <CardTitle className="text-2xl">Basic</CardTitle>
-                <CardDescription>
-                  {isYearly ? "Yearly renewal, cancel anytime" : "Monthly renewal, cancel anytime"}
-                </CardDescription>
-                <div className="mt-4">
-                  <span className="text-5xl font-bold">€{basicPrice}</span>
-                  <span className="text-slate-600"> / {isYearly ? "year" : "month"}</span>
-                </div>
-                {isYearly && (
-                  <p className="text-sm text-green-600 mt-2">Save €{basicMonthlySavings} per year</p>
-                )}
-              </CardHeader>
-              <CardContent>
-                <CommercialPlanCheckout
-                  tier="basic"
-                  billing={isYearly ? "yearly" : "monthly"}
-                  className="w-full mb-6 bg-blue-600 hover:bg-blue-700 text-white"
-                >
-                  Start 7-day trial →
-                </CommercialPlanCheckout>
-                <ul className="space-y-3">
-                  {[
-                    "Unlimited invoice sending",
-                    "Send to any email",
-                    "Works with Minimax, Birokrat, Pantheon, SAOP, E-računi, Metakocka",
-                    "OCR in your accounting program",
-                    "Sent-invoice archive with preview",
-                    "Real-time delivery status",
-                    "JPG, PNG, WEBP and PDF support",
-                    "Mobile-optimised app",
-                    "1 company",
-                  ].map((feat) => (
-                    <li key={feat} className="flex items-start gap-2">
-                      <Check className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                      <span className="text-sm">{feat}</span>
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
-
-            {/* Pro */}
-            <Card className="border-slate-200 relative">
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                <Badge className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white border-0">
-                  🏢 PRO · For accountants
-                </Badge>
-              </div>
-              <CardHeader>
-                <CardTitle className="text-2xl">PRO</CardTitle>
-                <CardDescription>
-                  {isYearly ? "Yearly renewal, cancel anytime" : "Monthly renewal, cancel anytime"}
-                </CardDescription>
-                <div className="mt-4">
-                  <span className="text-5xl font-bold">€{proPrice}</span>
-                  <span className="text-slate-600"> / {isYearly ? "year" : "month"}</span>
-                </div>
-                {isYearly && (
-                  <p className="text-sm text-green-600 mt-2">Save €{proMonthlySavings} per year</p>
-                )}
-              </CardHeader>
-              <CardContent>
-                <CommercialPlanCheckout
-                  tier="pro"
-                  billing={isYearly ? "yearly" : "monthly"}
-                  className="w-full mb-6 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
-                >
-                  Start 7-day trial →
-                </CommercialPlanCheckout>
-                <ul className="space-y-3">
-                  {[
-                    "Everything in Basic",
-                    "Manage unlimited companies",
-                    "Separate OCR email per company",
-                    "Quick company switching when scanning",
-                    "One account — all your companies",
-                    "Archive separated by company",
-                    "Priority support",
-                  ].map((feat, i) => (
-                    <li key={feat} className="flex items-start gap-2">
-                      <Check className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                      <span className="text-sm">{i === 0 ? <strong>{feat}</strong> : feat}</span>
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
-          </div>
-
-          <p className="text-center mt-8 text-slate-600">
-            No hidden fees · No lock-in · Cancel anytime
-          </p>
-        </div>
-      </section>
     </div>
   );
 }

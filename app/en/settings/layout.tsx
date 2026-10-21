@@ -1,1 +1,3 @@
+import { privateMetadata } from "@/lib/seo";
+export const metadata = privateMetadata;
 import type{ReactNode}from"react";import{OcrUsagePanel}from"@/components/ocr-usage-panel";export default function SettingsLayout({children}:{children:ReactNode}){return <><OcrUsagePanel locale="en"/>{children}</>}

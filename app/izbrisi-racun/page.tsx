@@ -1,13 +1,13 @@
 import { Badge } from "@/components/ui/badge";
 import { DeleteAccountForm } from "@/components/delete-account-form";
-import { pageMetadata } from "@/lib/seo";
+import { pageMetadata, privateMetadata } from "@/lib/seo";
 
-export const metadata = pageMetadata({
+export const metadata = { ...pageMetadata({
   title: "Izbris uporabniškega računa",
   description:
     "Trajno izbrišite svoj uporabniški račun in vse povezane podatke (poslane račune, podjetja, e-naslove). Skladno z GDPR in zahtevami Google Play.",
   slug: "izbrisi-racun",
-});
+}), ...privateMetadata };
 
 export default function IzbrisiRacunPage() {
   return (

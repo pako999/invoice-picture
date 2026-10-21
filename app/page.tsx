@@ -1,12 +1,10 @@
-"use client";
-import { useState } from "react";
 import Link from "next/link";
+import { OcrLearningLinks } from "@/components/ocr-learning-links";
 import { HomeHero } from "@/components/home-hero";
 import { HomeBusinessHero } from "@/components/home-business-hero";
 import { PAID_PLANS, PLAN_CONFIGS } from "@/lib/plans";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CommercialPlanCheckout } from "@/components/commercial-plan-checkout";
 import { CommercialPricingGrid } from "@/components/commercial-pricing-grid";
 import {
   Check,
@@ -33,27 +31,14 @@ const integrations = [
 ];
 
 export default function Home() {
-  const [isYearly, setIsYearly] = useState(false);
-
-  // Use the same prices as the checkout and the visible pricing grid.
-  const basicMonthly = PLAN_CONFIGS.basic.monthlyPrice!;
-  const basicYearly  = PLAN_CONFIGS.basic.yearlyPrice!;
-  const proMonthly   = PLAN_CONFIGS.pro.monthlyPrice!;
-  const proYearly    = PLAN_CONFIGS.pro.yearlyPrice!;
-
-  const basicPrice = (isYearly ? basicYearly : basicMonthly).toFixed(2);
-  const proPrice   = (isYearly ? proYearly   : proMonthly).toFixed(2);
-  const basicMonthlySavings = (basicMonthly * 12 - basicYearly).toFixed(2);
-  const proMonthlySavings   = (proMonthly * 12 - proYearly).toFixed(2);
-
   const softwareJsonLd = {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
     name: "Slikaj Račun",
     applicationCategory: "BusinessApplication",
-    operatingSystem: "Web, iOS, Android",
+    operatingSystem: "Web",
     description:
-      "Fotografiraj papirnat račun in ga z enim klikom pošlji na email računovodskega programa. Deluje z Minimax, Birokrat, Pantheon, SAOP, E-računi in Metakocka.",
+      "AI OCR računov iz fotografij in PDF-jev: zajem, pregled podatkov, razdelitev PDF-ja z več računi ter izvoz eSLOG, UBL ali pošiljanje originala v računovodstvo.",
     url: "https://www.posljiracun.si",
     inLanguage: "sl-SI",
     offers: PAID_PLANS.map(code => ({
@@ -91,13 +76,13 @@ export default function Home() {
             <Badge className="mb-4 bg-indigo-100 text-indigo-700 hover:bg-indigo-200 border-0">Integracije</Badge>
             <h2 className="text-4xl sm:text-5xl tracking-tight mb-4 font-bold">Deluje z vašim programom</h2>
             <p className="text-xl text-slate-600 max-w-3xl mx-auto">
-              App posreduje sliko računa na email vašega programa. OCR obdelavo — branje zneskov, datumov in dobaviteljev — opravi vaš računovodski program.
+              Slikaj Račun z AI OCR prebere podatke iz računa. Original ali pregledane podatke nato pošljete v računovodski proces v formatu, ki ga vaš program podpira.
             </p>
             <div className="mt-6 bg-amber-50 border border-amber-200 rounded-lg p-4 text-left max-w-3xl mx-auto">
               <div className="flex gap-3">
                 <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
                 <p className="text-sm text-amber-900">
-                  V programu mora biti vklopljena funkcija sprejemanja računov po emailu z OCR obdelavo.
+                  Za pošiljanje originala potrebujete ustrezen prejemni email. Za strukturirane podatke preverite podprt XML ali API uvoz računovodskega programa.
                 </p>
               </div>
             </div>
@@ -188,7 +173,7 @@ export default function Home() {
                   <CardTitle>3. En klik — poslano</CardTitle>
                 </div>
                 <CardDescription>
-                  Pritisnite Pošlji. Račun prispe na email vašega programa v sekundi. OCR obdelava poteka v programu — ne pri nas.
+                  Preverite OCR podatke in potrdite dokument. Original ali strukturirani izvoz pošljite v nastavljeno računovodstvo ter preverite stanje dostave.
                 </CardDescription>
               </CardHeader>
             </Card>
@@ -224,7 +209,7 @@ export default function Home() {
                 </div>
                 <CardTitle>📧 Posredovanje na vaš program</CardTitle>
                 <CardDescription>
-                  App pošlje sliko na email, ki ga nastavi vaš računovodski program. OCR obdelavo opravi program — Minimax, Birokrat, Pantheon in drugi.
+                  Aplikacija omogoča lastni AI OCR, pregled podatkov in dostavo originala, XML ali podatkov na API. Podprt način uvoza preverite v svojem računovodskem programu.
                 </CardDescription>
               </CardHeader>
             </Card>
@@ -244,6 +229,8 @@ export default function Home() {
         </div>
       </section>
 
+      <OcrLearningLinks locale="sl" />
+
       {/* Current commercial pricing */}
       <section id="cenik" className="bg-gradient-to-b from-slate-50 to-white py-24">
         <div className="mx-auto mb-10 max-w-7xl px-4 text-center sm:px-6 lg:px-8">
@@ -256,185 +243,7 @@ export default function Home() {
         <CommercialPricingGrid locale="sl" compact />
       </section>
 
-      {/* Legacy pricing kept temporarily for backwards-compatible checkout code. */}
-      <section id="legacy-cenik" className="hidden" aria-hidden="true">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <Badge className="mb-4 bg-blue-100 text-blue-700 hover:bg-blue-200 border-0">Cenik</Badge>
-            <h2 className="text-4xl sm:text-5xl tracking-tight mb-4 font-bold">Začnite danes</h2>
-            <p className="text-xl text-slate-600 max-w-2xl mx-auto mb-6">
-              Prihranite dragoceni čas pri ročnem vnosu računov. En klik nadomesti minute tipkanja.
-            </p>
 
-            {/* Pricing Toggle */}
-            <div className="flex items-center justify-center gap-4 mb-8">
-              <span className={`text-lg ${!isYearly ? "font-semibold text-slate-900" : "text-slate-600"}`}>
-                Mesečno
-              </span>
-              <button
-                onClick={() => setIsYearly(!isYearly)}
-                className={`relative inline-flex h-8 w-16 items-center rounded-full transition-colors ${
-                  isYearly ? "bg-blue-600" : "bg-slate-300"
-                }`}
-                aria-label="Toggle pricing period"
-              >
-                <span
-                  className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${
-                    isYearly ? "translate-x-9" : "translate-x-1"
-                  }`}
-                />
-              </button>
-              <span className={`text-lg ${isYearly ? "font-semibold text-slate-900" : "text-slate-600"}`}>
-                Letno
-              </span>
-              {isYearly && (
-                <Badge className="bg-green-100 text-green-700 border-green-200 border">
-                  -20% prihranek
-                </Badge>
-              )}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-            {/* Free */}
-            <Card className="border-slate-200">
-              <CardHeader>
-                <CardTitle className="text-2xl">Brezplačen</CardTitle>
-                <CardDescription>Za občasno rabo</CardDescription>
-                <div className="mt-4">
-                  <span className="text-5xl font-bold">0 €</span>
-                  <span className="text-slate-600"> / mesec</span>
-                </div>
-                <p className="text-sm text-slate-500 mt-1">Za vedno brezplačno</p>
-              </CardHeader>
-              <CardContent>
-                <Link
-                  href="/sign-up"
-                  className="w-full mb-6 flex items-center justify-center px-4 py-2.5 rounded-lg border border-slate-300 hover:bg-slate-50 text-sm font-semibold transition-colors"
-                >
-                  Začni brezplačno →
-                </Link>
-                <ul className="space-y-3">
-                  {[
-                    { text: "Do 3 računi na mesec", ok: true },
-                    { text: "1 podjetje", ok: true },
-                    { text: "Pošiljanje na kateri koli email", ok: true },
-                    { text: "Deluje z Minimax, Birokrat, Pantheon…", ok: true },
-                    { text: "Arhiv poslanih računov s predogledom", ok: true },
-                    { text: "Neomejeno pošiljanje računov", ok: false },
-                    { text: "Več podjetij", ok: false },
-                  ].map((f) => (
-                    <li key={f.text} className="flex items-start gap-2">
-                      {f.ok
-                        ? <Check className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                        : <X className="w-5 h-5 text-slate-300 flex-shrink-0 mt-0.5" />}
-                      <span className={`text-sm ${f.ok ? "" : "text-slate-400"}`}>{f.text}</span>
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
-
-            {/* Basic */}
-            <Card className="border-2 border-blue-600 shadow-xl relative">
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                <Badge className="bg-blue-600 text-white border-0">Najbolj priljubljen</Badge>
-              </div>
-              <CardHeader>
-                <CardTitle className="text-2xl">Osnovni</CardTitle>
-                <CardDescription>
-                  {isYearly ? "Letna obnova, kadarkoli odpoveš" : "Mesečna obnova, kadarkoli odpoveš"}
-                </CardDescription>
-                <div className="mt-4">
-                  <span className="text-5xl font-bold">{basicPrice} €</span>
-                  <span className="text-slate-600"> / {isYearly ? "leto" : "mesec"}</span>
-                </div>
-                {isYearly && (
-                  <p className="text-sm text-green-600 mt-2">Prihranek: {basicMonthlySavings} € letno</p>
-                )}
-              </CardHeader>
-              <CardContent>
-                <CommercialPlanCheckout
-                  tier="basic"
-                  billing={isYearly ? "yearly" : "monthly"}
-                  className="w-full mb-6 bg-blue-600 hover:bg-blue-700 text-white"
-                >
-                  Začni 7-dnevno preizkušnjo →
-                </CommercialPlanCheckout>
-                <ul className="space-y-3">
-                  {[
-                    "Neomejeno pošiljanje računov",
-                    "Pošiljanje na kateri koli email",
-                    "Deluje z Minimax, Birokrat, Pantheon, SAOP, E-računi, Metakocka",
-                    "OCR obdelava v vašem računovodskem programu",
-                    "Arhiv poslanih računov s predogledom",
-                    "Status pošiljanja v realnem času",
-                    "Podpora JPG, PNG, WEBP in PDF",
-                    "Mobilno optimizirana aplikacija",
-                    "1 podjetje",
-                  ].map((feat) => (
-                    <li key={feat} className="flex items-start gap-2">
-                      <Check className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                      <span className="text-sm">{feat}</span>
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
-
-            {/* Pro */}
-            <Card className="border-slate-200 relative">
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                <Badge className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white border-0">
-                  🏢 PRO · Računovodstvo
-                </Badge>
-              </div>
-              <CardHeader>
-                <CardTitle className="text-2xl">PRO</CardTitle>
-                <CardDescription>
-                  {isYearly ? "Letna obnova, kadarkoli odpoveš" : "Mesečna obnova, kadarkoli odpoveš"}
-                </CardDescription>
-                <div className="mt-4">
-                  <span className="text-5xl font-bold">{proPrice} €</span>
-                  <span className="text-slate-600"> / {isYearly ? "leto" : "mesec"}</span>
-                </div>
-                {isYearly && (
-                  <p className="text-sm text-green-600 mt-2">Prihranek: {proMonthlySavings} € letno</p>
-                )}
-              </CardHeader>
-              <CardContent>
-                <CommercialPlanCheckout
-                  tier="pro"
-                  billing={isYearly ? "yearly" : "monthly"}
-                  className="w-full mb-6 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
-                >
-                  Začni 7-dnevno preizkušnjo →
-                </CommercialPlanCheckout>
-                <ul className="space-y-3">
-                  {[
-                    "Vse iz osnovnega paketa",
-                    "Upravljanje neomejeno podjetij",
-                    "Ločen OCR email za vsako podjetje",
-                    "Hitri preklop med podjetji pri skeniranju",
-                    "En račun — vsa podjetja na enem mestu",
-                    "Arhiv računov ločen po podjetjih",
-                    "Prednostna podpora",
-                  ].map((feat, i) => (
-                    <li key={feat} className="flex items-start gap-2">
-                      <Check className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-                      <span className="text-sm">{i === 0 ? <strong>{feat}</strong> : feat}</span>
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
-          </div>
-
-          <p className="text-center mt-8 text-slate-600">
-            Brez skritih stroškov · Brez vezave · Odpoveš kadarkoli
-          </p>
-        </div>
-      </section>
     </div>
   );
 }

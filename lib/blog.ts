@@ -1,9 +1,12 @@
+import { ocrGuides } from "@/lib/ocr-guides";
+
 // Central blog post registry — bilingual (SL primary + EN mirror).
 // Used by blog indexes, sitemap and per-post pages.
 
 export type BlogPost = {
   id: string;
   publishedAt: string;
+  updatedAt?: string;
   coverImage: string;
   slug: string;
   keyword: string;
@@ -22,6 +25,7 @@ export type BlogPost = {
 };
 
 export const posts: BlogPost[] = [
+  ...ocrGuides.map(guide => guide.post),
   {
     id: "accounting-software-slovenia",
     publishedAt: "2026-09-04",
@@ -138,6 +142,7 @@ export const posts: BlogPost[] = [
   },
   {
     id: "best-invoice-scanner-apps",
+    updatedAt: "2026-10-21",
     publishedAt: "2026-05-04",
     coverImage: "https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&w=1600&q=80",
     slug: "najboljse-aplikacije-za-skeniranje-racunov",

@@ -1,3 +1,5 @@
+import { privateMetadata } from "@/lib/seo";
+export const metadata = privateMetadata;
 import "./review-route.css";
 import { SlovenianWarningTranslator } from "./sl-warning-translator";
 

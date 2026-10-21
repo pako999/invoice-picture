@@ -1,3 +1,4 @@
+import { PLAN_CONFIGS, formatEur } from "@/lib/plans";
 // Slovenian dictionary — source of truth for SL content.
 // Keep in sync with en.ts (TypeScript will yell if a key is missing).
 
@@ -59,9 +60,9 @@ const sl = {
     upgrade: "Nadgradi naročnino",
   },
   home: {
-    metaTitle: "Slikaj Račun — Pošlji račun z enim klikom",
+    metaTitle: "OCR računov in skeniranje računov | Slikaj Račun",
     metaDescription:
-      "Fotografiraj papirnat račun in ga pošlji na email računovodskega programa v sekundi. Deluje z Minimax, Birokrat, Pantheon, SAOP, E-računi in Metakocka in ostali OCR programi.",
+      "Skenirajte račune s telefonom ali naložite PDF. AI OCR prebere podatke, razdeli več računov in omogoča pregled ter izvoz XML eSLOG ali UBL za računovodstvo.",
     heroBadge: "Za slovenske podjetnike",
     heroTitle1: "Pošlji račun v računovodski program",
     heroTitle2: "z enim klikom",
@@ -110,7 +111,7 @@ const sl = {
     sectionPricingFreeFeature3: "Pošiljanje na kateri koli email",
     sectionPricingFreeFeature4: "Arhiv poslanih računov",
     sectionPricingBasicTitle: "Osnovni",
-    sectionPricingBasicPrice: "6,99 €",
+    sectionPricingBasicPrice: formatEur(PLAN_CONFIGS.basic.monthlyPrice!, "sl"),
     sectionPricingBasicPer: "/mesec",
     sectionPricingBasicFeature1: "Neomejeno število računov",
     sectionPricingBasicFeature2: "1 podjetje",
@@ -118,7 +119,7 @@ const sl = {
     sectionPricingBasicFeature4: "Mobilna aplikacija",
     sectionPricingProTitle: "PRO",
     sectionPricingProBadge: "Najbolj priljubljen",
-    sectionPricingProPrice: "17,99 €",
+    sectionPricingProPrice: formatEur(PLAN_CONFIGS.pro.monthlyPrice!, "sl"),
     sectionPricingProPer: "/mesec",
     sectionPricingProFeature1: "Vse iz osnovnega paketa",
     sectionPricingProFeature2: "Več podjetij",

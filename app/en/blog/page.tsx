@@ -5,9 +5,9 @@ import { pageMetadata } from "@/lib/seo";
 import { posts } from "@/lib/blog";
 
 export const metadata = pageMetadata({
-  title: "Blog — guides for sending invoices to accounting software",
+  title: "Blog: invoice scanning, OCR and PDF guides",
   description:
-    "Practical guides for Minimax, Birokrat, Pantheon and other Slovenian accounting programs. OCR, email import, app comparisons — all in one place.",
+    "Practical guides to phone invoice scanning, OCR review, multi-invoice PDF splitting, eSLOG XML exports and accounting imports in Slovenia.",
   slug: "blog",
   locale: "en",
 });
@@ -27,6 +27,7 @@ const blogJsonLd = {
     image: p.coverImage,
     url: `https://www.posljiracun.si/en/blog/${p.slugEn}`,
     datePublished: p.publishedAt,
+    dateModified: p.updatedAt ?? p.publishedAt,
     keywords: p.keywordEn,
     inLanguage: "en",
   })),
@@ -55,7 +56,7 @@ export default function BlogIndex() {
         <div className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-24 sm:py-32 text-center">
           <Badge className="mb-5 bg-white/15 backdrop-blur text-white border-white/30 hover:bg-white/20">Blog</Badge>
           <h1 className="text-4xl sm:text-5xl lg:text-6xl tracking-tight mb-6 font-bold text-white">
-            Guides for sending invoices to your accounting software
+            Invoice scanning and OCR guides
           </h1>
           <p className="text-lg sm:text-xl text-slate-100 max-w-3xl mx-auto leading-relaxed">
             Practical tips for Minimax, Birokrat, Pantheon and other Slovenian programs — OCR, email import, time saved.

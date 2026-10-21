@@ -1,3 +1,4 @@
+import { OcrLearningLinks } from "@/components/ocr-learning-links";
 import Link from "next/link";
 import { CheckCircle2, FileSearch, Languages, ShieldCheck, Workflow, ArrowRight } from "lucide-react";
 import { pageMetadata } from "@/lib/seo";
@@ -122,6 +123,7 @@ export default function OcrRacunovPage() {
           <Link href="/sign-up" className="mt-5 inline-flex items-center gap-2 rounded-xl bg-white px-5 py-3 font-bold text-blue-800">Ustvari račun <ArrowRight className="h-4 w-4" /></Link>
         </div>
       </article>
+      <OcrLearningLinks locale="sl" />
     </main>
   );
 }

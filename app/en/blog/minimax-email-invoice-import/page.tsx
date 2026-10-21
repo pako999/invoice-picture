@@ -1,17 +1,11 @@
 import Link from "next/link";
-import { pageMetadata } from "@/lib/seo";
+import { blogMetadata } from "@/lib/seo";
 import { posts } from "@/lib/blog";
 import { BlogCover } from "@/components/blog-cover";
 
 const post = posts.find((p) => p.slugEn === "minimax-email-invoice-import")!;
 
-export const metadata = pageMetadata({
-  title: post.titleEn,
-  description: post.descriptionEn,
-  slug: `blog/${post.slug}`,
-  locale: "en",
-  altPaths: { sl: `/blog/${post.slug}`, en: `/en/blog/${post.slugEn}` },
-});
+export const metadata = blogMetadata(post, "en");
 
 const articleJsonLd = {
   "@context": "https://schema.org",

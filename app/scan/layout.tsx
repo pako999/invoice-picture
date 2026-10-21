@@ -1,1 +1,3 @@
+import { privateMetadata } from "@/lib/seo";
+export const metadata = privateMetadata;
 import type{ReactNode}from"react";import{InvoiceReviewShortcut}from"@/components/invoice-review-shortcut";import{OcrUsagePanel}from"@/components/ocr-usage-panel";export default function ScanLayout({children}:{children:ReactNode}){return <><InvoiceReviewShortcut locale="sl"/><OcrUsagePanel locale="sl"/>{children}</>}

@@ -1,13 +1,11 @@
 import { pageMetadata } from "@/lib/seo";
+import { PLAN_CONFIGS, formatEur } from "@/lib/plans";
 
 export const metadata = pageMetadata({
-  title: "Pricing",
-  description:
-    "Basic at €6.99 / month, PRO Accounting at €17.99 / month. -20% yearly. No lock-in, cancel anytime. Unlimited photographs and sends.",
+  title: "Invoice OCR pricing: businesses and accounting firms",
+  description: `Basic: ${formatEur(PLAN_CONFIGS.basic.monthlyPrice!, "en")}/month for ${PLAN_CONFIGS.basic.ocrPagesMonthly} OCR pages. PRO: ${formatEur(PLAN_CONFIGS.pro.monthlyPrice!, "en")}/month for ${PLAN_CONFIGS.pro.ocrPagesMonthly} pages. Prices exclude VAT. Annual billing: 2 months free.`,
   slug: "cenik",
   locale: "en",
 });
 
-export default function PricingLayout({ children }: { children: React.ReactNode }) {
-  return children;
-}
+export default function PricingLayout({ children }: { children: React.ReactNode }) { return children; }

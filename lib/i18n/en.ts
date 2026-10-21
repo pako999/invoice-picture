@@ -1,3 +1,4 @@
+import { PLAN_CONFIGS, formatEur } from "@/lib/plans";
 // English dictionary. Mirror of sl.ts — TypeScript ensures parity.
 import type { Dict } from "./sl";
 
@@ -59,9 +60,9 @@ const en: Dict = {
     upgrade: "Upgrade subscription",
   },
   home: {
-    metaTitle: "Slikaj Račun — Send invoices in one click",
+    metaTitle: "Invoice OCR and Scanning in Slovenia | Slikaj Račun",
     metaDescription:
-      "Photograph a paper invoice and send it to your accounting software's email in seconds. Works with Minimax, Birokrat, Pantheon, SAOP, E-računi and Metakocka.",
+      "Scan invoices with your phone or upload a PDF. AI extracts invoice fields, splits multi-invoice PDFs and supports review, eSLOG and UBL exports for accounting.",
     heroBadge: "For Slovenian businesses",
     heroTitle1: "Send invoices to your accounting software",
     heroTitle2: "in one click",
@@ -110,7 +111,7 @@ const en: Dict = {
     sectionPricingFreeFeature3: "Send to any email",
     sectionPricingFreeFeature4: "Sent-invoice archive",
     sectionPricingBasicTitle: "Basic",
-    sectionPricingBasicPrice: "€6.99",
+    sectionPricingBasicPrice: formatEur(PLAN_CONFIGS.basic.monthlyPrice!, "en"),
     sectionPricingBasicPer: "/month",
     sectionPricingBasicFeature1: "Unlimited invoices",
     sectionPricingBasicFeature2: "1 company",
@@ -118,7 +119,7 @@ const en: Dict = {
     sectionPricingBasicFeature4: "Mobile app",
     sectionPricingProTitle: "PRO",
     sectionPricingProBadge: "Most popular",
-    sectionPricingProPrice: "€17.99",
+    sectionPricingProPrice: formatEur(PLAN_CONFIGS.pro.monthlyPrice!, "en"),
     sectionPricingProPer: "/month",
     sectionPricingProFeature1: "Everything in Basic",
     sectionPricingProFeature2: "Multiple companies",

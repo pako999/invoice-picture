@@ -24,7 +24,7 @@ export function HomeHero({ locale = "sl" }: { locale?: "sl" | "en" }) {
       <div className="relative mx-auto grid max-w-7xl items-center gap-10 px-4 py-12 sm:px-6 sm:py-20 lg:grid-cols-[1.05fr_1fr] lg:gap-16 lg:px-8">
         <div>
           <p className="mb-5 text-sm font-semibold tracking-wide text-blue-200">{en ? "FROM INVOICE TO ACCOUNTING" : "OD RAČUNA DO RAČUNOVODSTVA"}</p>
-          <h1 className="max-w-2xl text-4xl font-extrabold leading-[1.12] tracking-tight sm:text-5xl xl:text-6xl">{en ? "Less typing. More time for your business." : "Manj prepisovanja računov. Več časa za vaš posel."}</h1>
+          <h1 className="max-w-2xl text-4xl font-extrabold leading-[1.12] tracking-tight sm:text-5xl xl:text-6xl">{en ? "Invoice scanning and OCR. Less manual entry." : "Skeniranje računov in OCR brez ročnega prepisovanja."}</h1>
           <p className="mt-6 max-w-xl text-lg leading-relaxed text-slate-200">{en ? "Take a photo or upload a PDF. AI reads the invoice, you check the details and send it to accounting." : "Slikajte račun ali naložite PDF. AI prebere podatke, vi jih preverite in račun pošljete v računovodstvo."}</p>
           <div className="mt-7 flex flex-col gap-3 sm:flex-row">
             <Link href="/scan" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-blue-500 px-6 py-3 font-bold text-white transition hover:bg-blue-400">{en ? "Try for free" : "Preizkusite brezplačno"}<ArrowRight aria-hidden="true" className="h-4 w-4" /></Link>

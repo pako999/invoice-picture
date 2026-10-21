@@ -1,13 +1,14 @@
 import { Badge } from "@/components/ui/badge";
 import { DeleteAccountForm } from "@/components/delete-account-form";
-import { pageMetadata } from "@/lib/seo";
+import { pageMetadata, privateMetadata } from "@/lib/seo";
 
-export const metadata = pageMetadata({
+export const metadata = { ...pageMetadata({
   title: "Delete your account",
   description:
     "Permanently delete your account and all related data (sent invoices, companies, emails). GDPR-compliant and meets Google Play account-deletion requirements.",
   slug: "izbrisi-racun",
-});
+  locale: "en",
+}), ...privateMetadata };
 
 export default function DeleteAccountPage() {
   return (

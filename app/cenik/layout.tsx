@@ -1,11 +1,10 @@
 import { pageMetadata } from "@/lib/seo";
+import { PLAN_CONFIGS, formatEur } from "@/lib/plans";
 
 export const metadata = pageMetadata({
-  title: "Cenik",
-  description: "Osnovno za 6.99 € / mesec, PRO Računovodstvo za 17.99 € / mesec. Letno -20%. Brez vezave, odpoveš kadarkoli. Neomejeno fotografij in pošiljanj.",
+  title: "Cenik OCR računov za podjetnike in računovodstva",
+  description: `Osnovni: ${formatEur(PLAN_CONFIGS.basic.monthlyPrice!)} za ${PLAN_CONFIGS.basic.ocrPagesMonthly} OCR strani/mesec. PRO: ${formatEur(PLAN_CONFIGS.pro.monthlyPrice!)} za ${PLAN_CONFIGS.pro.ocrPagesMonthly} strani/mesec. Brez DDV. Letno 2 meseca brezplačno.`,
   slug: "cenik",
 });
 
-export default function CenikLayout({ children }: { children: React.ReactNode }) {
-  return children;
-}
+export default function PricingLayout({ children }: { children: React.ReactNode }) { return children; }

@@ -1,17 +1,11 @@
 import Link from "next/link";
-import { pageMetadata } from "@/lib/seo";
+import { blogMetadata } from "@/lib/seo";
 import { posts } from "@/lib/blog";
 import { BlogCover } from "@/components/blog-cover";
 
 const post = posts.find((p) => p.slugEn === "best-invoice-scanner-apps-slovenia")!;
 
-export const metadata = pageMetadata({
-  title: post.titleEn,
-  description: post.descriptionEn,
-  slug: `blog/${post.slug}`,
-  locale: "en",
-  altPaths: { sl: `/blog/${post.slug}`, en: `/en/blog/${post.slugEn}` },
-});
+export const metadata = blogMetadata(post, "en");
 
 const faq = [
   ["What should I look for in an invoice scanner app?", "It depends on the goal. If you only need a clean PDF, a scanner app is enough. If you want accounting automation, look for invoice OCR, field validation and a reliable way to send data into your accounting workflow."],
@@ -27,7 +21,7 @@ const articleJsonLd = {
   description: post.descriptionEn,
   image: post.coverImage,
   datePublished: post.publishedAt,
-  dateModified: "2026-09-17",
+  dateModified: post.updatedAt ?? post.publishedAt,
   inLanguage: "en",
   keywords: post.keywordEn,
   author: { "@type": "Organization", name: "Slikaj Račun" },
@@ -79,8 +73,8 @@ export default function Page() {
           </ul>
           <p>See the dedicated <Link href="/en/invoice-ocr-slovenia">Invoice OCR in Slovenia</Link> page for the complete workflow.</p>
 
-          <h2>2. Microsoft Lens: strong PDF capture, manual accounting workflow</h2>
-          <p>Microsoft Lens is useful when you need a clean scan. It handles cropping and perspective correction well, but it is not an accounting workflow by itself. You still need to decide where the document goes and how invoice data is entered into your accounting system.</p>
+          <h2>2. Microsoft Lens is retired: choose a supported scanning workflow</h2>
+          <p>Microsoft Lens stopped creating new scans on March 9, 2026. Microsoft points users to OneDrive scanning as an alternative. For a new workflow, check a currently supported scanner or browser-based capture. See the <a href="https://support.microsoft.com/en-gb/lens/retirement-of-microsoft-lens" target="_blank" rel="noopener noreferrer">official Microsoft retirement notice</a>.</p>
 
           <h2>3. Adobe Scan: high-quality general document scanning</h2>
           <p>Adobe Scan is a capable document scanner and works well when PDF quality is the main requirement. For Slovenian accounting operations, the remaining question is still how the document and its structured data reach your accounting process.</p>

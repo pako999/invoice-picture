@@ -2,6 +2,8 @@ import type { MetadataRoute } from "next";
 
 const SITE_URL = "https://www.posljiracun.si";
 
+const privateRoutes = ["/api/", "/scan", "/invoices", "/settings", "/bulk-invoices", "/invoice-review", "/admin", "/en/scan", "/en/invoices", "/en/settings", "/en/bulk-invoices", "/en/invoice-review"];
+
 const aiBots = [
   // OpenAI
   "GPTBot",
@@ -38,12 +40,12 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: "*",
         allow: "/",
-        disallow: ["/api/", "/scan", "/invoices", "/settings"],
+        disallow: privateRoutes,
       },
       ...aiBots.map((userAgent) => ({
         userAgent,
         allow: "/",
-        disallow: ["/api/", "/scan", "/invoices", "/settings"],
+        disallow: privateRoutes,
       })),
     ],
     sitemap: `${SITE_URL}/sitemap.xml`,

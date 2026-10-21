@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import type { BlogPost } from "@/lib/blog";
 import { localeUrl, type Locale } from "@/lib/i18n/config";
 
 export const SITE_URL = "https://www.posljiracun.si";
@@ -53,3 +54,29 @@ export function pageMetadata({ title, description, slug, locale = "sl", altPaths
     },
   };
 }
+
+
+export function blogMetadata(post: BlogPost, locale: Locale = "sl"): Metadata {
+  const en = locale === "en";
+  const base = pageMetadata({
+    title: en ? post.titleEn : post.title,
+    description: en ? post.descriptionEn : post.description,
+    slug: `blog/${post.slug}`, locale,
+    altPaths: { sl: `/blog/${post.slug}`, en: `/en/blog/${post.slugEn}` },
+  });
+  return {
+    ...base,
+    openGraph: {
+      ...base.openGraph, type: "article",
+      publishedTime: post.publishedAt,
+      modifiedTime: post.updatedAt ?? post.publishedAt,
+      images: [{ url: post.coverImage, alt: en ? post.coverAltEn : post.coverAlt }],
+    },
+    twitter: { card: "summary_large_image", title: en ? post.titleEn : post.title, description: en ? post.descriptionEn : post.description, images: [post.coverImage] },
+  };
+}
+
+export const privateMetadata: Metadata = {
+  robots: { index: false, follow: true },
+  alternates: { canonical: null, languages: {} },
+};

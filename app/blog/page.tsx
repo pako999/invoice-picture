@@ -5,9 +5,9 @@ import { pageMetadata } from "@/lib/seo";
 import { posts } from "@/lib/blog";
 
 export const metadata = pageMetadata({
-  title: "Blog — vodniki za pošiljanje računov v računovodstvo",
+  title: "Blog: skeniranje računov, OCR in PDF vodniki",
   description:
-    "Praktični vodniki za Minimax, Birokrat, Pantheon in ostale slovenske računovodske programe. OCR, email uvoz, primerjave aplikacij — vse na enem mestu.",
+    "Praktični vodniki za skeniranje računov s telefonom, OCR, razdelitev PDF-ja in pretvorbo računa v XML eSLOG. Navodila za podjetnike in računovodstva.",
   slug: "blog",
 });
 
@@ -29,6 +29,7 @@ const blogJsonLd = {
     image: p.coverImage,
     url: `https://www.posljiracun.si/blog/${p.slug}`,
     datePublished: p.publishedAt,
+    dateModified: p.updatedAt ?? p.publishedAt,
     keywords: p.keyword,
   })),
 };
@@ -59,10 +60,10 @@ export default function BlogIndex() {
         <div className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-24 sm:py-32 text-center">
           <Badge className="mb-5 bg-white/15 backdrop-blur text-white border-white/30 hover:bg-white/20">Blog</Badge>
           <h1 className="text-4xl sm:text-5xl lg:text-6xl tracking-tight mb-6 font-bold text-white">
-            Vodniki za pošiljanje računov v računovodstvo
+            Vodniki za skeniranje računov in OCR
           </h1>
           <p className="text-lg sm:text-xl text-slate-100 max-w-3xl mx-auto leading-relaxed">
-            Praktični nasveti za Minimax, Birokrat, Pantheon in ostale slovenske računovodske programe — OCR, email uvoz, prihranek časa.
+            Skeniranje s telefonom, razdelitev PDF-ja, pregled OCR podatkov ter izvoz v računovodstvo — praktični postopki za podjetnike in računovodje.
           </p>
         </div>
       </section>

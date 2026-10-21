@@ -39,10 +39,11 @@ export function BlogCover({
         <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight mb-4 text-white leading-tight max-w-3xl">
           {title}
         </h1>
-        <div className="flex items-center gap-3 text-sm text-slate-200">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-200">
           <time dateTime={post.publishedAt}>
             {new Date(post.publishedAt).toLocaleDateString(dateLocale, { day: "2-digit", month: "long", year: "numeric" })}
           </time>
+          {post.updatedAt && post.updatedAt !== post.publishedAt ? <><span>·</span><span>{locale === "en" ? "Updated" : "Posodobljeno"} <time dateTime={post.updatedAt}>{new Date(post.updatedAt).toLocaleDateString(dateLocale)}</time></span></> : null}
           <span>·</span>
           <span>{readingMinutes} {locale === "en" ? "min read" : "min branja"}</span>
         </div>

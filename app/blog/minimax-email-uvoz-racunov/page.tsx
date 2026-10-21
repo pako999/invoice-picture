@@ -1,22 +1,18 @@
 import Link from "next/link";
-import { pageMetadata } from "@/lib/seo";
+import { blogMetadata } from "@/lib/seo";
 import { getPost } from "@/lib/blog";
 import { BlogCover } from "@/components/blog-cover";
 
 const post = getPost("minimax-email-uvoz-racunov")!;
 
-export const metadata = pageMetadata({
-  title: post.title,
-  description: post.description,
-  slug: `blog/${post.slug}`,
-  altPaths: { sl: `/blog/${post.slug}`, en: `/en/blog/${post.slugEn}` },
-});
+export const metadata = blogMetadata(post, "sl");
 
 const articleJsonLd = {
   "@context": "https://schema.org",
   "@type": "Article",
   headline: post.title,
   description: post.description,
+  image: post.coverImage,
   datePublished: post.publishedAt,
   dateModified: post.publishedAt,
   inLanguage: "sl-SI",

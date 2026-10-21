@@ -1,16 +1,11 @@
 import Link from "next/link";
-import { pageMetadata } from "@/lib/seo";
+import { blogMetadata } from "@/lib/seo";
 import { getPost } from "@/lib/blog";
 import { BlogCover } from "@/components/blog-cover";
 
 const post = getPost("najboljse-aplikacije-za-skeniranje-racunov")!;
 
-export const metadata = pageMetadata({
-  title: post.title,
-  description: post.description,
-  slug: `blog/${post.slug}`,
-  altPaths: { sl: `/blog/${post.slug}`, en: `/en/blog/${post.slugEn}` },
-});
+export const metadata = blogMetadata(post, "sl");
 
 const faq = [
   ["Kaj je najbolj pomembno pri aplikaciji za skeniranje računov?", "Odvisno od cilja. Za arhiv je dovolj kakovosten PDF. Za avtomatizacijo računovodstva potrebujete OCR ekstrakcijo, validacijo podatkov in zanesljiv način dostave v računovodski sistem."],
@@ -24,8 +19,9 @@ const articleJsonLd = {
   "@type": "Article",
   headline: post.title,
   description: post.description,
+  image: post.coverImage,
   datePublished: post.publishedAt,
-  dateModified: "2026-09-17",
+  dateModified: post.updatedAt ?? post.publishedAt,
   inLanguage: "sl-SI",
   keywords: post.keyword,
   author: { "@type": "Organization", name: "Slikaj Račun" },
@@ -78,8 +74,8 @@ export default function ComparisonBlog() {
           </ul>
           <p>Podrobnosti so na strani <Link href="/ocr-racunov">OCR računov</Link>.</p>
 
-          <h2>2. Microsoft Lens: dober za PDF, ne za računovodski workflow</h2>
-          <p>Microsoft Lens je uporaben, ko potrebujete čist sken dokumenta. Omogoča crop, popravljanje perspektive in PDF. Vendar scanner sam po sebi ne pripravi računovodskih polj niti ne ve, kateremu podjetju ali računovodskemu procesu mora dokument pripadati.</p>
+          <h2>2. Microsoft Lens je ukinjen: preverite trenutno podprto rešitev</h2>
+          <p>Microsoft Lens od 9. marca 2026 ne omogoča novih skeniranj. Microsoft kot zamenjavo navaja skeniranje v OneDrive. Če iščete nov postopek, preverite trenutno podprto aplikacijo ali zajem neposredno v brskalniku. Več je v <a href="https://support.microsoft.com/sl-si/lens/retirement-of-microsoft-lens" target="_blank" rel="noopener noreferrer">uradnem obvestilu Microsofta</a>.</p>
 
           <h2>3. Adobe Scan: kakovostno skeniranje dokumentov</h2>
           <p>Adobe Scan je močan splošni dokumentni scanner. Primeren je, kadar je glavni cilj izdelava kakovostnega PDF-ja. Za slovenski računovodski proces pa morate še vedno urediti, kam dokument poslati in kako podatke prenesti naprej.</p>
