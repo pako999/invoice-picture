@@ -279,7 +279,7 @@ export function parseInvoiceTextDeterministically(text: string): NormalizedInvoi
     ?.toUpperCase()
     ?? vatNumbers[0]
     ?? null;
-  const buyerVatLabel = match(plainText, /(?:ID\s*(?:št\.?|st\.?)?\s*za\s*DDV\s*(?:kupca|naročnika)?|VAT\s*(?:ID|No\.?)\s*(?:buyer|customer))\s*[:#]?\s*((?:SI\d{8}|HR\d{11}|DE\d{9}|ATU\d{8}|IT\d{11}|FR[A-Z0-9]{2}\d{9}|[A-Z0-9]{7,14}))/i);
+  const buyerVatLabel = match(plainText, /(?:ID\s*(?:št\.?|st\.?)?\s*za\s*DDV\s*(?:kupca|naročnika)|VAT\s*(?:ID|No\.?)\s*(?:buyer|customer))\s*[:#]?\s*((?:SI\d{8}|HR\d{11}|DE\d{9}|ATU\d{8}|IT\d{11}|FR[A-Z0-9]{2}\d{9}|[A-Z0-9]{7,14}))/i);
   invoice.buyer.vatNumber = buyerVatLabel?.toUpperCase()
     ?? vatNumbers.find((value) => value !== invoice.supplier.vatNumber)
     ?? null;
@@ -291,9 +291,9 @@ export function parseInvoiceTextDeterministically(text: string): NormalizedInvoi
   if (!invoice.currency && (invoice.supplier.vatNumber?.startsWith("SI") || invoice.supplier.iban?.startsWith("SI")) && /\b(?:slovenija|slovenia|ljubljana|maribor)\b/i.test(plainText)) {
     invoice.currency = "EUR";
   }
-  invoice.paymentReference = match(plainText, /(?:payment ref(?:erence)?|sklic)\s*[:#]?\s*([A-Z0-9][A-Z0-9\s\-_/]{2,})/i);
+  invoice.paymentReference = match(plainText, /(?:payment ref(?:erence)?|sklic)\s*[:#]?\s*([A-Z0-9][A-Z0-9 \t\-_/]{2,})/i);
   invoice.paymentTerms = match(plainText, /(?:method of payment|payment terms|način plačila|nacin placila|plačilni pogoji|placilni pogoji)\s*[:#]?\s*([^\n|]{2,80})/i);
-  invoice.totals.amountDue = match(plainText, /(?:amount\s+due|za\s+plačilo|za\s+placilo|skupaj\s*(?:\(\s*z\s+ddv\s*\)|z\s+ddv)|total\s+in\s+(?:EUR|USD|GBP))[^\d\-]{0,30}(-?[\d.,]+)\s*(?:EUR|USD|GBP|€|\$|£)?/i)
+  invoice.totals.amountDue = match(plainText, /(?:amount\s+due|za\s+plačilo|za\s+placilo)[^\d\-]{0,30}(-?[\d.,]+)\s*(?:EUR|USD|GBP|€|\$|£)?/i)
     ?? match(plainText, /(?:[$€£]\s*)(-?[\d.,]+)\s*(?:USD|EUR|GBP)?\s*(?:due|paid)/i);
   invoice.totals.grossAmount = match(plainText, /(?:skupaj\s+(?:z\s+(?:vključenim\s+)?ddv|bruto)|(?:total|amount)\s+(?:incl(?:uding)?\.?\s+VAT|including\s+tax)|bruto\s+znesek)[^\d\-\n|]{0,30}(-?[\d.,]+)/i)
     ?? match(plainText, /(?:total\s+amount(?:\s+(?:EUR|USD|GBP))?|grand\s+total|gesamt|totale)[^\d\-\n|]{0,30}(-?[\d.,]+)\s*(?:EUR|USD|GBP|€|\$|£)?/i)
@@ -302,7 +302,8 @@ export function parseInvoiceTextDeterministically(text: string): NormalizedInvoi
   invoice.totals.amountBeforeDiscount = match(plainText, /(?:value\s+before\s+discount|list\s+total|vrednost\s+skupaj)[^\d\-]{0,25}(-?[\d.,]+)/i);
   invoice.totals.netAmount = match(plainText, /(?:net amount|net total|osnova|neto|netto|imponibile|prodajna\s+vrednost)[^\d\-]{0,25}(-?[\d.,]+)/i);
   invoice.totals.discountAmount = match(plainText, /(?:discount|popust|rabat)[^\d\-]{0,25}(-?[\d.,]+)/i);
-  invoice.totals.amountDue ??= invoice.totals.grossAmount;
+  // An invoice total alone does not establish the remaining unpaid balance.
+  // Keep amountDue absent unless it is printed so payment export requires review.
   const supplierLines = lines.filter((line) => !/^(?:\||---\s*PAGE\s+\d+\s*---|!\[|\[.+\]\(.+\)|#+\s*(?:invoice|receipt|ra[čc]un|predra[čc]un)|(?:invoice|receipt)\s+(?:number|no\.?|#))/i.test(line));
   invoice.supplier.name = match(plainText, /(?:company|seller|supplier|dobavitelj)\s*[:#]?\s*([^\n|]{3,120})/i)
     ?? lines.find((line) => /\b(?:d\.?o\.?o\.?|s\.?p\.?|inc\.?|llc|ltd\.?|gmbh|ag|s\.?a\.?)\b/i.test(line) && line.length <= 120)
@@ -373,7 +374,7 @@ function enrichPartyFromNearbyLines(
   if (!party.address) {
     party.address = nearby.find((line) =>
       /\d/.test(line)
-      && /\b(?:ulica|ul\.?|cesta|pot|trg|street|st\.?|road|rd\.?|avenue|ave\.?|gasse|straße|strasse)\b/i.test(line)
+      && /\b(?:ulica|ul\.?|cesta|pot|trg|[A-Za-zČŠŽĆĐčšžćđ]+(?:ova|eva)|street|st\.?|road|rd\.?|avenue|ave\.?|gasse|straße|strasse)\b/i.test(line)
       && !/\b(?:TRR|IBAN|DDV|VAT|telefon|phone|e-?mail)\b/i.test(line)
     ) ?? null;
   }

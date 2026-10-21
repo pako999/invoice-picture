@@ -1,6 +1,8 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
+import { HomeHero } from "@/components/home-hero";
+import { PAID_PLANS, PLAN_CONFIGS } from "@/lib/plans";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CommercialPlanCheckout } from "@/components/commercial-plan-checkout";
@@ -32,12 +34,11 @@ const integrations = [
 export default function Home() {
   const [isYearly, setIsYearly] = useState(false);
 
-  // Prices match the App Store / Play Store tiers; yearly is set
-  // explicitly (not computed) so it lines up with the chosen store tier.
-  const basicMonthly = 9.90;
-  const basicYearly  = 99;
-  const proMonthly   = 29.90;
-  const proYearly    = 299;
+  // Use the same prices as the checkout and the visible pricing grid.
+  const basicMonthly = PLAN_CONFIGS.basic.monthlyPrice!;
+  const basicYearly  = PLAN_CONFIGS.basic.yearlyPrice!;
+  const proMonthly   = PLAN_CONFIGS.pro.monthlyPrice!;
+  const proYearly    = PLAN_CONFIGS.pro.yearlyPrice!;
 
   const basicPrice = (isYearly ? basicYearly : basicMonthly).toFixed(2);
   const proPrice   = (isYearly ? proYearly   : proMonthly).toFixed(2);
@@ -54,32 +55,11 @@ export default function Home() {
       "Fotografiraj papirnat račun in ga z enim klikom pošlji na email računovodskega programa. Deluje z Minimax, Birokrat, Pantheon, SAOP, E-računi in Metakocka.",
     url: "https://www.posljiracun.si",
     inLanguage: "sl-SI",
-    offers: [
-      {
-        "@type": "Offer",
-        name: "Osnovno",
-        price: basicMonthly.toFixed(2),
-        priceCurrency: "EUR",
-        priceSpecification: {
-          "@type": "UnitPriceSpecification",
-          price: basicMonthly.toFixed(2),
-          priceCurrency: "EUR",
-          unitText: "MONTH",
-        },
-      },
-      {
-        "@type": "Offer",
-        name: "PRO Računovodstvo",
-        price: proMonthly.toFixed(2),
-        priceCurrency: "EUR",
-        priceSpecification: {
-          "@type": "UnitPriceSpecification",
-          price: proMonthly.toFixed(2),
-          priceCurrency: "EUR",
-          unitText: "MONTH",
-        },
-      },
-    ],
+    offers: PAID_PLANS.map(code => ({
+      "@type": "Offer", name: PLAN_CONFIGS[code].nameSl,
+      price: PLAN_CONFIGS[code].monthlyPrice!.toFixed(2), priceCurrency: "EUR",
+      priceSpecification: { "@type": "UnitPriceSpecification", price: PLAN_CONFIGS[code].monthlyPrice!.toFixed(2), priceCurrency: "EUR", unitText: "MONTH", valueAddedTaxIncluded: false },
+    })),
     featureList: [
       "Fotografiranje papirnatih računov z mobilno kamero",
       "Pošiljanje na email računovodskega programa z enim klikom",
@@ -100,111 +80,7 @@ export default function Home() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareJsonLd) }}
       />
-      {/* Hero Section */}
-      <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-grid-slate-100 [mask-image:linear-gradient(0deg,transparent,black)] opacity-50" />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-24 relative">
-          {/* 2-col grid on lg+ — text left, phone screenshot right.
-              items-stretch so the image column fills the text-column height */}
-          <div className="grid lg:grid-cols-2 gap-12 items-stretch">
-            <div className="text-center lg:text-left">
-              <Badge className="mb-4 bg-blue-100 text-blue-700 hover:bg-blue-200 border-0">
-                🇸🇮 Narejen za slovensko računovodstvo
-              </Badge>
-              <h1 className="text-5xl sm:text-6xl lg:text-6xl xl:text-7xl tracking-tight mb-6 bg-gradient-to-r from-slate-900 via-blue-800 to-indigo-900 bg-clip-text text-transparent font-bold">
-                Slikaj račun in ga pošlji z enim klikom
-              </h1>
-              <p className="text-xl text-slate-600 mb-6 leading-relaxed">
-                Z enim klikom fotografirate fizični račun, aplikacija pa ga samodejno pošlje na vaš e-mail ali neposredno na OCR e-mail, kjer ga vaš računovodski program obdela naprej.
-              </p>
-              <p className="text-lg text-slate-700 mb-8">
-                Brez ročnega vnosa, brez kompliciranja — <strong>hitro, enostavno in učinkovito</strong>.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-4 lg:justify-start justify-center mb-6">
-                <Link
-                  href="/scan"
-                  className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-lg h-12 px-8 rounded-lg font-medium transition-colors"
-                >
-                  📷 Začni skenirati
-                </Link>
-                <Link
-                  href="/kako-deluje"
-                  className="inline-flex items-center justify-center gap-2 border border-gray-300 bg-white hover:bg-gray-100 text-lg h-12 px-8 rounded-lg font-medium transition-colors"
-                >
-                  Več o aplikaciji
-                </Link>
-              </div>
-
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-left max-w-2xl mx-auto lg:mx-0">
-                <div className="flex gap-3">
-                  <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                  <div className="text-sm text-amber-900">
-                    <strong>Kako poteka obdelava:</strong> Če uporabljate brezplačni paket brez OCR, mora OCR obdelavo omogočati vaš računovodski program. Pri plačljivih OCR paketih račun prebere Slikaj Račun, vi pa podatke samo preverite in izvozite.
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Phone mockup — CSS-built phone frame with simplified app UI */}
-            <div className="relative flex justify-center lg:justify-end items-center">
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-indigo-500/10 to-purple-500/10 blur-3xl rounded-full" />
-              <div className="relative w-[280px] h-[560px] bg-slate-900 rounded-[2.5rem] p-3 shadow-2xl ring-1 ring-slate-800">
-                <div className="absolute top-3 left-1/2 -translate-x-1/2 w-24 h-5 bg-slate-900 rounded-b-2xl z-10" />
-                <div className="w-full h-full bg-white rounded-[2rem] overflow-hidden flex flex-col">
-                  <div className="px-5 pt-10 pb-3">
-                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Slikaj Račun</p>
-                    <h3 className="text-lg font-extrabold text-gray-900 mt-1">Pošlji račun</h3>
-                  </div>
-
-                  <div className="mx-5 flex-1 rounded-2xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center gap-3">
-                    <FileText className="w-12 h-12 text-blue-500" />
-                    <p className="text-xs text-gray-500 font-medium">Povleci ali fotografiraj</p>
-                  </div>
-
-                  <div className="px-5 py-3">
-                    <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Zadeva</div>
-                    <div className="h-9 bg-gray-100 rounded-lg px-3 flex items-center text-xs text-gray-700">Račun</div>
-                  </div>
-
-                  <div className="px-5 pb-5 flex gap-2">
-                    <button className="flex-1 h-11 rounded-xl bg-gray-100 flex items-center justify-center gap-1.5 text-xs font-semibold text-gray-700">
-                      <Camera className="w-4 h-4" />
-                      Fotografiraj
-                    </button>
-                    <button className="flex-1 h-11 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 flex items-center justify-center gap-1.5 text-xs font-bold text-white">
-                      Pošlji
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Process Flow */}
-          <div className="mt-16 relative">
-            <div className="absolute inset-0 bg-gradient-to-t from-blue-600/20 to-transparent blur-3xl" />
-            <div className="relative bg-white rounded-2xl shadow-2xl border border-slate-200 p-8">
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4 md:gap-6">
-                {[
-                  { Icon: FileText, color: "bg-blue-100 text-blue-600", emoji: "🧾", label: "Papirnat račun" },
-                  { Icon: Camera, color: "bg-green-100 text-green-600", emoji: "📱", label: "Fotografiraš" },
-                  { Icon: Send, color: "bg-purple-100 text-purple-600", emoji: "📤", label: "Pošlješ" },
-                  { Icon: Bot, color: "bg-orange-100 text-orange-600", emoji: "🤖", label: "OCR obdela" },
-                  { Icon: CheckCircle, color: "bg-teal-100 text-teal-600", emoji: "✅", label: "Knjiženo!" },
-                ].map((step, i) => (
-                  <div key={i} className="text-center">
-                    <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3 ${step.color}`}>
-                      <step.Icon className="w-8 h-8" />
-                    </div>
-                    <p className="text-2xl mb-1">{step.emoji}</p>
-                    <p className="text-sm">{step.label}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+      <HomeHero locale="sl" />
 
       {/* Integrations Section */}
       <section id="integracije" className="py-24 bg-white">

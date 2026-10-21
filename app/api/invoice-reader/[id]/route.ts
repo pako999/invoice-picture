@@ -369,7 +369,12 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ success: true, status: "failed" });
   }
 
-  const current = normalizedInvoiceSchema.parse(parseJson(document.approvedJson || document.normalizedJson) ?? {});
+  // After saving edits, normalizedJson is the current draft; approvedJson still
+  // contains the previously approved revision and must not replace those edits.
+  const currentJson = document.status === "approved"
+    ? document.approvedJson || document.normalizedJson
+    : document.normalizedJson || document.approvedJson;
+  const current = normalizedInvoiceSchema.parse(parseJson(currentJson) ?? {});
   const next = structuredClone(current) as NormalizedInvoice;
   for (const [path, newValue] of Object.entries(data.changes ?? {})) {
     if (!allowedPaths.has(path)) continue;

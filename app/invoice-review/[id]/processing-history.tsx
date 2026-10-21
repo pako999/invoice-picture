@@ -35,7 +35,7 @@ export async function ProcessingHistory({ documentId }: { documentId: number }) 
   ]);
 
   return (
-    <section className="mx-auto mb-28 mt-4 w-full min-w-0 max-w-[1600px] overflow-x-hidden px-3 sm:px-5 lg:px-7">
+    <section id="processing-history" className="mx-auto mb-28 mt-4 w-full min-w-0 max-w-[1600px] overflow-x-hidden px-3 sm:px-5 lg:px-7">
       <div className="grid min-w-0 gap-4 lg:grid-cols-2">
         <div className="min-w-0 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
           <h2 className="font-extrabold text-slate-900 dark:text-white">Zgodovina OCR obdelave</h2>

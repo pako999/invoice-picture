@@ -1,6 +1,8 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
+import { HomeHero } from "@/components/home-hero";
+import { PAID_PLANS, PLAN_CONFIGS } from "@/lib/plans";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CommercialPlanCheckout } from "@/components/commercial-plan-checkout";
@@ -33,10 +35,10 @@ const integrations = [
 export default function HomeEn() {
   const [isYearly, setIsYearly] = useState(false);
 
-  const basicMonthly = 9.90;
-  const basicYearly  = 99;
-  const proMonthly   = 29.90;
-  const proYearly    = 299;
+  const basicMonthly = PLAN_CONFIGS.basic.monthlyPrice!;
+  const basicYearly  = PLAN_CONFIGS.basic.yearlyPrice!;
+  const proMonthly   = PLAN_CONFIGS.pro.monthlyPrice!;
+  const proYearly    = PLAN_CONFIGS.pro.yearlyPrice!;
 
   const basicPrice = (isYearly ? basicYearly : basicMonthly).toFixed(2);
   const proPrice   = (isYearly ? proYearly   : proMonthly).toFixed(2);
@@ -53,32 +55,11 @@ export default function HomeEn() {
       "Photograph a paper invoice and send it to your accounting software's email in one click. Works with Minimax, Birokrat, Pantheon, SAOP, E-računi and Metakocka.",
     url: "https://www.posljiracun.si/en",
     inLanguage: "en",
-    offers: [
-      {
-        "@type": "Offer",
-        name: "Basic",
-        price: basicMonthly.toFixed(2),
-        priceCurrency: "EUR",
-        priceSpecification: {
-          "@type": "UnitPriceSpecification",
-          price: basicMonthly.toFixed(2),
-          priceCurrency: "EUR",
-          unitText: "MONTH",
-        },
-      },
-      {
-        "@type": "Offer",
-        name: "PRO Accounting",
-        price: proMonthly.toFixed(2),
-        priceCurrency: "EUR",
-        priceSpecification: {
-          "@type": "UnitPriceSpecification",
-          price: proMonthly.toFixed(2),
-          priceCurrency: "EUR",
-          unitText: "MONTH",
-        },
-      },
-    ],
+    offers: PAID_PLANS.map(code => ({
+      "@type": "Offer", name: PLAN_CONFIGS[code].nameEn,
+      price: PLAN_CONFIGS[code].monthlyPrice!.toFixed(2), priceCurrency: "EUR",
+      priceSpecification: { "@type": "UnitPriceSpecification", price: PLAN_CONFIGS[code].monthlyPrice!.toFixed(2), priceCurrency: "EUR", unitText: "MONTH", valueAddedTaxIncluded: false },
+    })),
     featureList: [
       "Photograph paper invoices with your phone camera",
       "Send to your accounting software's email in one click",
@@ -99,108 +80,7 @@ export default function HomeEn() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareJsonLd) }}
       />
-      {/* Hero */}
-      <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-grid-slate-100 [mask-image:linear-gradient(0deg,transparent,black)] opacity-50" />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-24 relative">
-          <div className="grid lg:grid-cols-2 gap-12 items-stretch">
-            <div className="text-center lg:text-left">
-              <Badge className="mb-4 bg-blue-100 text-blue-700 hover:bg-blue-200 border-0">
-                Works with any accounting app that supports OCR email import
-              </Badge>
-              <h1 className="text-5xl sm:text-6xl lg:text-6xl xl:text-7xl tracking-tight mb-6 bg-gradient-to-r from-slate-900 via-blue-800 to-indigo-900 bg-clip-text text-transparent font-bold">
-                Photograph an invoice and send it in one click
-              </h1>
-              <p className="text-xl text-slate-600 mb-6 leading-relaxed">
-                In a single tap you photograph a physical invoice, and the app automatically delivers it to your email or directly to your OCR import address — where your accounting software takes over.
-              </p>
-              <p className="text-lg text-slate-700 mb-8">
-                No manual entry, no fuss — <strong>fast, simple and reliable</strong>.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-4 lg:justify-start justify-center mb-6">
-                <Link
-                  href="/scan"
-                  className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-lg h-12 px-8 rounded-lg font-medium transition-colors"
-                >
-                  📷 Start scanning
-                </Link>
-                <Link
-                  href="/en/how-it-works"
-                  className="inline-flex items-center justify-center gap-2 border border-gray-300 bg-white hover:bg-gray-100 text-lg h-12 px-8 rounded-lg font-medium transition-colors"
-                >
-                  Learn more
-                </Link>
-              </div>
-
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-left max-w-2xl mx-auto lg:mx-0">
-                <div className="flex gap-3">
-                  <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                  <div className="text-sm text-amber-900">
-                    <strong>How processing works:</strong> If you use the free plan without OCR, your accounting software must provide the OCR processing. With a paid OCR plan, Slikaj Račun reads the invoice for you, so you only need to review and export the data.
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="relative flex justify-center lg:justify-end items-center">
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-indigo-500/10 to-purple-500/10 blur-3xl rounded-full" />
-              <div className="relative w-[280px] h-[560px] bg-slate-900 rounded-[2.5rem] p-3 shadow-2xl ring-1 ring-slate-800">
-                <div className="absolute top-3 left-1/2 -translate-x-1/2 w-24 h-5 bg-slate-900 rounded-b-2xl z-10" />
-                <div className="w-full h-full bg-white rounded-[2rem] overflow-hidden flex flex-col">
-                  <div className="px-5 pt-10 pb-3">
-                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Slikaj Račun</p>
-                    <h3 className="text-lg font-extrabold text-gray-900 mt-1">Send invoice</h3>
-                  </div>
-
-                  <div className="mx-5 flex-1 rounded-2xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center gap-3">
-                    <FileText className="w-12 h-12 text-blue-500" />
-                    <p className="text-xs text-gray-500 font-medium">Drag or photograph</p>
-                  </div>
-
-                  <div className="px-5 py-3">
-                    <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Subject</div>
-                    <div className="h-9 bg-gray-100 rounded-lg px-3 flex items-center text-xs text-gray-700">Invoice</div>
-                  </div>
-
-                  <div className="px-5 pb-5 flex gap-2">
-                    <button className="flex-1 h-11 rounded-xl bg-gray-100 flex items-center justify-center gap-1.5 text-xs font-semibold text-gray-700">
-                      <Camera className="w-4 h-4" />
-                      Photograph
-                    </button>
-                    <button className="flex-1 h-11 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 flex items-center justify-center gap-1.5 text-xs font-bold text-white">
-                      Send
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Process Flow */}
-          <div className="mt-16 relative">
-            <div className="absolute inset-0 bg-gradient-to-t from-blue-600/20 to-transparent blur-3xl" />
-            <div className="relative bg-white rounded-2xl shadow-2xl border border-slate-200 p-8">
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4 md:gap-6">
-                {[
-                  { Icon: FileText,    color: "bg-blue-100 text-blue-600",     emoji: "🧾", label: "Paper invoice" },
-                  { Icon: Camera,      color: "bg-green-100 text-green-600",   emoji: "📱", label: "Photograph it" },
-                  { Icon: Send,        color: "bg-purple-100 text-purple-600", emoji: "📤", label: "Send" },
-                  { Icon: Bot,         color: "bg-orange-100 text-orange-600", emoji: "🤖", label: "OCR processes" },
-                  { Icon: CheckCircle, color: "bg-teal-100 text-teal-600",     emoji: "✅", label: "Booked!" },
-                ].map((step, i) => (
-                  <div key={i} className="text-center">
-                    <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3 ${step.color}`}>
-                      <step.Icon className="w-8 h-8" />
-                    </div>
-                    <p className="text-2xl mb-1">{step.emoji}</p>
-                    <p className="text-sm">{step.label}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+      <HomeHero locale="en" />
 
       {/* Integrations */}
       <section id="integracije" className="py-24 bg-white">

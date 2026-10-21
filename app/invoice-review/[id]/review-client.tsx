@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { AlertTriangle, Check, ChevronLeft, ChevronRight, Loader2, RefreshCw, Save, XCircle } from "lucide-react";
+import { InvoiceDocumentViewer } from "@/components/invoice-document-viewer";
+import { SepaPaymentExport } from "@/components/sepa-payment-export";
+import { AlertTriangle, Check, CheckCircle2, ChevronLeft, ChevronRight, Clock3, Download, FileText, History, Loader2, RefreshCw, Save, Wallet, XCircle } from "lucide-react";
 
 type Evidence = { fieldPath: string; valueText: string | null; pageNumber: number | null; bbox: unknown; confidence: number | null };
 type Validation = { status: string; warnings: string[]; errors: string[]; differences: Record<string, string> };
@@ -41,6 +43,7 @@ const fieldGroups: Array<{ title: string; fields: Array<[string, string]> }> = [
 
 export function InvoiceReviewClient({ documentId }: { documentId: number }) {
   const router = useRouter();
+  const [mobilePanel, setMobilePanel] = useState<"data" | "document">("data");
   const [detail, setDetail] = useState<Detail | null>(null);
   const [form, setForm] = useState<Record<string, string>>( {} );
   const [initial, setInitial] = useState<Record<string, string>>( {} );
@@ -59,7 +62,7 @@ export function InvoiceReviewClient({ documentId }: { documentId: number }) {
     const json = await detailRes.json() as Detail;
     const list = await listRes.json();
     const isProcessing = json.document.status === "queued" || json.document.status === "processing";
-    const invoice = isProcessing ? null : json.document.approved ?? json.document.normalized;
+    const invoice = isProcessing ? null : json.document.status === "approved" ? json.document.approved ?? json.document.normalized : json.document.normalized ?? json.document.approved;
     const flat = invoice ? flatten(invoice) : {};
     setDetail(json);
     setForm(flat);
@@ -137,7 +140,29 @@ export function InvoiceReviewClient({ documentId }: { documentId: number }) {
     ...(latestValidation?.errors ?? []),
     ...(latestValidation?.warnings ?? []),
   ])], [latestValidation]);
-  const invoice = detail?.document.approved ?? detail?.document.normalized;
+  const invoice = detail?.document.status === "approved" ? detail.document.approved ?? detail.document.normalized : detail?.document.normalized ?? detail?.document.approved;
+  const hasChanges = Object.keys(form).some(key => form[key] !== initial[key]);
+  const exportReady = detail?.document.status === "approved" && !hasChanges && busy === null;
+  const status = detail?.document.status ?? "";
+  const statusLabel = ({ approved: "Potrjeno", needs_review: "Čaka na pregled", queued: "V čakalni vrsti", processing: "Obdelava poteka", failed: "Napaka pri obdelavi", rejected: "Zavrnjeno" } as Record<string,string>)[status] || status;
+  async function downloadXml() {
+    setBusy("xml"); setMessage(null);
+    try {
+      const res = await fetch(`/api/invoice-reader/${documentId}/xml`, { cache: "no-store" });
+      if (!res.ok) { const json = await res.json(); throw new Error(json.error || "Izvoz XML ni uspel."); }
+      const url = URL.createObjectURL(await res.blob());
+      const link = document.createElement("a"); link.href = url; link.download = `racun-${documentId}.eslog.xml`; document.body.appendChild(link); link.click(); link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url),1000);
+    } catch (error) { setMessage(error instanceof Error ? error.message : "Izvoz XML ni uspel."); }
+    finally { setBusy(null); }
+  }
+  function openSepa() {
+    setMobilePanel("data");
+    window.requestAnimationFrame(() => {
+      const section = document.getElementById("sepa-payment-export") as HTMLDetailsElement | null;
+      if (section) { section.open = true; section.scrollIntoView({ behavior: "smooth", block: "start" }); section.querySelector("summary")?.focus({ preventScroll:true }); }
+    });
+  }
   const isProcessing = detail?.document.status === "queued" || detail?.document.status === "processing";
   const needsPdfSplit = detail?.document.legacyMultiPagePdf === true
     || (detail?.document.mimeType === "application/pdf" && detail.document.warnings.some((warning) => /hard-capped|first 25 pages|technical PDF limit/i.test(warning)));
@@ -145,15 +170,25 @@ export function InvoiceReviewClient({ documentId }: { documentId: number }) {
   if (!detail) return <main className="mx-auto w-full min-w-0 max-w-7xl overflow-x-hidden p-8"><div className="flex items-center gap-2 text-slate-500"><Loader2 className="h-5 w-5 animate-spin" /> Nalaganje dokumenta…</div>{message && <p className="mt-4 text-red-600">{message}</p>}</main>;
 
   return (
-    <main className="mx-auto w-full min-w-0 max-w-[1600px] overflow-x-hidden px-3 pb-36 pt-5 sm:px-5 md:pb-5 lg:px-7">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-3">
-          <Link href="/invoices" className="rounded-lg border border-slate-200 p-2 hover:bg-slate-50"><ChevronLeft className="h-5 w-5" /></Link>
-          <div className="min-w-0"><h1 className="truncate text-xl font-extrabold text-slate-950 dark:text-white">{detail.document.filename}</h1><p className="text-xs text-slate-500">{detail.document.provider ?? "—"} · {detail.document.model ?? "—"} · {detail.document.status}</p></div>
-        </div>
-        <div className="flex items-center gap-2"><button onClick={() => goRelative(-1)} className="rounded-lg border p-2" title="Prejšnji (Alt+←)"><ChevronLeft className="h-4 w-4" /></button><button onClick={() => goRelative(1)} className="rounded-lg border p-2" title="Naslednji (Alt+→)"><ChevronRight className="h-4 w-4" /></button></div>
+    <main className="mx-auto min-h-screen w-full min-w-0 max-w-[1600px] overflow-x-hidden bg-slate-50/80 px-3 pb-36 pt-6 sm:px-6 md:pb-5 lg:px-8 dark:bg-slate-950">
+      <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0"><h1 className="text-2xl font-bold tracking-tight text-slate-950 dark:text-white">Podrobnosti računa</h1><p className="mt-1 break-all text-sm text-slate-500">ID: {documentId} · {detail.document.filename}</p></div>
+        <nav aria-label="Navigacija pregleda" className="flex flex-wrap items-center gap-2">
+          <Link href="/invoices" className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700"><ChevronLeft className="h-4 w-4" />Nazaj</Link>
+          <a href="#processing-history" className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700"><History className="h-4 w-4" />Zgodovina</a>
+          <button type="button" onClick={() => goRelative(-1)} className="rounded-lg border border-slate-200 bg-white p-2.5 text-slate-700" title="Prejšnji račun (Alt+←)" aria-label="Prejšnji račun"><ChevronLeft className="h-4 w-4" /></button>
+          <button type="button" onClick={() => goRelative(1)} className="rounded-lg border border-slate-200 bg-white p-2.5 text-slate-700" title="Naslednji račun (Alt+→)" aria-label="Naslednji račun"><ChevronRight className="h-4 w-4" /></button>
+        </nav>
       </div>
-
+      <div className={`mb-6 flex flex-wrap items-center justify-between gap-4 rounded-xl border bg-white p-4 shadow-sm sm:p-6 dark:bg-slate-900 ${status === "approved" ? "border-emerald-200" : "border-amber-200"}`}>
+        <div className="flex items-center gap-3">{status === "approved" ? <CheckCircle2 aria-hidden="true" className="h-7 w-7 text-emerald-600" /> : <Clock3 aria-hidden="true" className={`h-7 w-7 ${isProcessing ? "animate-pulse text-blue-600" : "text-amber-600"}`} />}<div><p className="text-xs font-medium uppercase tracking-wide text-slate-500">Trenutni status</p><p className="mt-0.5 text-lg font-bold text-slate-950 dark:text-white">{statusLabel}{hasChanges ? " · neshranjene spremembe" : ""}</p></div></div>
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+          <button type="button" onClick={downloadXml} disabled={!exportReady} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-violet-600 px-5 py-3 text-sm font-bold text-white hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-45">{busy === "xml" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}Generiraj XML eSLOG</button>
+          <button type="button" onClick={openSepa} disabled={isProcessing || !invoice} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-blue-600 px-5 py-3 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-45"><Wallet className="h-4 w-4" />Pripravi SEPA XML</button>
+        </div>
+        {!exportReady && !isProcessing ? <p className="w-full text-xs text-slate-500">Za izvoz najprej preverite, shranite in potrdite podatke računa.</p> : null}
+      </div>
+      {message ? <p role="status" className="mb-4 rounded-xl border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">{message}</p> : null}
       {detail.document.legacyMultiPagePdf && !isProcessing ? (
         <div className="mb-4 flex flex-col gap-3 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -182,29 +217,25 @@ export function InvoiceReviewClient({ documentId }: { documentId: number }) {
         </div>
       ) : null}
 
-      <div className="grid w-full min-w-0 max-w-full gap-5 lg:grid-cols-[minmax(0,1.05fr)_minmax(520px,.95fr)]">
-        <section className="w-full min-w-0 max-w-full lg:sticky lg:top-4 lg:h-[calc(100vh-2rem)]">
-          <div className="relative h-[70vh] w-full min-w-0 max-w-full overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 shadow-sm lg:h-full">
-            {detail.document.mimeType.startsWith("image/") ? (
-              <div className="relative h-full w-full overflow-auto bg-slate-900/5 p-4"><img src={detail.fileUrl} alt={detail.document.filename} className="mx-auto max-h-full max-w-full object-contain" />{selectedEvidence && <EvidenceOverlay evidence={selectedEvidence} />}</div>
-            ) : detail.document.mimeType === "application/pdf" ? (
-              <iframe src={detail.fileUrl} title={detail.document.filename} className="h-full w-full bg-white" />
-            ) : (
-              <div className="flex h-full items-center justify-center p-8 text-center"><a href={detail.fileUrl} className="rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white">Prenesi izvorni dokument</a></div>
-            )}
-          </div>
-          {selectedEvidence && <div className="mt-2 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-900"><strong>Dokaz:</strong> {selectedEvidence.fieldPath} · stran {selectedEvidence.pageNumber ?? "—"} · zanesljivost {selectedEvidence.confidence == null ? "—" : `${Math.round(selectedEvidence.confidence * 100)}%`}</div>}
+      <div className="mb-4 grid grid-cols-2 gap-2 rounded-xl bg-slate-200/60 p-1 lg:hidden" role="group" aria-label="Pogled računa">
+        <button type="button" aria-pressed={mobilePanel === "data"} onClick={() => setMobilePanel("data")} className={`flex min-h-11 items-center justify-center gap-2 rounded-lg text-sm font-bold ${mobilePanel === "data" ? "bg-white text-blue-700 shadow-sm" : "text-slate-600"}`}><FileText className="h-4 w-4" />Podatki računa</button>
+        <button type="button" aria-pressed={mobilePanel === "document"} onClick={() => setMobilePanel("document")} className={`min-h-11 rounded-lg text-sm font-bold ${mobilePanel === "document" ? "bg-white text-blue-700 shadow-sm" : "text-slate-600"}`}>Izvirni dokument</button>
+      </div>
+      <div className="grid w-full min-w-0 max-w-full items-start gap-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,.85fr)] lg:gap-6">
+        <section aria-label="Izvirni račun" className={`${mobilePanel === "document" ? "block" : "hidden"} w-full min-w-0 lg:sticky lg:top-4 lg:block`}>
+          <InvoiceDocumentViewer key={detail.fileUrl} url={detail.fileUrl} mimeType={detail.document.mimeType} filename={detail.document.filename}>{selectedEvidence ? <EvidenceOverlay evidence={selectedEvidence} /> : null}</InvoiceDocumentViewer>
+          {selectedEvidence ? <div className="mt-2 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-900"><strong>Prebrani podatek:</strong> {selectedEvidence.fieldPath} · stran {selectedEvidence.pageNumber ?? "—"} · zanesljivost {selectedEvidence.confidence == null ? "—" : `${Math.round(selectedEvidence.confidence * 100)}%`}</div> : null}
         </section>
-
-        <section className="w-full min-w-0 max-w-full space-y-4 pb-28">
+        <section aria-label="Urejanje podatkov računa" className={`${mobilePanel === "data" ? "block" : "hidden"} w-full min-w-0 max-w-full space-y-4 pb-28 lg:block`}>
           {isProcessing ? (
             <div className="flex min-h-64 flex-col items-center justify-center rounded-2xl border border-blue-200 bg-blue-50 p-8 text-center text-blue-950">
               <Loader2 className="mb-4 h-10 w-10 animate-spin text-blue-600" />
               <h2 className="text-xl font-extrabold">Mistral OCR obdeluje račun</h2>
               <p className="mt-2 max-w-lg text-sm text-blue-800">Prejšnji podatki so skriti, da jih ne zamenjate z novim rezultatom. Stran se samodejno osveži, ko je obdelava končana.</p>
             </div>
-          ) : fieldGroups.map((group) => <FieldGroup key={group.title} title={group.title} fields={group.fields} form={form} setForm={setForm} evidence={detail.evidence} selectedPath={selectedPath} setSelectedPath={setSelectedPath} />)}
+          ) : <div className="rounded-xl border border-slate-200 bg-white px-4 py-5 shadow-sm sm:px-6 dark:border-slate-700 dark:bg-slate-900"><h2 className="mb-6 text-xl font-bold text-slate-950 dark:text-white">Podatki računa</h2>{[fieldGroups[1], fieldGroups[2], fieldGroups[0], fieldGroups[3]].map((group) => <FieldGroup key={group.title} title={group.title} fields={group.fields} form={form} setForm={setForm} evidence={detail.evidence} selectedPath={selectedPath} setSelectedPath={setSelectedPath} />)}<p className="mt-3 text-xs text-slate-500">Oranžno so označeni podatki z nižjo zanesljivostjo OCR. Preverite jih na izvirnem računu.</p></div>}
 
+          {!isProcessing && invoice ? <SepaPaymentExport key={`${documentId}-${JSON.stringify(invoice)}`} documentId={documentId} invoice={invoice} ready={exportReady} /> : null}
           {!isProcessing && invoice?.vatBreakdown?.length ? <DataTable title="DDV razčlenitev" rows={invoice.vatBreakdown} columns={["vatRate", "taxableAmount", "vatAmount", "grossAmount"]} /> : null}
           {!isProcessing && invoice?.lineItems?.length ? <DataTable title={`Postavke (${invoice.lineItems.length})`} rows={invoice.lineItems} columns={["productCode", "description", "quantity", "unit", "unitPriceBeforeDiscount", "unitPriceNet", "discountPercent", "discountAmount", "vatRate", "netAmount", "vatAmount", "grossAmount"]} /> : null}
 
@@ -230,7 +261,17 @@ export function InvoiceReviewClient({ documentId }: { documentId: number }) {
 }
 
 function FieldGroup({ title, fields, form, setForm, evidence, selectedPath, setSelectedPath }: { title: string; fields: Array<[string, string]>; form: Record<string, string>; setForm: React.Dispatch<React.SetStateAction<Record<string, string>>>; evidence: Evidence[]; selectedPath: string | null; setSelectedPath: (path: string) => void }) {
-  return <div className="w-full min-w-0 max-w-full rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900"><h2 className="mb-3 text-lg font-extrabold text-slate-900 dark:text-white">{title}</h2><div className="grid min-w-0 gap-3 sm:grid-cols-2">{fields.map(([path, label]) => { const ev = evidence.find((e) => e.fieldPath === path); const low = ev?.confidence != null && ev.confidence < 0.92; return <label key={path} className={`min-w-0 rounded-xl border p-2 ${selectedPath === path ? "border-blue-400 bg-blue-50/60" : low ? "border-amber-300 bg-amber-50" : "border-slate-200 dark:border-slate-700"}`}><div className="mb-1 flex items-center justify-between gap-2 text-xs font-bold text-slate-600"><span>{label}</span><span className={low ? "text-amber-700" : "text-slate-400"}>{ev?.confidence == null ? "" : `${Math.round(ev.confidence * 100)}%`}</span></div><input value={form[path] ?? ""} onFocus={() => setSelectedPath(path)} onChange={(e) => setForm((f) => ({ ...f, [path]: e.target.value }))} className="w-full min-w-0 bg-transparent text-sm font-medium text-slate-950 outline-none dark:text-white" /></label>; })}</div></div>;
+  const party = title === "Dobavitelj" || title === "Kupec";
+  const primary = fields.filter(([path]) => party ? /\.(name|vatNumber|address|postalCode|city|countryCode)$/.test(path) : title === "Dokument" ? ["invoiceNumber", "currency", "issueDate", "serviceDate", "dueDate", "paymentReference"].includes(path) : true);
+  const extra = fields.filter(field => !primary.includes(field));
+  const renderFields = (items: Array<[string,string]>) => <div className="grid min-w-0 gap-x-4 gap-y-4 sm:grid-cols-2">{items.map(([path,label]) => {
+    const ev = evidence.find(e => e.fieldPath === path);
+    const low = ev?.confidence != null && ev.confidence < 0.92;
+    const full = /\.(name|vatNumber|address)$/.test(path);
+    const appearance = selectedPath === path ? "border-blue-500 ring-2 ring-blue-100" : low ? "border-amber-400 bg-amber-50/50" : "border-slate-300 dark:border-slate-600";
+    return <label key={path} className={`block min-w-0 ${full ? "sm:col-span-2" : ""}`}><span className="mb-1.5 flex items-center justify-between gap-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500"><span>{label}</span>{ev?.confidence != null ? <span className={low ? "text-amber-700" : "text-slate-400"}>{Math.round(ev.confidence * 100)}%</span> : null}</span>{path.endsWith(".address") ? <textarea rows={2} value={form[path] ?? ""} onFocus={() => setSelectedPath(path)} onChange={e => setForm(f => ({...f,[path]:e.target.value}))} className={`w-full min-w-0 rounded-lg border bg-transparent px-3 py-2.5 text-sm text-slate-950 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:text-white ${appearance}`} /> : <input value={form[path] ?? ""} onFocus={() => setSelectedPath(path)} onChange={e => setForm(f => ({...f,[path]:e.target.value}))} className={`min-h-11 w-full min-w-0 rounded-lg border bg-transparent px-3 py-2.5 text-sm text-slate-950 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:text-white ${appearance}`} />}</label>;
+  })}</div>;
+  return <div className="mb-6 border-b border-slate-100 pb-6 last:mb-0 last:border-0 dark:border-slate-700"><h3 className="mb-4 text-sm font-bold text-slate-800 dark:text-white">{title === "Dokument" ? "Račun" : title}</h3>{renderFields(primary)}{extra.length ? <details className="mt-4"><summary className="cursor-pointer text-xs font-semibold text-blue-700">Dodatni podatki · {title.toLowerCase()}</summary><div className="mt-4">{renderFields(extra)}</div></details> : null}</div>;
 }
 
 const tableColumnLabels: Record<string, string> = {
