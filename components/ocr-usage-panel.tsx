@@ -20,7 +20,7 @@ type Usage = {
   noticeEn: string | null;
 };
 
-export function OcrUsagePanel({ locale = "sl" }: { locale?: "sl" | "en" }) {
+export function OcrUsagePanel({ locale = "sl", contained = false }: { locale?: "sl" | "en"; contained?: boolean }) {
   const en = locale === "en";
   const [usage, setUsage] = useState<Usage | null>(null);
 
@@ -51,7 +51,7 @@ export function OcrUsagePanel({ locale = "sl" }: { locale?: "sl" | "en" }) {
     : (en ? "Plans & limits" : "Paketi in limiti");
 
   return (
-    <section className={`mx-3 my-4 w-auto min-w-0 max-w-5xl overflow-hidden rounded-2xl border p-4 shadow-sm sm:mx-auto ${alert ? usage.warningLevel === "blocked" ? "border-red-300 bg-red-50" : "border-amber-300 bg-amber-50" : "border-blue-100 bg-blue-50/60"}`}>
+    <section className={`my-4 min-w-0 overflow-hidden rounded-2xl border p-4 shadow-sm ${contained ? "w-full" : "mx-3 w-auto max-w-5xl sm:mx-auto"} ${alert ? usage.warningLevel === "blocked" ? "border-red-300 bg-red-50" : "border-amber-300 bg-amber-50" : "border-blue-100 bg-blue-50/60"}`}>
       <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <p className="text-xs font-bold uppercase tracking-wider text-blue-700">AI OCR · {usage.planName}</p>
