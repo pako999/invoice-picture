@@ -12,7 +12,7 @@ export const metadata = pageMetadata({
 
 const features = [
   { Icon: Camera, color: "blue", title: "📷 En klik — račun poslan", desc: "Poslikajte papirnat račun in pritisnite Pošlji. Nič tipkanja, nič prenašanja datotek. Celoten proces traja manj kot 5 sekund. Aplikacija je optimizirana za mobilne naprave in omogoča izjemno hitro fotografiranje ter pošiljanje dokumentov." },
-  { Icon: Mail, color: "green", title: "📧 Posredovanje na vaš program", desc: "App pošlje sliko na email naslov, ki ga nastavi vaš računovodski program. OCR obdelavo opravi program — Minimax, Birokrat, Pantheon in drugi. Podatki se avtomatsko prenesejo v vaš sistem brez ročnega vnosa." },
+  { Icon: Mail, color: "green", title: "📧 Posredovanje na vaš program", desc: "Slikaj Račun omogoča lastni AI OCR in pregled prebranih podatkov. V računovodstvo pošljite original ali podprt strukturirani izvoz. Pri pošiljanju originala lahko OCR opravi tudi prejemni program." },
   { Icon: Archive, color: "purple", title: "📋 Arhiv vseh pošiljanj", desc: "Vsi poslani računi so shranjeni z datumom, statusom dostave in predogledom. Kadarkoli preverite, ali je bil račun poslan. Zgodovina pošiljanj je dostopna neomejeno dolgo in omogoča hitro iskanje po dokumentih." },
   { Icon: Smartphone, color: "orange", title: "Mobilno optimizirana", desc: "Aplikacija je narejena za uporabo na mobilnih napravah. Preprost vmesnik, hitra kamera in takojšnje pošiljanje — vse kar potrebujete za učinkovito delo na terenu ali v pisarni." },
   { Icon: Shield, color: "teal", title: "Varna avtentikacija", desc: "Dostop do aplikacije je zaščiten s Clerk avtentikacijo — sodobnim sistemom za upravljanje identitete uporabnikov. Vaši podatki so varni in dostopni samo vam." },

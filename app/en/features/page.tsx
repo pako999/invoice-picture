@@ -13,7 +13,7 @@ export const metadata = pageMetadata({
 
 const features = [
   { Icon: Camera,    color: "blue",    title: "📷 One tap — invoice sent",         desc: "Photograph a paper invoice and tap Send. No typing, no file shuffling. The whole process takes under 5 seconds. The app is mobile-optimised for extremely fast capture and delivery." },
-  { Icon: Mail,      color: "green",   title: "📧 Forwarded to your program",      desc: "The app delivers the photo to the email address assigned by your accounting program. OCR is performed by the program — Minimax, Birokrat, Pantheon and others. Data flows automatically into your system, no manual entry." },
+  { Icon: Mail,      color: "green",   title: "📧 Forwarded to your program",      desc: "Use AI OCR and review the extracted fields in Slikaj Račun, then deliver the original or a supported structured export. When forwarding only the original, the receiving accounting program may perform its own OCR." },
   { Icon: Archive,   color: "purple",  title: "📋 Archive of every send",          desc: "All sent invoices are saved with date, delivery status and preview. Verify any time whether an invoice was sent. The history is kept indefinitely and is searchable." },
   { Icon: Smartphone, color: "orange", title: "Mobile-optimised",                   desc: "Built for phones. Simple UI, fast camera, instant send — everything you need to work efficiently on site or in the office." },
   { Icon: Shield,    color: "teal",    title: "Secure authentication",              desc: "Access is protected by Clerk authentication — a modern identity-management system. Your data is secure and accessible only to you." },

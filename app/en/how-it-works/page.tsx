@@ -106,7 +106,7 @@ export default function HowItWorks() {
                 <li>Posts the invoice into your books</li>
               </ul>
               <p className="text-sm text-slate-600">
-                <strong>Important:</strong> OCR runs in your accounting program — not on our servers. We only deliver the image to the right place.
+                <strong>Important:</strong> Choose AI OCR in Slikaj Račun to extract and review invoice fields here, or forward the original to an accounting import email for processing there. Check which import format your receiving program supports.
               </p>
             </CardContent>
           </Card>
