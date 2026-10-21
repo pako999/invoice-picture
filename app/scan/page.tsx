@@ -83,7 +83,7 @@ function FreeLimitModal({ onClose }: { onClose: () => void }) {
             Mesečna omejitev dosežena
           </h2>
           <p className="text-gray-600 dark:text-slate-400 text-sm leading-relaxed">
-            Dosegli ste mesečno omejitev 3 računov. Osnovni paket vključuje 50 OCR dokumentov in 150 OCR strani mesečno.
+            Dosegli ste mesečno omejitev 3 računov. Osnovni paket vključuje 150 OCR strani mesečno, brez ločene omejitve računov.
           </p>
         </div>
         <div className="space-y-3">
@@ -353,7 +353,7 @@ export default function ScanPage() {
           </div>
           {isFreeAtLimit && (
             <p className="text-xs text-orange-700 dark:text-orange-400 mt-2">
-              Osnovni paket vključuje 50 OCR dokumentov in 150 OCR strani mesečno.
+              Osnovni paket vključuje 150 OCR strani mesečno, brez ločene omejitve računov.
             </p>
           )}
         </div>

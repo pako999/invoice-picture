@@ -13,7 +13,7 @@ export async function POST(_req:Request,{params}:{params:Promise<{id:string}>}){
   const remainingDaily=Math.max(0,usage.dailyPageLimit-usage.dayPages);
   if(usage.remainingPages<=0||remainingDaily<=0)return NextResponse.json({error:usage.noticeSl??"OCR strani v trenutnem paketu so porabljene.",code:"ocr_plan_limit_reached"},{status:402});
  }else{
-  const needed=Number(rows[0].totalInvoices??0);if(usage.remainingDocuments<needed)return NextResponse.json({error:`Potrebujete prostor za ${needed} OCR dokumentov, na voljo jih je še ${usage.remainingDocuments}.`,code:"ocr_plan_limit_reached"},{status:402});
+  const needed=Number(rows[0].totalInvoices??0);if(usage.remainingDocuments !== null && usage.remainingDocuments<needed)return NextResponse.json({error:`Potrebujete prostor za ${needed} OCR dokumentov, na voljo jih je še ${usage.remainingDocuments}.`,code:"ocr_plan_limit_reached"},{status:402});
  }
  const nextStage=ocrIncomplete?'ocr':'classify';
  await sql`UPDATE "bulkInvoiceJobs" SET "stage"=${nextStage},"status"='processing',"attempts"=0,"lockedAt"=NULL,"lastError"=NULL,"completedAt"=NULL,"updatedAt"=now() WHERE "id"=${id}`;

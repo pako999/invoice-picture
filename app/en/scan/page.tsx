@@ -82,7 +82,7 @@ function FreeLimitModal({ onClose }: { onClose: () => void }) {
             Monthly limit reached
           </h2>
           <p className="text-gray-600 dark:text-slate-400 text-sm leading-relaxed">
-            You&rsquo;ve hit the 3-invoice monthly cap on the free plan. Basic includes 50 OCR documents and 75 OCR pages per month.
+            You&rsquo;ve hit the 3-invoice monthly cap on the free plan. Basic includes 150 OCR pages per month, with no separate invoice limit.
           </p>
         </div>
         <div className="space-y-3">
@@ -350,7 +350,7 @@ export default function ScanPage() {
           </div>
           {isFreeAtLimit && (
             <p className="text-xs text-orange-700 dark:text-orange-400 mt-2">
-              Basic includes 50 OCR documents and 75 OCR pages per month.
+              Basic includes 150 OCR pages per month, with no separate invoice limit.
             </p>
           )}
         </div>

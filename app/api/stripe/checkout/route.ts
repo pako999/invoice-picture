@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
       tier: data.tier,
       billing: data.billing,
       includedUsers: String(PLAN_CONFIGS[data.tier].userLimit),
-      includedDocuments: String(PLAN_CONFIGS[data.tier].ocrDocumentsMonthly),
+      quotaBasis: "ocr_pages",
       includedPages: String(PLAN_CONFIGS[data.tier].ocrPagesMonthly),
       previousSubscriptionId: existing?.stripeSubscriptionId ?? "",
     };

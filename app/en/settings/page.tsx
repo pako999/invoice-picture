@@ -88,7 +88,7 @@ function SettingsContent() {
   const [addError, setAddError] = useState("");
   const [adding, setAdding] = useState(false);
   const [isPro, setIsPro] = useState(false);
-  const [planInfo, setPlanInfo] = useState<{ plan: string; isFree: boolean; monthlyUsage: number; monthlyLimit: number | null; ocrDocumentsMonthly: number; ocrPagesMonthly: number } | null>(null);
+  const [planInfo, setPlanInfo] = useState<{ plan: string; isFree: boolean; monthlyUsage: number; monthlyLimit: number | null; ocrDocumentsMonthly: number | null; ocrPagesMonthly: number } | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -99,7 +99,7 @@ function SettingsContent() {
       setEmail(settings.recipientEmail ?? "");
       setCompanyList(Array.isArray(comps) ? comps : []);
       setIsPro(["pro", "accounting_pro", "accounting_max"].includes(sub.commercialPlan ?? sub.plan));
-      setPlanInfo({ plan: sub.commercialPlan ?? sub.plan, isFree: sub.isFree, monthlyUsage: sub.monthlyUsage, monthlyLimit: sub.monthlyLimit, ocrDocumentsMonthly: Number(sub.ocrDocumentsMonthly ?? 0), ocrPagesMonthly: Number(sub.ocrPagesMonthly ?? 0) });
+      setPlanInfo({ plan: sub.commercialPlan ?? sub.plan, isFree: sub.isFree, monthlyUsage: sub.monthlyUsage, monthlyLimit: sub.monthlyLimit, ocrDocumentsMonthly: sub.ocrDocumentsMonthly == null ? null : Number(sub.ocrDocumentsMonthly), ocrPagesMonthly: Number(sub.ocrPagesMonthly ?? 0) });
       setLoading(false);
     });
   }, []);
@@ -303,7 +303,7 @@ function SettingsContent() {
                   {planInfo.plan === "basic" ? "Basic plan" : planInfo.plan === "pro" ? "PRO plan" : planInfo.plan === "accounting_pro" ? "Accounting PRO" : planInfo.plan === "accounting_max" ? "Accounting MAX" : planInfo.plan === "trial" ? "Trial" : planInfo.plan}
                 </p>
                 <p className="text-sm text-gray-500 dark:text-slate-400">Unlimited invoice sending</p>
-                <p className="mt-1 text-sm font-semibold text-blue-700 dark:text-blue-300">{planInfo.ocrDocumentsMonthly.toLocaleString("en-IE")} OCR documents · {planInfo.ocrPagesMonthly.toLocaleString("en-IE")} OCR pages / month</p>
+                <p className="mt-1 text-sm font-semibold text-blue-700 dark:text-blue-300">{planInfo.ocrDocumentsMonthly !== null ? `${planInfo.ocrDocumentsMonthly.toLocaleString("en-IE")} OCR documents · ` : ""}{planInfo.ocrPagesMonthly.toLocaleString("en-IE")} OCR pages / month</p>
               </div>
               {(planInfo.plan === "expired" || planInfo.plan === "canceled") && (
                 <a href="/en/upgrade" className="text-sm font-bold text-blue-600 dark:text-blue-400 hover:underline">

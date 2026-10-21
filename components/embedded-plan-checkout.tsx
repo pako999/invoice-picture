@@ -55,7 +55,7 @@ export function EmbeddedPlanCheckout({ locale, plan, billing }: { locale: "sl" |
             <p className="text-xs text-slate-500">+ {en ? "VAT" : "DDV"} / {period === "monthly" ? (en ? "month" : "mesec") : (en ? "year" : "leto")}</p>
             <div className="mt-5 rounded-2xl bg-blue-50 p-4 text-sm text-blue-950">
               <strong>{config.ocrPagesMonthly.toLocaleString(en ? "en-IE" : "sl-SI")} {en ? "OCR pages" : "OCR strani"}</strong>
-              <span className="mt-1 block">{config.ocrDocumentsMonthly.toLocaleString(en ? "en-IE" : "sl-SI")} {en ? "documents per month" : "dokumentov na mesec"}</span>
+              <span className="mt-1 block">{en ? "per month · no separate invoice limit" : "na mesec · brez ločene omejitve računov"}</span>
             </div>
             <p className="mt-4 text-sm font-bold">{config.userLimit} {en ? "users including owner" : "uporabnikov vključno z lastnikom"} · {config.companyLimit === null ? (en ? "unlimited companies" : "neomejeno podjetij") : `${config.companyLimit} ${en ? "companies" : "podjetij"}`}</p>
             <p className="mt-2 text-xs text-slate-500">{en ? "One shared allowance for the whole team. Included seats do not add to the price." : "Ena skupna kvota za celo ekipo. Vključena uporabniška mesta ne zvišajo cene."}</p>

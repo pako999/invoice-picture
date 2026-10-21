@@ -10,7 +10,7 @@ export const FREE_MONTHLY_LIMIT = 3;
 export interface SubscriptionStatus {
   plan: Subscription["plan"]; commercialPlan: CommercialPlan; trialEndsAt: Date; currentPeriodEnd: Date | null; daysRemaining: number;
   canSend: boolean; trialActive: boolean; paid: boolean; isFree: boolean; monthlyUsage: number; monthlyLimit: number | null;
-  ocrDocumentsMonthly: number; ocrPagesMonthly: number; companyLimit: number | null; userLimit: number;
+  ocrDocumentsMonthly: number | null; ocrPagesMonthly: number; companyLimit: number | null; userLimit: number;
 }
 
 export async function getOrCreateSubscription(clerkUserId: string): Promise<Subscription> {

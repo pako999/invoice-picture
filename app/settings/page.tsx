@@ -88,7 +88,7 @@ function SettingsContent() {
   const [addError, setAddError] = useState("");
   const [adding, setAdding] = useState(false);
   const [isPro, setIsPro] = useState(false);
-  const [planInfo, setPlanInfo] = useState<{ plan: string; isFree: boolean; monthlyUsage: number; monthlyLimit: number | null; ocrDocumentsMonthly: number; ocrPagesMonthly: number } | null>(null);
+  const [planInfo, setPlanInfo] = useState<{ plan: string; isFree: boolean; monthlyUsage: number; monthlyLimit: number | null; ocrDocumentsMonthly: number | null; ocrPagesMonthly: number } | null>(null);
 
   useEffect(() => {
     const noStore: RequestInit = { cache: "no-store", headers: { "Cache-Control": "no-cache" } };
@@ -100,7 +100,7 @@ function SettingsContent() {
       setEmail(settings.recipientEmail ?? "");
       setCompanyList(Array.isArray(comps) ? comps : []);
       setIsPro(["pro", "accounting_pro", "accounting_max"].includes(sub.commercialPlan ?? sub.plan));
-      setPlanInfo({ plan: sub.commercialPlan ?? sub.plan, isFree: sub.isFree, monthlyUsage: sub.monthlyUsage, monthlyLimit: sub.monthlyLimit, ocrDocumentsMonthly: Number(sub.ocrDocumentsMonthly ?? 0), ocrPagesMonthly: Number(sub.ocrPagesMonthly ?? 0) });
+      setPlanInfo({ plan: sub.commercialPlan ?? sub.plan, isFree: sub.isFree, monthlyUsage: sub.monthlyUsage, monthlyLimit: sub.monthlyLimit, ocrDocumentsMonthly: sub.ocrDocumentsMonthly == null ? null : Number(sub.ocrDocumentsMonthly), ocrPagesMonthly: Number(sub.ocrPagesMonthly ?? 0) });
       setLoading(false);
     });
   }, []);
@@ -306,7 +306,7 @@ function SettingsContent() {
                   {planInfo.plan === "basic" ? "Osnovni paket" : planInfo.plan === "pro" ? "PRO paket" : planInfo.plan === "accounting_pro" ? "Računovodstvo PRO" : planInfo.plan === "accounting_max" ? "Računovodstvo MAX" : planInfo.plan === "trial" ? "Preizkusna doba" : planInfo.plan}
                 </p>
                 <p className="text-sm text-gray-500 dark:text-slate-400">Neomejeno pošiljanje računov</p>
-                <p className="mt-1 text-sm font-semibold text-blue-700 dark:text-blue-300">{planInfo.ocrDocumentsMonthly.toLocaleString("sl-SI")} OCR dokumentov · {planInfo.ocrPagesMonthly.toLocaleString("sl-SI")} OCR strani / mesec</p>
+                <p className="mt-1 text-sm font-semibold text-blue-700 dark:text-blue-300">{planInfo.ocrDocumentsMonthly !== null ? `${planInfo.ocrDocumentsMonthly.toLocaleString("sl-SI")} OCR dokumentov · ` : ""}{planInfo.ocrPagesMonthly.toLocaleString("sl-SI")} OCR strani / mesec</p>
               </div>
               {(planInfo.plan === "expired" || planInfo.plan === "canceled") && (
                 <a href="/upgrade" className="text-sm font-bold text-blue-600 dark:text-blue-400 hover:underline">

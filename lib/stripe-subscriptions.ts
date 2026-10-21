@@ -79,7 +79,7 @@ export async function activateStripeSubscription(subscription: Stripe.Subscripti
   const metadata = { ...fallbackMetadata, ...subscription.metadata };
   const userId = metadata.clerkUserId;
   const item = subscription.items.data[0];
-  const purchased = item ? matchStripePlan(item.price) : null;
+  const purchased = item ? matchStripePlan(item.price, { allowLegacy: true }) : null;
   const tier = purchased?.tier;
   const billing: BillingPeriod = purchased?.billing ?? "monthly";
   if (!userId || !tier || !isPaidPlan(tier) || subscription.items.data.length !== 1 || item?.quantity !== 1 || !["active","trialing"].includes(subscription.status) || (metadata.tier && metadata.tier !== tier) || (metadata.billing && metadata.billing !== billing)) {

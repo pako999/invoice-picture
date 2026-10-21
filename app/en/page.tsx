@@ -284,7 +284,7 @@ export default function HomeEn() {
           <Badge className="mb-4 border-0 bg-blue-100 text-blue-700 hover:bg-blue-200">Pricing</Badge>
           <h2 className="mb-4 text-4xl font-bold tracking-tight sm:text-5xl">Choose the OCR capacity you need</h2>
           <p className="mx-auto max-w-3xl text-xl text-slate-600">
-            Unlimited original-invoice sending on every paid plan. AI OCR has clear monthly document and page allowances.
+            Unlimited original-invoice sending on every paid plan. Paid AI OCR plans count processed pages, with no separate invoice limit.
           </p>
         </div>
         <CommercialPricingGrid locale="en" compact />

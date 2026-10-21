@@ -8,7 +8,7 @@ type Usage = {
   plan: CommercialPlan;
   planName: string;
   monthDocuments: number;
-  monthlyDocumentLimit: number;
+  monthlyDocumentLimit: number | null;
   monthPages: number;
   monthlyPageLimit: number;
   dayPages: number;
@@ -61,7 +61,7 @@ export function OcrUsagePanel({ locale = "sl" }: { locale?: "sl" | "en" }) {
         <Link href={href} className="inline-flex w-full min-w-0 items-center justify-center rounded-xl bg-slate-950 px-4 py-2 text-center text-sm font-bold text-white sm:w-auto sm:shrink-0">{cta}</Link>
       </div>
       <div className="mt-4 grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2">
-        <Meter label={en ? "OCR documents" : "OCR dokumenti"} value={usage.monthDocuments} limit={usage.monthlyDocumentLimit} />
+        {usage.monthlyDocumentLimit !== null ? <Meter label={en ? "OCR documents" : "OCR dokumenti"} value={usage.monthDocuments} limit={usage.monthlyDocumentLimit} /> : <p className="text-sm text-slate-600">{en ? `${usage.monthDocuments} invoices processed · no separate invoice limit` : `${usage.monthDocuments} obdelanih računov · brez ločene omejitve računov`}</p>}
         <Meter label={en ? "OCR pages" : "OCR strani"} value={usage.monthPages} limit={usage.monthlyPageLimit} />
       </div>
       {usage.adminOverride && <p className="mt-3 text-xs font-semibold text-slate-600">{en ? "Admin daily pages" : "Admin dnevni limit strani"}: {usage.dayPages}/{usage.dailyPageLimit}</p>}

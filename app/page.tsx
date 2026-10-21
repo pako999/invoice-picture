@@ -250,7 +250,7 @@ export default function Home() {
           <Badge className="mb-4 border-0 bg-blue-100 text-blue-700 hover:bg-blue-200">Cenik</Badge>
           <h2 className="mb-4 text-4xl font-bold tracking-tight sm:text-5xl">Izberite OCR kapaciteto, ki jo potrebujete</h2>
           <p className="mx-auto max-w-3xl text-xl text-slate-600">
-            Neomejeno pošiljanje originalnih računov v vseh plačljivih paketih. AI OCR ima jasne mesečne omejitve dokumentov in strani.
+            Neomejeno pošiljanje originalnih računov v vseh plačljivih paketih. AI OCR v plačljivih paketih šteje samo obdelane strani, brez ločene omejitve računov.
           </p>
         </div>
         <CommercialPricingGrid locale="sl" compact />

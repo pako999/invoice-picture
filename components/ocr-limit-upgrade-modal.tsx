@@ -28,7 +28,7 @@ export function OcrLimitUpgradeModal({ locale, plan, message, originalSent = fal
           {en ? "Your OCR allowance is used up" : "Porabili ste OCR limit paketa"}
         </h2>
         <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
-          {message || (en ? "You have reached the maximum number of OCR documents or pages included in your plan." : "Dosegli ste največje število OCR dokumentov ali strani, vključenih v vaš paket.")}
+          {message || (en ? "You have used the OCR allowance included in your plan." : "Porabili ste OCR kvoto, vključeno v vaš paket.")}
         </p>
         {originalSent && (
           <p className="mt-3 rounded-xl bg-emerald-50 p-3 text-sm font-semibold text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
@@ -40,7 +40,7 @@ export function OcrLimitUpgradeModal({ locale, plan, message, originalSent = fal
             <p className="text-xs font-bold uppercase tracking-wider text-blue-700 dark:text-blue-300">{en ? "Recommended next plan" : "Priporočen naslednji paket"}</p>
             <p className="mt-1 text-lg font-black text-slate-950 dark:text-white">{planLabel(nextPlan, locale)}</p>
             <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">
-              {nextConfig.ocrDocumentsMonthly} {en ? "OCR documents" : "OCR dokumentov"} · {nextConfig.ocrPagesMonthly} {en ? "OCR pages per month" : "OCR strani mesečno"}
+              {nextConfig.ocrPagesMonthly} {en ? "OCR pages per month" : "OCR strani mesečno"}
             </p>
           </div>
         ) : (
