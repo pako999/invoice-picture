@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { RemoteSupportPage } from "@/components/remote-support-page";
 
 export const metadata: Metadata = {
-  title: "Oddaljena pomoč | Slikaj Račun",
+  title: "Oddaljena pomoč",
   description:
     "Navodila za varno oddaljeno pomoč: prenos in namestitev RustDesk, posredovanje ID-ja in enkratnega gesla ter potek podpore.",
   alternates: {

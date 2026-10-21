@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { Camera, ScanText, Building2, ArrowRight, ShieldCheck } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Program za račune z OCR za prejete račune | Slikaj Račun",
+  title: "Program za račune z OCR za prejete račune",
   description: "Program za prejete račune: fotografirajte ali naložite PDF, OCR prebere podatke, sistem jih preveri in račun pošlje v računovodski workflow. Za slovenske in tuje račune.",
   alternates: { canonical: "/program-za-racune" },
   openGraph: {
