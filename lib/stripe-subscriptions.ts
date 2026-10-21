@@ -7,6 +7,7 @@ import { baseSubscriptionPlan, clearCommercialPlanEntitlement, setCommercialPlan
 import { isPaidPlan, planLabel, type BillingPeriod, type PaidPlan } from "@/lib/plans";
 import { getResend } from "@/lib/resend";
 import { subscriptions } from "@/lib/schema";
+import { matchStripePlan } from "@/lib/stripe-plan-validation";
 import { getStripe } from "@/lib/stripe";
 
 export type StripePlanMetadata = {
@@ -77,9 +78,11 @@ async function cancelPreviousSubscription(previousSubscriptionId: string | undef
 export async function activateStripeSubscription(subscription: Stripe.Subscription, fallbackMetadata: StripePlanMetadata = {}) {
   const metadata = { ...fallbackMetadata, ...subscription.metadata };
   const userId = metadata.clerkUserId;
-  const tier = metadata.tier;
-  const billing: BillingPeriod = metadata.billing === "yearly" ? "yearly" : "monthly";
-  if (!userId || !isPaidPlan(tier)) {
+  const item = subscription.items.data[0];
+  const purchased = item ? matchStripePlan(item.price) : null;
+  const tier = purchased?.tier;
+  const billing: BillingPeriod = purchased?.billing ?? "monthly";
+  if (!userId || !tier || !isPaidPlan(tier) || subscription.items.data.length !== 1 || item?.quantity !== 1 || !["active","trialing"].includes(subscription.status) || (metadata.tier && metadata.tier !== tier) || (metadata.billing && metadata.billing !== billing)) {
     console.warn("[stripe] invalid or missing plan metadata", { subscriptionId: subscription.id, tier, hasUserId: Boolean(userId) });
     return false;
   }

@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { useClerk, useUser } from "@clerk/nextjs";
 import Link from "next/link";
+import { BankTransferForm } from "@/components/bank-transfer-form";
 import { EmbeddedCheckout, EmbeddedCheckoutProvider } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
 import { PLAN_CONFIGS, formatEur, isPaidPlan, type BillingPeriod } from "@/lib/plans";
@@ -56,6 +57,8 @@ export function EmbeddedPlanCheckout({ locale, plan, billing }: { locale: "sl" |
               <strong>{config.ocrPagesMonthly.toLocaleString(en ? "en-IE" : "sl-SI")} {en ? "OCR pages" : "OCR strani"}</strong>
               <span className="mt-1 block">{config.ocrDocumentsMonthly.toLocaleString(en ? "en-IE" : "sl-SI")} {en ? "documents per month" : "dokumentov na mesec"}</span>
             </div>
+            <p className="mt-4 text-sm font-bold">{config.userLimit} {en ? "users including owner" : "uporabnikov vključno z lastnikom"} · {config.companyLimit === null ? (en ? "unlimited companies" : "neomejeno podjetij") : `${config.companyLimit} ${en ? "companies" : "podjetij"}`}</p>
+            <p className="mt-2 text-xs text-slate-500">{en ? "One shared allowance for the whole team. Included seats do not add to the price." : "Ena skupna kvota za celo ekipo. Vključena uporabniška mesta ne zvišajo cene."}</p>
             <p className="mt-4 text-xs leading-relaxed text-slate-500">{en ? "Your plan is activated only after Stripe confirms a successful payment." : "Paket se aktivira šele, ko Stripe potrdi uspešno plačilo."}</p>
           </aside>
           <section className="min-h-[560px] rounded-3xl border border-slate-200 bg-white p-3 shadow-xl sm:p-6">
@@ -81,6 +84,7 @@ export function EmbeddedPlanCheckout({ locale, plan, billing }: { locale: "sl" |
                 <EmbeddedCheckout />
               </EmbeddedCheckoutProvider>
             )}
+            <BankTransferForm tier={tier} billing={period} locale={locale} />
             {error && <p className="mt-4 rounded-xl bg-red-50 p-3 text-sm font-semibold text-red-700">{error}</p>}
           </section>
         </div>

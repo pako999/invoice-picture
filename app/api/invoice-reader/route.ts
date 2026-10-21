@@ -1,5 +1,5 @@
 import { NextRequest,NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { workspaceAuth as auth } from "@/lib/workspace";
 import { and,desc,eq,gte,inArray,sql } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "@/lib/db";

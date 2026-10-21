@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { workspaceAuth as auth } from "@/lib/workspace";
 import { z } from "zod";
 import { BULK_PDF_GATEWAY_URL, BULK_PDF_MAX_BYTES } from "@/lib/bulk-invoices/config";
 
@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
       const response = await fetch(`${BULK_PDF_GATEWAY_URL}/sign-upload`, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${token}`, "x-workspace-owner": userId,
           "Content-Type": "application/json",
         },
         body: JSON.stringify(body),

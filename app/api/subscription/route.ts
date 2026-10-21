@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { workspaceAuth as auth } from "@/lib/workspace";
 import { getStatus } from "@/lib/subscription";
 
 export async function GET() {

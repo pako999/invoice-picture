@@ -11,6 +11,7 @@ export type PlanConfig = {
   ocrDocumentsMonthly: number;
   ocrPagesMonthly: number;
   companyLimit: number | null;
+  userLimit: number;
   unlimitedOriginalSending: boolean;
   structuredDelivery: boolean;
   apiDelivery: boolean;
@@ -18,14 +19,14 @@ export type PlanConfig = {
 };
 
 export const PLAN_CONFIGS: Record<CommercialPlan, PlanConfig> = {
-  free: { code: "free", nameSl: "Brezplačen", nameEn: "Free", monthlyPrice: 0, yearlyPrice: 0, ocrDocumentsMonthly: 3, ocrPagesMonthly: 10, companyLimit: 1, unlimitedOriginalSending: false, structuredDelivery: false, apiDelivery: false, priorityProcessing: false },
-  trial: { code: "trial", nameSl: "Preizkusni", nameEn: "Trial", monthlyPrice: null, yearlyPrice: null, ocrDocumentsMonthly: 50, ocrPagesMonthly: 75, companyLimit: 1, unlimitedOriginalSending: true, structuredDelivery: true, apiDelivery: false, priorityProcessing: false },
-  basic: { code: "basic", nameSl: "Osnovni", nameEn: "Basic", monthlyPrice: 13.50, yearlyPrice: 135, ocrDocumentsMonthly: 50, ocrPagesMonthly: 150, companyLimit: 1, unlimitedOriginalSending: true, structuredDelivery: true, apiDelivery: false, priorityProcessing: false },
-  pro: { code: "pro", nameSl: "PRO", nameEn: "PRO", monthlyPrice: 48, yearlyPrice: 480, ocrDocumentsMonthly: 500, ocrPagesMonthly: 600, companyLimit: 3, unlimitedOriginalSending: true, structuredDelivery: true, apiDelivery: true, priorityProcessing: false },
-  accounting_pro: { code: "accounting_pro", nameSl: "Računovodstvo PRO", nameEn: "Accounting PRO", monthlyPrice: 125, yearlyPrice: 1250, ocrDocumentsMonthly: 2000, ocrPagesMonthly: 2500, companyLimit: null, unlimitedOriginalSending: true, structuredDelivery: true, apiDelivery: true, priorityProcessing: true },
-  accounting_max: { code: "accounting_max", nameSl: "Računovodstvo MAX", nameEn: "Accounting MAX", monthlyPrice: 199, yearlyPrice: 1990, ocrDocumentsMonthly: 5000, ocrPagesMonthly: 5500, companyLimit: null, unlimitedOriginalSending: true, structuredDelivery: true, apiDelivery: true, priorityProcessing: true },
-  expired: { code: "expired", nameSl: "Potekel", nameEn: "Expired", monthlyPrice: null, yearlyPrice: null, ocrDocumentsMonthly: 0, ocrPagesMonthly: 0, companyLimit: 0, unlimitedOriginalSending: false, structuredDelivery: false, apiDelivery: false, priorityProcessing: false },
-  canceled: { code: "canceled", nameSl: "Preklican", nameEn: "Canceled", monthlyPrice: null, yearlyPrice: null, ocrDocumentsMonthly: 0, ocrPagesMonthly: 0, companyLimit: 0, unlimitedOriginalSending: false, structuredDelivery: false, apiDelivery: false, priorityProcessing: false },
+  free: { userLimit: 1, code: "free", nameSl: "Brezplačen", nameEn: "Free", monthlyPrice: 0, yearlyPrice: 0, ocrDocumentsMonthly: 3, ocrPagesMonthly: 10, companyLimit: 1, unlimitedOriginalSending: false, structuredDelivery: false, apiDelivery: false, priorityProcessing: false },
+  trial: { userLimit: 1, code: "trial", nameSl: "Preizkusni", nameEn: "Trial", monthlyPrice: null, yearlyPrice: null, ocrDocumentsMonthly: 50, ocrPagesMonthly: 75, companyLimit: 1, unlimitedOriginalSending: true, structuredDelivery: true, apiDelivery: false, priorityProcessing: false },
+  basic: { userLimit: 1, code: "basic", nameSl: "Osnovni", nameEn: "Basic", monthlyPrice: 13.50, yearlyPrice: 135, ocrDocumentsMonthly: 50, ocrPagesMonthly: 150, companyLimit: 1, unlimitedOriginalSending: true, structuredDelivery: true, apiDelivery: false, priorityProcessing: false },
+  pro: { userLimit: 3, code: "pro", nameSl: "PRO", nameEn: "PRO", monthlyPrice: 48, yearlyPrice: 480, ocrDocumentsMonthly: 500, ocrPagesMonthly: 600, companyLimit: 3, unlimitedOriginalSending: true, structuredDelivery: true, apiDelivery: true, priorityProcessing: false },
+  accounting_pro: { userLimit: 5, code: "accounting_pro", nameSl: "Računovodstvo PRO", nameEn: "Accounting PRO", monthlyPrice: 125, yearlyPrice: 1250, ocrDocumentsMonthly: 2000, ocrPagesMonthly: 2500, companyLimit: null, unlimitedOriginalSending: true, structuredDelivery: true, apiDelivery: true, priorityProcessing: true },
+  accounting_max: { userLimit: 10, code: "accounting_max", nameSl: "Računovodstvo MAX", nameEn: "Accounting MAX", monthlyPrice: 199, yearlyPrice: 1990, ocrDocumentsMonthly: 5000, ocrPagesMonthly: 5500, companyLimit: null, unlimitedOriginalSending: true, structuredDelivery: true, apiDelivery: true, priorityProcessing: true },
+  expired: { userLimit: 1, code: "expired", nameSl: "Potekel", nameEn: "Expired", monthlyPrice: null, yearlyPrice: null, ocrDocumentsMonthly: 0, ocrPagesMonthly: 0, companyLimit: 0, unlimitedOriginalSending: false, structuredDelivery: false, apiDelivery: false, priorityProcessing: false },
+  canceled: { userLimit: 1, code: "canceled", nameSl: "Preklican", nameEn: "Canceled", monthlyPrice: null, yearlyPrice: null, ocrDocumentsMonthly: 0, ocrPagesMonthly: 0, companyLimit: 0, unlimitedOriginalSending: false, structuredDelivery: false, apiDelivery: false, priorityProcessing: false },
 };
 
 export const PAID_PLANS: PaidPlan[] = ["basic", "pro", "accounting_pro", "accounting_max"];

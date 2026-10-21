@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { workspaceAuth as auth } from "@/lib/workspace";
 import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "@/lib/db";
@@ -221,7 +221,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       const signedResponse = await fetch(`${BULK_PDF_GATEWAY_URL}/sign-download`, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${token}`,
+          Authorization: `Bearer ${token}`, "x-workspace-owner": userId,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ key: document.storageObjectKey }),

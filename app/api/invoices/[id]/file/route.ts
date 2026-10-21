@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { workspaceAuth as auth } from "@/lib/workspace";
 import { and, desc, eq } from "drizzle-orm";
 import { BULK_PDF_GATEWAY_URL } from "@/lib/bulk-invoices/config";
 import { getDb } from "@/lib/db";
@@ -40,7 +40,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     if (!token) return NextResponse.json({ error: "Session expired" }, { status: 401 });
     const signed = await fetch(`${BULK_PDF_GATEWAY_URL}/sign-download`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${token}`, "x-workspace-owner": userId, "Content-Type": "application/json" },
       body: JSON.stringify({ key: document.storageObjectKey }),
       signal: AbortSignal.timeout(15_000),
     });
@@ -66,7 +66,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     if (!token) return NextResponse.json({ error: "Session expired" }, { status: 401 });
     const signed = await fetch(`${BULK_PDF_GATEWAY_URL}/sign-download`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${token}`, "x-workspace-owner": userId, "Content-Type": "application/json" },
       body: JSON.stringify({ key: bulkFile.storageObjectKey }),
       signal: AbortSignal.timeout(15_000),
     });

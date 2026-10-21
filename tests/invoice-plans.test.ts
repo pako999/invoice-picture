@@ -26,3 +26,7 @@ test("quota upgrades always point to the next useful paid plan",()=>{
   assert.equal(nextPaidPlan("accounting_pro"),"accounting_max");
   assert.equal(nextPaidPlan("accounting_max"),null);
 });
+
+test("included team users count the owner and grow with the plan",()=>{
+  assert.deepEqual([PLAN_CONFIGS.free.userLimit,PLAN_CONFIGS.basic.userLimit,PLAN_CONFIGS.pro.userLimit,PLAN_CONFIGS.accounting_pro.userLimit,PLAN_CONFIGS.accounting_max.userLimit],[1,1,3,5,10]);
+});

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { workspaceAuth as auth } from "@/lib/workspace";
 import { getOcrUsageSummary } from "@/lib/invoice-intelligence/quota";
 
 export const dynamic = "force-dynamic";

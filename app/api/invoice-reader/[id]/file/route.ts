@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { workspaceAuth as auth } from "@/lib/workspace";
 import { and, eq } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { invoiceAuditLogs, invoiceDocuments } from "@/lib/schema";
@@ -42,7 +42,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const signed = await fetch(`${BULK_PDF_GATEWAY_URL}/sign-download`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${token}`,
+        Authorization: `Bearer ${token}`, "x-workspace-owner": userId,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ key: document.storageObjectKey }),

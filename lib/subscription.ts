@@ -10,7 +10,7 @@ export const FREE_MONTHLY_LIMIT = 3;
 export interface SubscriptionStatus {
   plan: Subscription["plan"]; commercialPlan: CommercialPlan; trialEndsAt: Date; currentPeriodEnd: Date | null; daysRemaining: number;
   canSend: boolean; trialActive: boolean; paid: boolean; isFree: boolean; monthlyUsage: number; monthlyLimit: number | null;
-  ocrDocumentsMonthly: number; ocrPagesMonthly: number; companyLimit: number | null;
+  ocrDocumentsMonthly: number; ocrPagesMonthly: number; companyLimit: number | null; userLimit: number;
 }
 
 export async function getOrCreateSubscription(clerkUserId: string): Promise<Subscription> {
@@ -26,7 +26,7 @@ export function evaluateStatus(sub: Subscription, monthlyUsage = 0, commercialPl
   const daysRemaining = trialActive ? Math.ceil((trialEnd - now) / 86_400_000) : 0;
   const effectivePlan = commercialPlan ?? (trialActive ? "trial" : paid ? sub.plan : isFree ? "free" : sub.plan === "canceled" ? "canceled" : "expired");
   const cfg = getPlanConfig(effectivePlan);
-  return { plan: sub.plan, commercialPlan: effectivePlan, trialEndsAt: sub.trialEndsAt, currentPeriodEnd: sub.currentPeriodEnd, daysRemaining, canSend: trialActive || paid || isFree, trialActive, paid, isFree, monthlyUsage, monthlyLimit: isFree ? FREE_MONTHLY_LIMIT : null, ocrDocumentsMonthly: cfg.ocrDocumentsMonthly, ocrPagesMonthly: cfg.ocrPagesMonthly, companyLimit: cfg.companyLimit };
+  return { plan: sub.plan, commercialPlan: effectivePlan, trialEndsAt: sub.trialEndsAt, currentPeriodEnd: sub.currentPeriodEnd, daysRemaining, canSend: trialActive || paid || isFree, trialActive, paid, isFree, monthlyUsage, monthlyLimit: isFree ? FREE_MONTHLY_LIMIT : null, ocrDocumentsMonthly: cfg.ocrDocumentsMonthly, ocrPagesMonthly: cfg.ocrPagesMonthly, companyLimit: cfg.companyLimit, userLimit: cfg.userLimit };
 }
 
 export async function getStatus(clerkUserId: string) { const sub = await getOrCreateSubscription(clerkUserId); const [monthlyUsage, commercialPlan] = await Promise.all([sub.plan === "free" ? getMonthlyInvoiceCount(clerkUserId) : Promise.resolve(0), getCommercialPlanCode(clerkUserId)]); return evaluateStatus(sub, monthlyUsage, commercialPlan); }

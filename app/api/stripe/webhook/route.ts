@@ -28,7 +28,23 @@ export async function POST(req: NextRequest) {
       }
     } else if (event.type === "customer.subscription.updated") {
       const subscription = event.data.object;
-      if (subscription.status === "active" || subscription.status === "trialing") await refreshStripeSubscription(subscription);
+      if (subscription.status === "active" || subscription.status === "trialing") {
+        const latest = subscription.latest_invoice;
+        const invoice = typeof latest === "string" ? await getStripe().invoices.retrieve(latest) : latest;
+        // Do not extend access for an unpaid renewal or pending plan change.
+        if (invoice?.status === "paid") await refreshStripeSubscription(subscription);
+      }
+    } else if (event.type === "invoice.paid") {
+      const parent = event.data.object.parent;
+      const linked = parent?.type === "subscription_details" ? parent.subscription_details?.subscription : null;
+      if (linked) {
+        const subscription = typeof linked === "string" ? await getStripe().subscriptions.retrieve(linked) : linked;
+        if (subscription.status === "active") await refreshStripeSubscription(subscription);
+      }
+    } else if (event.type === "invoice.payment_failed") {
+      // Keep the already-paid period; no extension is granted. Stripe retries
+      // payment, and invoice.paid activates the next period after recovery.
+      console.warn("[stripe] renewal payment failed", {invoiceId:event.data.object.id});
     } else if (event.type === "customer.subscription.deleted") {
       await cancelStripeSubscription(event.data.object);
     }

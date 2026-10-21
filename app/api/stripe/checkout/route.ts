@@ -3,9 +3,11 @@ import { auth, clerkClient } from "@clerk/nextjs/server";
 import { z } from "zod";
 import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/db";
+import { workspaceAuth } from "@/lib/workspace";
+import { PLAN_CONFIGS } from "@/lib/plans";
 import { subscriptions } from "@/lib/schema";
 import { getStripe } from "@/lib/stripe";
-import { getStripePriceId } from "@/lib/stripe-prices";
+import { getVerifiedStripePriceId } from "@/lib/stripe-prices";
 
 const checkoutSchema = z.object({
   tier: z.enum(["basic", "pro", "accounting_pro", "accounting_max"]),
@@ -23,8 +25,9 @@ export async function POST(req: NextRequest) {
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
+    if ((await workspaceAuth()).userId !== userId) return NextResponse.json({ error: "Naročnino ekipe upravlja njen lastnik. Za svojo naročnino preklopite v svoj delovni prostor." }, { status: 403 });
     const data = checkoutSchema.parse(await req.json());
-    const priceId = getStripePriceId(data.tier, data.billing);
+    const priceId = await getVerifiedStripePriceId(data.tier, data.billing);
     if (!priceId) {
       return NextResponse.json(
         { error: data.locale === "en" ? "Card payment is not configured yet. Choose bank transfer." : "Kartično plačilo še ni nastavljeno. Izberite plačilo po predračunu." },
@@ -32,6 +35,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Fail closed: automatic_tax silently charges zero without a registration.
+    const registrations = await getStripe().tax.registrations.list({ status: "active", limit: 100 });
+    if (!registrations.data.some(registration => registration.country === "SI")) return NextResponse.json({ error: data.locale === "en" ? "Card checkout is being configured for VAT. Request a pro forma invoice below." : "Kartično plačilo čaka na dokončanje nastavitve DDV. Spodaj lahko naročite predračun." }, { status: 503 });
     const user = await (await clerkClient()).users.getUser(userId);
     const email = (user.emailAddresses.find((item) => item.id === user.primaryEmailAddressId) ?? user.emailAddresses[0])?.emailAddress;
     const [existing] = await getDb().select({ stripeCustomerId: subscriptions.stripeCustomerId, stripeSubscriptionId: subscriptions.stripeSubscriptionId }).from(subscriptions).where(eq(subscriptions.clerkUserId, userId)).limit(1);
@@ -42,6 +48,9 @@ export async function POST(req: NextRequest) {
       customerEmail: email ?? "",
       tier: data.tier,
       billing: data.billing,
+      includedUsers: String(PLAN_CONFIGS[data.tier].userLimit),
+      includedDocuments: String(PLAN_CONFIGS[data.tier].ocrDocumentsMonthly),
+      includedPages: String(PLAN_CONFIGS[data.tier].ocrPagesMonthly),
       previousSubscriptionId: existing?.stripeSubscriptionId ?? "",
     };
 
@@ -57,6 +66,7 @@ export async function POST(req: NextRequest) {
       return_url: `${origin}${prefix}/scan?upgraded=1&session_id={CHECKOUT_SESSION_ID}`,
       automatic_tax: { enabled: true },
       billing_address_collection: "auto",
+      tax_id_collection: { enabled: true },
       allow_promotion_codes: true,
     });
 

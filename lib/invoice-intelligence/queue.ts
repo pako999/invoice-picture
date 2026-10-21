@@ -25,8 +25,8 @@ export async function enqueueInvoiceDocument(input:{clerkUserId:string;companyId
       sql`SELECT pg_advisory_xact_lock(hashtextextended(${`ocr-doc:${input.clerkUserId}`},0))`,
       sql`INSERT INTO "invoiceDocuments" ("clerkUserId","companyId","sourceInvoiceId","filename","mimeType","originalBase64","sha256","byteSize","idempotencyKey","status","retentionUntil","createdAt","updatedAt")
           SELECT ${input.clerkUserId},${input.companyId},${input.sourceInvoiceId},${filename},${input.mimeType},${input.base64},${sha256},${bytes.length},${idempotencyKey},'queued',${retentionUntil},now(),now()
-          WHERE ((SELECT count(*) FROM "invoiceDocuments" WHERE "clerkUserId"=${input.clerkUserId} AND "createdAt">=${monthStart})
-            + COALESCE((SELECT sum(GREATEST("totalInvoices"-"processedInvoices",0)) FROM "bulkInvoiceJobs" WHERE "clerkUserId"=${input.clerkUserId} AND "createdAt">=${monthStart}),0)) < ${quota.monthlyDocumentLimit}
+          WHERE ((SELECT count(*) FROM "invoiceDocumentMeter" WHERE "clerkUserId"=${input.clerkUserId} AND "createdAt">=${monthStart})
+            + COALESCE((SELECT sum(GREATEST("totalInvoices"-"processedInvoices",0)) FROM "bulkInvoiceJobs" WHERE "status"='processing' AND "stage" IN ('boundary_review','split','extract') AND "deliveryMode"<>'split_pdf_email' AND "clerkUserId"=${input.clerkUserId} AND "createdAt">=${monthStart}),0)) < ${quota.monthlyDocumentLimit}
           ON CONFLICT ("idempotencyKey") DO NOTHING RETURNING "id"`,
     ]);
     documentId=Number((results[1] as Array<{id:number}>)[0]?.id||0)||null;

@@ -1,4 +1,4 @@
-import { auth } from "@clerk/nextjs/server";
+import { workspaceAuth as auth } from "@/lib/workspace";
 import { and, desc, eq } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { invoiceAuditLogs, invoiceDocuments, invoiceProcessingAttempts } from "@/lib/schema";

@@ -232,7 +232,14 @@ async function authenticatedUserId(request: Request) {
   try {
     const token = authorization.slice(7);
     const { payload } = await jwtVerify(token, clerkJwks, { issuer: CLERK_ISSUER });
-    return typeof payload.sub === "string" && payload.sub ? payload.sub : null;
+    const actorId = typeof payload.sub === "string" && payload.sub ? payload.sub : null;
+    if (!actorId) return null;
+    const ownerId = request.headers.get("x-workspace-owner");
+    if (!ownerId || ownerId === actorId) return actorId;
+    // The app rechecks membership and the current plan's user limit. A caller
+    // cannot grant workspace access by supplying an owner header.
+    const permission = await appPost<{allowed:boolean}>("/api/internal/workspace/authorize", { actorId, ownerId });
+    return permission.allowed ? ownerId : null;
   } catch {
     return null;
   }

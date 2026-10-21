@@ -342,3 +342,19 @@ export type BulkInvoicePage = typeof bulkInvoicePages.$inferSelect;
 export type BulkInvoiceGroup = typeof bulkInvoiceGroups.$inferSelect;
 export type InvoiceLineItem = typeof invoiceLineItems.$inferSelect;
 export type InvoiceVatRow = typeof invoiceVatBreakdown.$inferSelect;
+
+/** Members share the owner's existing invoice tenant and monthly allowances. */
+export const workspaceMembers = pgTable("workspaceMembers", {
+  id: serial("id").primaryKey(),
+  ownerId: varchar("ownerId", { length: 255 }).notNull(),
+  memberId: varchar("memberId", { length: 255 }).notNull(),
+  email: varchar("email", { length: 320 }).notNull(),
+  status: varchar("status", { length: 16 }).default("pending").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, t => ({ ownerMember: uniqueIndex("workspaceMembers_ownerId_memberId_key").on(t.ownerId,t.memberId), memberIdx: index("workspaceMembers_member_idx").on(t.memberId,t.status) }));
+
+export const invoiceDocumentMeter = pgTable("invoiceDocumentMeter", {
+ documentId: integer("documentId").primaryKey(),
+ clerkUserId: varchar("clerkUserId", {length:255}).notNull(),
+ createdAt: timestamp("createdAt").notNull(),
+}, t => ({ownerMonth: index("invoiceDocumentMeter_owner_month_idx").on(t.clerkUserId,t.createdAt)}));

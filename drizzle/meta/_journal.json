@@ -99,6 +99,13 @@
       "when": 1792340400000,
       "tag": "0014_complete_line_items",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1792566000000,
+      "tag": "0015_workspace_members",
+      "breakpoints": true
     }
   ]
 }

@@ -39,7 +39,7 @@ export async function enqueueExistingPdfAsBulkJob(args: EnqueueExistingPdfArgs) 
   }
 
   const filename = sanitizeFilename(args.filename);
-  const signed = await requestUploadTarget(args.clerkToken, filename, bytes.length);
+  const signed = await requestUploadTarget(args.clerkToken, args.clerkUserId, filename, bytes.length);
   const uploadHeaders = normalizeHeaders(signed.headers);
   if (!Object.keys(uploadHeaders).some((key) => key.toLowerCase() === "content-type")) {
     uploadHeaders["Content-Type"] = "application/pdf";
@@ -69,7 +69,7 @@ export async function enqueueExistingPdfAsBulkJob(args: EnqueueExistingPdfArgs) 
   return job.id;
 }
 
-async function requestUploadTarget(clerkToken: string, filename: string, byteSize: number) {
+async function requestUploadTarget(clerkToken: string, ownerId: string, filename: string, byteSize: number) {
   const attempts = [
     { filename, byteSize, mimeType: "application/pdf" },
     { filename, size: byteSize, contentType: "application/pdf" },
@@ -80,7 +80,7 @@ async function requestUploadTarget(clerkToken: string, filename: string, byteSiz
   for (const payload of attempts) {
     const response = await fetch(`${BULK_PDF_GATEWAY_URL}/sign-upload`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${clerkToken}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${clerkToken}`, "x-workspace-owner": ownerId, "Content-Type": "application/json" },
       body: JSON.stringify(payload),
       signal: AbortSignal.timeout(15_000),
     });

@@ -22,3 +22,14 @@ const STRIPE_PRICE_IDS: Record<PaidPlan, Record<BillingPeriod, () => string | un
 export function getStripePriceId(plan: PaidPlan, billing: BillingPeriod) {
   return STRIPE_PRICE_IDS[plan][billing]();
 }
+
+/** Validate configured IDs and fall back to the matching catalog price if an env ID is missing. */
+export async function getVerifiedStripePriceId(plan: PaidPlan, billing: BillingPeriod) {
+  const { getStripe } = await import("@/lib/stripe");
+  const { matchStripePlan } = await import("@/lib/stripe-plan-validation");
+  const stripe=getStripe(), configured=getStripePriceId(plan,billing);
+  const prices=configured?[await stripe.prices.retrieve(configured)]: (await stripe.prices.list({active:true,currency:"eur",type:"recurring",limit:100})).data;
+  const match=prices.find(price=>{const p=matchStripePlan(price);return price.active&&p?.tier===plan&&p.billing===billing;});
+  if(!match)throw new Error("Stripe price does not match the selected plan and billing period");
+  return match.id;
+}

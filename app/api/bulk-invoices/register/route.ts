@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { workspaceAuth as auth } from "@/lib/workspace";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "@/lib/db";
@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
     if (!token) return NextResponse.json({ error: "Seja je potekla." }, { status: 401 });
     const signed = await fetch(`${BULK_PDF_GATEWAY_URL}/sign-download`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${token}`, "x-workspace-owner": userId, "Content-Type": "application/json" },
       body: JSON.stringify({ key: input.objectKey }),
       signal: AbortSignal.timeout(15_000),
     });

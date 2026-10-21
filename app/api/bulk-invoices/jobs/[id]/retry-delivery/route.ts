@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { workspaceAuth as auth } from "@/lib/workspace";
 import { bulkSql } from "@/lib/bulk-invoices/service";
 
 export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
