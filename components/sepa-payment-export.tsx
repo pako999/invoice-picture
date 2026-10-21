@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Download, Loader2 } from "lucide-react";
 
 type PaymentInvoice = {
@@ -10,10 +10,24 @@ type PaymentInvoice = {
 };
 export function SepaPaymentExport({ documentId, invoice, ready }: { documentId: number; invoice: PaymentInvoice; ready: boolean }) {
   const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Ljubljana", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
-  const [payer, setPayer] = useState(() => ({ name: invoice.buyer.name || "", iban: "", city: invoice.buyer.city || "", country: invoice.buyer.countryCode || "SI", executionDate: invoice.dueDate && invoice.dueDate > today ? invoice.dueDate : today }));
+  const [payer, setPayer] = useState(() => ({ name: invoice.buyer.name || "", iban: "", bic: "", city: invoice.buyer.city || "", country: invoice.buyer.countryCode || "SI", executionDate: invoice.dueDate && invoice.dueDate > today ? invoice.dueDate : today }));
+  const [loadingPayer, setLoadingPayer] = useState(true);
+  const [company, setCompany] = useState<{ id: number; name: string } | null>(null);
+  const [prefilled, setPrefilled] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    let active = true;
+    fetch(`/api/invoice-reader/${documentId}/sepa`, { cache: "no-store" }).then(async response => {
+      const data = await response.json();
+      if (!response.ok) throw new Error("Bančnih podatkov podjetja ni mogoče naložiti. Vnesite jih ročno ali osvežite stran.");
+      if (!active) return;
+      setCompany(data.companyId ? { id: data.companyId, name: data.companyName } : null);
+      if (data.bank) { setPayer(value => ({ ...value, ...data.bank })); setPrefilled(true); setConfirmed(false); }
+    }).catch(e => { if (active) setError(e instanceof Error ? e.message : "Podatkov plačnika ni mogoče naložiti."); }).finally(() => { if (active) setLoadingPayer(false); });
+    return () => { active = false; };
+  }, [documentId]);
   async function download() {
     setBusy(true); setError(null);
     try {
@@ -33,10 +47,11 @@ export function SepaPaymentExport({ documentId, invoice, ready }: { documentId: 
     </dl>
     <p className="mt-3 text-xs text-slate-500">SI/RF sklic prepišite v celoti, vključno z modelom. Sklic brez predpone SI ali RF se prenese kot nestrukturirana informacija. Manjkajoče podatke prejemnika popravite zgoraj in račun znova potrdite.</p>
     {!ready ? <p className="mt-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">Pred izvozom shranite spremembe in potrdite podatke računa.</p> : null}
-    <fieldset disabled={!ready || busy} className="mt-4 space-y-4 disabled:opacity-60">
+    <p role="status" className="mt-4 text-sm text-blue-700 dark:text-blue-300">{loadingPayer ? "Nalaganje bančnih podatkov podjetja…" : prefilled ? `Izpolnjeno iz shranjenih bančnih podatkov: ${company?.name}. Podatke pred izvozom preverite.` : company ? "Bančni račun za to podjetje še ni shranjen. Podatke lahko vnesete spodaj." : "Račun ni povezan s podjetjem. Podatke plačnika vnesite spodaj."} {company ? <a href={`/settings/company/${company.id}#bank-account`} className="font-bold underline">Uredi bančne podatke</a> : <a href="/settings" className="font-bold underline">Nastavitve podjetij</a>}</p>
+    <fieldset disabled={!ready || busy || loadingPayer} className="mt-4 space-y-4 disabled:opacity-60">
       <legend className="font-bold">Plačnik</legend>
       <div className="grid gap-3 sm:grid-cols-2">
-        {([ ["name", "Naziv plačnika", "text"], ["iban", "Vaš IBAN", "text"], ["city", "Mesto plačnika", "text"], ["country", "Država (npr. SI)", "text"], ["executionDate", "Datum izvršitve", "date"] ] as const).map(([key,label,type]) => <label key={key} className="min-w-0 text-sm"><span className="mb-1 block">{label}</span><input type={type} value={payer[key]} min={type === "date" ? today : undefined} maxLength={key === "country" ? 2 : key === "city" ? 35 : 70} onChange={e => { setConfirmed(false); setPayer(p => ({...p, [key]: e.target.value})); }} className="w-full min-w-0 rounded-lg border border-slate-300 bg-transparent px-3 py-2" /></label>)}
+        {([ ["name", "Naziv plačnika", "text"], ["iban", "Vaš IBAN", "text"], ["bic", "BIC / SWIFT (neobvezno)", "text"], ["city", "Mesto plačnika", "text"], ["country", "Država (npr. SI)", "text"], ["executionDate", "Datum izvršitve", "date"] ] as const).map(([key,label,type]) => <label key={key} className="min-w-0 text-sm"><span className="mb-1 block">{label}</span><input type={type} value={payer[key]} min={type === "date" ? today : undefined} maxLength={key === "country" ? 2 : key === "bic" ? 11 : key === "city" ? 35 : 70} onChange={e => { setConfirmed(false); setPayer(p => ({...p, [key]: e.target.value})); }} className="w-full min-w-0 rounded-lg border border-slate-300 bg-transparent px-3 py-2" /></label>)}
       </div>
       <label className="flex items-start gap-2 text-sm"><input type="checkbox" checked={confirmed} onChange={e => setConfirmed(e.target.checked)} className="mt-1 h-4 w-4 shrink-0" /><span>Primerjal sem prejemnika, IBAN, preostali znesek, sklic in datum z izvirnim računom ter preveril podatke plačnika.</span></label>
       <button type="button" disabled={!confirmed || busy} onClick={download} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2 font-bold text-white disabled:opacity-50">{busy ? <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" /> : <Download aria-hidden="true" className="h-4 w-4" />}Prenesi SEPA XML</button>

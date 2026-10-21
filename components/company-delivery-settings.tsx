@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { CompanyBankSettings } from "@/components/company-bank-settings";
 
 type DeliveryMode = "email_ocr" | "split_pdf_email" | "api_json" | "xml_email" | "xml_zip_email";
 type XmlFormat = "ubl_2_1" | "eslog_2_0_original";
@@ -84,6 +85,8 @@ export function CompanyDeliverySettings({ companyId, locale }: { companyId: numb
       <h1 className="mt-1 text-3xl font-extrabold text-slate-950">{data?.company.name || (en ? "Company" : "Podjetje")}</h1>
       <p className="mt-2 text-slate-500">{en ? "Choose how invoices are delivered to the accounting platform." : "Izberite, kako se računi pošljejo v računovodski sistem."}</p>
     </div>
+
+    <div className="mt-6"><CompanyBankSettings companyId={companyId} locale={locale} /></div>
 
     {error && <div className="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
 

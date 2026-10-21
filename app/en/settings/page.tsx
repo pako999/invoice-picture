@@ -53,6 +53,7 @@ function CompanyRow({
       <div className="flex-1 min-w-0">
         <p className="font-semibold text-sm text-gray-900 dark:text-white truncate">{company.name}</p>
         <p className="text-xs text-gray-500 dark:text-slate-400 truncate">{company.recipientEmail}</p>
+        <a href={`/en/settings/company/${company.id}#bank-account`} className="mt-1 inline-block text-xs font-semibold text-blue-600 hover:underline">Bank details / IBAN →</a>
       </div>
       <a href={`/en/settings/company/${company.id}`} title="Delivery method"
         className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 text-gray-400 hover:text-blue-600 transition-colors text-sm">

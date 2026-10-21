@@ -72,6 +72,11 @@ export const companies = pgTable("companies", {
   clerkUserId: varchar("clerkUserId", { length: 255 }).notNull(),
   name: varchar("name", { length: 255 }).notNull(),
   recipientEmail: varchar("recipientEmail", { length: 320 }).notNull(),
+  bankPayerName: varchar("bankPayerName", { length: 70 }),
+  bankIban: varchar("bankIban", { length: 34 }),
+  bankBic: varchar("bankBic", { length: 11 }),
+  bankCity: varchar("bankCity", { length: 35 }),
+  bankCountry: varchar("bankCountry", { length: 2 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 

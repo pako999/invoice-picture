@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { NormalizedInvoice } from "./types";
 import { validateIban } from "./validation";
 
-export type SepaPayer = { name: string; iban: string; city: string; country: string; executionDate: string };
+export type SepaPayer = { name: string; iban: string; bic?: string; city: string; country: string; executionDate: string };
 const ibanLengths: Record<string, number> = { SI:19, AT:20, DE:22, HR:21, IT:27, FR:27, BE:16, NL:18, ES:24, PT:25, IE:22, FI:18, EE:20, LV:21, LT:20, LU:20, SK:24, CZ:24, PL:28, HU:28, RO:24, BG:22, GR:27, CY:28, MT:31, CH:21, LI:21, GB:22, NO:15, DK:18, SE:24, IS:26 };
 export function paymentIban(value: string | null | undefined) {
   const iban = (value || "").replace(/\s/g, "").toUpperCase();
@@ -47,6 +47,9 @@ export function generateSepaPayment(invoice: NormalizedInvoice, payer: SepaPayer
   if (debtorIban === creditorIban) throw new Error("IBAN plačnika in prejemnika ne smeta biti enaka.");
   const name = text(payer.name, 70, "naziv plačnika"), city = text(payer.city,35,"mesto plačnika");
   const creditor = text(invoice.supplier.name,70,"naziv prejemnika"), creditorCity = text(invoice.supplier.city,35,"mesto prejemnika");
+  const bic = (payer.bic || "").trim().toUpperCase();
+  if (bic && !/^[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?$/.test(bic)) throw new Error("Preverite BIC/SWIFT plačnika.");
+  const debtorBank = bic ? `<BICFI>${bic}</BICFI>` : "<Othr><Id>NOTPROVIDED</Id></Othr>";
   const country = payer.country.toUpperCase(), creditorCountry = (invoice.supplier.countryCode || "").toUpperCase();
   if (!/^[A-Z]{2}$/.test(country) || !/^[A-Z]{2}$/.test(creditorCountry)) throw new Error("Vnesite dvočrkovno državo plačnika in prejemnika (npr. SI).");
   const date = payer.executionDate;
@@ -57,7 +60,7 @@ export function generateSepaPayment(invoice: NormalizedInvoice, payer: SepaPayer
 <Document xmlns="urn:iso:std:iso:20022:tech:xsd:pain.001.001.09"><CstmrCdtTrfInitn>
 <GrpHdr><MsgId>${id}</MsgId><CreDtTm>${now.toISOString()}</CreDtTm><NbOfTxs>1</NbOfTxs><CtrlSum>${amount}</CtrlSum><InitgPty><Nm>${xml(name)}</Nm></InitgPty></GrpHdr>
 <PmtInf><PmtInfId>${id}</PmtInfId><PmtMtd>TRF</PmtMtd><NbOfTxs>1</NbOfTxs><CtrlSum>${amount}</CtrlSum><PmtTpInf><SvcLvl><Cd>SEPA</Cd></SvcLvl></PmtTpInf><ReqdExctnDt><Dt>${date}</Dt></ReqdExctnDt>
-<Dbtr><Nm>${xml(name)}</Nm><PstlAdr><TwnNm>${xml(city)}</TwnNm><Ctry>${country}</Ctry></PstlAdr></Dbtr><DbtrAcct><Id><IBAN>${debtorIban}</IBAN></Id></DbtrAcct><DbtrAgt><FinInstnId><Othr><Id>NOTPROVIDED</Id></Othr></FinInstnId></DbtrAgt><ChrgBr>SLEV</ChrgBr>
+<Dbtr><Nm>${xml(name)}</Nm><PstlAdr><TwnNm>${xml(city)}</TwnNm><Ctry>${country}</Ctry></PstlAdr></Dbtr><DbtrAcct><Id><IBAN>${debtorIban}</IBAN></Id></DbtrAcct><DbtrAgt><FinInstnId>${debtorBank}</FinInstnId></DbtrAgt><ChrgBr>SLEV</ChrgBr>
 <CdtTrfTxInf><PmtId><EndToEndId>${id}</EndToEndId></PmtId><Amt><InstdAmt Ccy="EUR">${amount}</InstdAmt></Amt><Cdtr><Nm>${xml(creditor)}</Nm><PstlAdr><TwnNm>${xml(creditorCity)}</TwnNm><Ctry>${creditorCountry}</Ctry></PstlAdr></Cdtr><CdtrAcct><Id><IBAN>${creditorIban}</IBAN></Id></CdtrAcct>${referenceXml(invoice.paymentReference,purpose)}</CdtTrfTxInf>
 </PmtInf></CstmrCdtTrfInitn></Document>`;
 }
