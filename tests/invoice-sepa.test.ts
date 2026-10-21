@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { emptyInvoice } from "../lib/invoice-intelligence/types";
 import { parseInvoiceTextDeterministically } from "../lib/invoice-intelligence/providers";
 import { bankDate, generateSepaPayment, paymentIban } from "../lib/invoice-intelligence/sepa";
+import { paymentIbanError } from "../lib/invoice-intelligence/iban";
 
 const now = new Date("2026-10-21T12:00:00Z");
 const payer = { name: "Kupec & partner", iban: "DE89370400440532013000", city: "Ljubljana", country: "SI", executionDate: "2026-10-22" };
@@ -44,6 +45,22 @@ test("SEPA checks IBANs, calendar dates, creditor details and payer details", ()
   assert.throws(() => generateSepaPayment(invoice(),{...payer,iban:invoice().supplier.iban!},now), /enaka/);
   const i=invoice();i.supplier.city=null;
   assert.throws(() => generateSepaPayment(i,payer,now), /mesto prejemnika/);
+});
+test("SEPA distinguishes a missing supplier IBAN from a valid saved company account", () => {
+  const i = invoice(); i.supplier.iban = null;
+  const savedPayer = { ...payer, iban: "SI56040000281605491" };
+  assert.equal(paymentIbanError(savedPayer.iban, "plačnika"), null);
+  assert.match(paymentIbanError(i.supplier.iban, "prejemnika")!, /Manjka IBAN prejemnika/);
+  assert.throws(() => generateSepaPayment(i, savedPayer, now), /Manjka IBAN prejemnika/);
+  i.supplier.iban = "DE89370400440532013000";
+  assert.equal(paymentIbanError(i.supplier.iban, "prejemnika"), null);
+  assert.match(generateSepaPayment(i, savedPayer, now), /<DbtrAcct><Id><IBAN>SI56040000281605491/);
+});
+test("SEPA validation identifies the specific payer or recipient account to correct", () => {
+  assert.match(paymentIbanError(" ", "plačnika")!, /Vnesite svoj IBAN plačnika/);
+  assert.match(paymentIbanError("SI56191000000123439", "plačnika")!, /IBAN plačnika ni veljaven/);
+  assert.match(paymentIbanError("SI56191000000123439", "prejemnika")!, /IBAN prejemnika ni veljaven/);
+  assert.equal(paymentIbanError("si56 1910 0000 0123 438", "prejemnika"), null);
 });
 test("SEPA validates RF checksum and preserves unstructured references without inventing an SI model", () => {
   const i=invoice();i.paymentReference="RF18 5390 0754 7034";

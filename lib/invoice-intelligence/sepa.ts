@@ -1,13 +1,12 @@
 import { randomUUID } from "node:crypto";
 import type { NormalizedInvoice } from "./types";
-import { validateIban } from "./validation";
+import { paymentIbanError } from "./iban";
 
 export type SepaPayer = { name: string; iban: string; bic?: string; city: string; country: string; executionDate: string };
-const ibanLengths: Record<string, number> = { SI:19, AT:20, DE:22, HR:21, IT:27, FR:27, BE:16, NL:18, ES:24, PT:25, IE:22, FI:18, EE:20, LV:21, LT:20, LU:20, SK:24, CZ:24, PL:28, HU:28, RO:24, BG:22, GR:27, CY:28, MT:31, CH:21, LI:21, GB:22, NO:15, DK:18, SE:24, IS:26 };
-export function paymentIban(value: string | null | undefined) {
-  const iban = (value || "").replace(/\s/g, "").toUpperCase();
-  if (!iban || !validateIban(iban) || (ibanLengths[iban.slice(0,2)] && iban.length !== ibanLengths[iban.slice(0,2)])) throw new Error("Preverite IBAN plačnika in prejemnika (kontrolna številka ali dolžina ni pravilna).");
-  return iban;
+export function paymentIban(value: string | null | undefined, role: "plačnika" | "prejemnika" = "plačnika") {
+  const error = paymentIbanError(value, role);
+  if (error) throw new Error(error);
+  return (value || "").replace(/\s/g, "").toUpperCase();
 }
 export function bankDate(now = new Date()) {
   return new Intl.DateTimeFormat("en-CA", { timeZone:"Europe/Ljubljana", year:"numeric",month:"2-digit",day:"2-digit" }).format(now);
@@ -43,7 +42,7 @@ export function generateSepaPayment(invoice: NormalizedInvoice, payer: SepaPayer
   const rawAmount = invoice.totals.amountDue;
   if (!rawAmount || !/^\d{1,9}(?:\.\d{1,2})?$/.test(rawAmount) || Number(rawAmount) <= 0) throw new Error("Preverite preostali znesek za plačilo. Plačanih računov ali neznanega zneska ni mogoče izvoziti.");
   const amount = Number(rawAmount).toFixed(2);
-  const debtorIban = paymentIban(payer.iban), creditorIban = paymentIban(invoice.supplier.iban);
+  const debtorIban = paymentIban(payer.iban, "plačnika"), creditorIban = paymentIban(invoice.supplier.iban, "prejemnika");
   if (debtorIban === creditorIban) throw new Error("IBAN plačnika in prejemnika ne smeta biti enaka.");
   const name = text(payer.name, 70, "naziv plačnika"), city = text(payer.city,35,"mesto plačnika");
   const creditor = text(invoice.supplier.name,70,"naziv prejemnika"), creditorCity = text(invoice.supplier.city,35,"mesto prejemnika");

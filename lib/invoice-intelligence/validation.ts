@@ -1,3 +1,5 @@
+import { validateIban } from "./iban";
+export { validateIban } from "./iban";
 import type { NormalizedInvoice, ValidationResult } from "./types";
 
 const DEFAULT_TOLERANCE = process.env.INVOICE_MONETARY_TOLERANCE ?? "0.02";
@@ -105,18 +107,6 @@ function validDate(value: string) {
   return !Number.isNaN(d.valueOf()) && d.toISOString().slice(0, 10) === value;
 }
 
-export function validateIban(iban: string | null | undefined) {
-  if (!iban) return true;
-  const compact = iban.replace(/\s/g, "").toUpperCase();
-  if (!/^[A-Z]{2}\d{2}[A-Z0-9]{10,30}$/.test(compact)) return false;
-  const rearranged = compact.slice(4) + compact.slice(0, 4);
-  let remainder = 0n;
-  for (const char of rearranged) {
-    const chunk = /[A-Z]/.test(char) ? String(char.charCodeAt(0) - 55) : char;
-    for (const digit of chunk) remainder = (remainder * 10n + BigInt(digit)) % 97n;
-  }
-  return remainder === 1n;
-}
 
 const vatPatterns: Record<string, RegExp> = {
   SI: /^SI\d{8}$/,
