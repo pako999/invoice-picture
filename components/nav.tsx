@@ -3,10 +3,10 @@ import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { createPortal } from "react-dom";
 import { usePathname, useRouter } from "next/navigation";
-import { SignInButton, SignUpButton, UserButton, useUser } from "@clerk/nextjs";
+import { SignInButton, SignOutButton, SignUpButton, UserButton, useUser } from "@clerk/nextjs";
 import { LogoWordmark } from "@/components/logo";
 import { revealDocumentUpload } from "@/components/document-upload-section";
-import { getDict, type Dict } from "@/lib/i18n";
+import { getDict } from "@/lib/i18n";
 import type { Locale } from "@/lib/i18n/config";
 import { localeUrl, slugMap } from "@/lib/i18n/config";
 
@@ -265,7 +265,7 @@ export function Nav() {
             role="dialog"
             aria-modal="true"
             aria-label={t.openMenu}
-            className="md:hidden fixed inset-0 z-[60] flex flex-col bg-white dark:bg-slate-950"
+            className="md:hidden fixed inset-x-0 top-0 z-[60] flex h-dvh flex-col overflow-hidden bg-white dark:bg-slate-950"
           >
             <div className="h-14 shrink-0 px-4 flex items-center justify-between border-b border-gray-200 dark:border-slate-800">
               <Link href={localeUrl(locale, "")} className="text-lg" onClick={handleLogoClick}>
@@ -283,7 +283,7 @@ export function Nav() {
               </button>
             </div>
 
-            <nav className="flex-1 overflow-y-auto px-5 py-6 flex flex-col">
+            <nav className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4">
               <div className="flex flex-col gap-2">
                 {(isSignedIn ? appLinks : isLanding ? landingLinks : publicLinks).map((l) => {
                   const isAnchor = l.href.startsWith("#");
@@ -319,49 +319,60 @@ export function Nav() {
                   </Link>
                 )}
               </div>
-
-              <div className="mt-auto pt-6">
-                <div className="border-t border-gray-200 dark:border-slate-800 pt-5 flex gap-3">
-                  <button
-                    onClick={() => { changeLanguage("sl"); setMenuOpen(false); }}
-                    className={`flex-1 py-3 rounded-xl text-sm font-bold transition-colors ${
-                      locale === "sl" ? "bg-blue-600 text-white" : "bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-200"
-                    }`}
-                  >
-                    🇸🇮 {t.languageSlovenian}
-                  </button>
-                  <button
-                    onClick={() => { changeLanguage("en"); setMenuOpen(false); }}
-                    className={`flex-1 py-3 rounded-xl text-sm font-bold transition-colors ${
-                      locale === "en" ? "bg-blue-600 text-white" : "bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-200"
-                    }`}
-                  >
-                    🇬🇧 {t.languageEnglish}
-                  </button>
-                </div>
-
-                {!isSignedIn && isLoaded && (
-                  <div className="mt-4 flex flex-col gap-2">
-                    <SignInButton mode="modal">
-                      <button
-                        onClick={() => setMenuOpen(false)}
-                        className="w-full px-4 py-3 rounded-xl text-base font-bold text-slate-800 bg-gray-100 hover:bg-gray-200 dark:text-white dark:bg-slate-800 dark:hover:bg-slate-700"
-                      >
-                        {t.signIn}
-                      </button>
-                    </SignInButton>
-                    <SignUpButton mode="modal">
-                      <button
-                        onClick={() => setMenuOpen(false)}
-                        className="w-full px-4 py-3 rounded-xl text-base font-bold text-white bg-blue-600 hover:bg-blue-700"
-                      >
-                        {t.startScanning}
-                      </button>
-                    </SignUpButton>
-                  </div>
-                )}
-              </div>
             </nav>
+
+            <div className="shrink-0 border-t border-gray-200 bg-white px-5 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))] dark:border-slate-800 dark:bg-slate-950">
+              {isLoaded && isSignedIn && (
+                <SignOutButton redirectUrl={localeUrl(locale, "")}>
+                  <button
+                    type="button"
+                    onClick={() => setMenuOpen(false)}
+                    className="mb-3 flex min-h-12 w-full items-center justify-center rounded-xl bg-red-50 px-4 py-3 text-base font-bold text-red-700 hover:bg-red-100 dark:bg-red-950/40 dark:text-red-300 dark:hover:bg-red-950/60"
+                  >
+                    {locale === "en" ? "Sign out" : "Odjava"}
+                  </button>
+                </SignOutButton>
+              )}
+              <div className="flex gap-3">
+                <button
+                  onClick={() => { changeLanguage("sl"); setMenuOpen(false); }}
+                  className={`flex-1 py-3 rounded-xl text-sm font-bold transition-colors ${
+                    locale === "sl" ? "bg-blue-600 text-white" : "bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-200"
+                  }`}
+                >
+                  🇸🇮 {t.languageSlovenian}
+                </button>
+                <button
+                  onClick={() => { changeLanguage("en"); setMenuOpen(false); }}
+                  className={`flex-1 py-3 rounded-xl text-sm font-bold transition-colors ${
+                    locale === "en" ? "bg-blue-600 text-white" : "bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-200"
+                  }`}
+                >
+                  🇬🇧 {t.languageEnglish}
+                </button>
+              </div>
+
+              {!isSignedIn && isLoaded && (
+                <div className="mt-4 flex flex-col gap-2">
+                  <SignInButton mode="modal">
+                    <button
+                      onClick={() => setMenuOpen(false)}
+                      className="w-full px-4 py-3 rounded-xl text-base font-bold text-slate-800 bg-gray-100 hover:bg-gray-200 dark:text-white dark:bg-slate-800 dark:hover:bg-slate-700"
+                    >
+                      {t.signIn}
+                    </button>
+                  </SignInButton>
+                  <SignUpButton mode="modal">
+                    <button
+                      onClick={() => setMenuOpen(false)}
+                      className="w-full px-4 py-3 rounded-xl text-base font-bold text-white bg-blue-600 hover:bg-blue-700"
+                    >
+                      {t.startScanning}
+                    </button>
+                  </SignUpButton>
+                </div>
+              )}
+            </div>
           </div>
         ), document.body)}
       </header>
