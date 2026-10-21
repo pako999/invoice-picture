@@ -12,7 +12,7 @@ export function HomeHero({ locale = "sl" }: { locale?: "sl" | "en" }) {
   const [yearly, setYearly] = useState(false);
   const plan = PAID_PLANS.map(code => PLAN_CONFIGS[code]).find(p => p.ocrDocumentsMonthly >= documents && p.ocrPagesMonthly >= documents * pages);
   const cost = plan ? (yearly ? plan.yearlyPrice! / 12 : plan.monthlyPrice!) : null;
-  const pricePerInvoice = cost === null ? null : cost / documents;
+  const pricePerInvoice = cost === null || !plan ? null : cost / plan.ocrDocumentsMonthly;
   // Illustration, not a measured performance claim: 3 minutes manual vs 30 seconds review at €15/hour.
   const hours = documents * 2.5 / 60;
   const savings = cost === null ? null : hours * 15 - cost;
@@ -42,12 +42,12 @@ export function HomeHero({ locale = "sl" }: { locale?: "sl" | "en" }) {
           <div className="flex justify-between text-xs text-slate-500"><span>10</span><span>5.000</span></div>
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm"><label htmlFor="hero-pages" className="text-slate-600">{en ? "Average pages per invoice" : "Povprečno strani na račun"}</label><input id="hero-pages" type="number" min="1" max="20" value={pages} onChange={e => setPages(Math.min(20, Math.max(1, Number(e.target.value) || 1)))} className="w-20 rounded-lg border border-slate-300 px-3 py-2" /></div>
           <label className="mt-4 flex cursor-pointer items-center gap-2 text-sm"><input type="checkbox" checked={yearly} onChange={e => setYearly(e.target.checked)} className="h-4 w-4 accent-blue-600" />{en ? "Annual billing" : "Letno plačilo"}</label>
-          {pricePerInvoice !== null && cost !== null ? <div aria-live="polite" className="mt-5 rounded-2xl border-2 border-emerald-300 bg-emerald-50 p-5 sm:p-6">
-            <p className="text-xs font-bold uppercase tracking-wide text-emerald-800">{en ? "YOUR AVERAGE OCR COST" : "VAŠA POVPREČNA CENA OCR OBDELAVE"}</p>
+          {plan && pricePerInvoice !== null && cost !== null ? <div aria-live="polite" className="mt-5 rounded-2xl border-2 border-emerald-300 bg-emerald-50 p-5 sm:p-6">
+            <p className="text-xs font-bold uppercase tracking-wide text-emerald-800">{en ? "OCR PRICE PER INVOICE IN YOUR PLAN" : "CENA NA RAČUN V IZBRANEM PAKETU"}</p>
             <p className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1"><span className="text-5xl font-extrabold tracking-tight text-emerald-800" data-testid="hero-price-per-invoice">≈ {formatEur(pricePerInvoice, locale)}</span><span className="text-base font-bold text-emerald-900">{en ? "/ invoice" : "/ račun"}</span></p>
             <p className="mt-2 text-sm font-semibold text-emerald-900">{en ? "+ VAT · complete plan included" : "+ DDV · vključen celoten paket"}</p>
-            <p className="mt-3 text-sm text-emerald-900">{formatEur(cost, locale)} {en ? "/ month" : "/ mesec"} ÷ {number(documents)} {en ? "invoices" : "računov"}</p>
-            <p className="mt-2 text-xs leading-relaxed text-emerald-800">{en ? "Average plan cost at your invoice volume, rounded to cents. This is not an additional per-invoice fee." : "Povprečni strošek paketa pri vaši količini računov, zaokrožen na cente. To ni dodatno plačilo za vsak račun."}{yearly ? (en ? " Calculated from the annual price divided by 12; billed annually." : " Izračun iz letne cene, deljene z 12; plačilo je letno.") : ""}</p>
+            <p className="mt-3 text-sm text-emerald-900">{formatEur(cost, locale)} {en ? "/ month" : "/ mesec"} ÷ {number(plan.ocrDocumentsMonthly)} {en ? "included invoices" : "vključenih računov"}</p>
+            <p className="mt-2 text-xs leading-relaxed text-emerald-800">{en ? "Plan price divided by its included invoice allowance, rounded to cents. The price per invoice stays the same within this plan; it is not an extra fee." : "Cena paketa, deljena s številom vključenih računov, zaokrožena na cente. Cena na račun ostane enaka znotraj istega paketa in ni dodatno doplačilo."}{yearly ? (en ? " Calculated from the annual price divided by 12; billed annually." : " Izračun iz letne cene, deljene z 12; plačilo je letno.") : ""}</p>
           </div> : null}
           <div aria-live="polite" className="mt-4 rounded-2xl bg-blue-50 p-4">
             <p className="text-sm text-slate-600">{savings !== null && savings >= 0 ? (en ? "Estimated net savings / month" : "Ocenjeni neto prihranek / mesec") : (en ? "Estimated time saved / month" : "Ocenjeni prihranek časa / mesec")}</p>
