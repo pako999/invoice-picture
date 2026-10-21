@@ -2,6 +2,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { HomeHero } from "@/components/home-hero";
+import { HomeBusinessHero } from "@/components/home-business-hero";
 import { PAID_PLANS, PLAN_CONFIGS } from "@/lib/plans";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -81,6 +82,7 @@ export default function Home() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareJsonLd) }}
       />
       <HomeHero locale="sl" />
+      <HomeBusinessHero />
 
       {/* Integrations Section */}
       <section id="integracije" className="py-24 bg-white">

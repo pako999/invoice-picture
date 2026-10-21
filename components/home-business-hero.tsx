@@ -41,9 +41,9 @@ export function HomeBusinessHero() {
             AI OCR za podjetja in računovodske servise
           </div>
 
-          <h1 className="text-5xl font-extrabold tracking-tight text-slate-950 sm:text-6xl lg:text-[4.2rem] lg:leading-[1.02]">
+          <h2 className="text-5xl font-extrabold tracking-tight text-slate-950 sm:text-6xl lg:text-[4.2rem] lg:leading-[1.02]">
             AI prebere račune <span className="text-blue-600">namesto vas</span>
-          </h1>
+          </h2>
 
           <p className="mt-7 max-w-lg text-xl leading-relaxed text-slate-600">
             Naložite PDF-je ali slike za eno ali več podjetij. <strong className="text-slate-900">AI OCR samodejno prebere dobavitelja, številko računa, datume, zneske, DDV in IBAN</strong> — vi podatke samo preverite in pošljete v računovodski program.
