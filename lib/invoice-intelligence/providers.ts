@@ -97,7 +97,8 @@ export async function readWithMistral(input: { base64: string; mimeType: string;
       model,
       document,
       ...(pages ? { pages } : {}),
-      include_image_base64: true,
+      // The viewer uses the original document, not extracted image crops.
+      include_image_base64: false,
       include_blocks: true,
       table_format: "html",
       confidence_scores_granularity: "block",

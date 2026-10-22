@@ -57,7 +57,8 @@ test("direct and retry OCR both request HTML tables, blocks and tax-inclusive fi
     for (const request of requests) {
       assert.equal(request.table_format, "html");
       assert.equal(request.include_blocks, true);
-      assert.equal(request.include_image_base64, true);
+      // Direct OCR omits unused crops; bulk fallback keeps its existing payload.
+      assert.equal(request.include_image_base64, request === requests[0] ? false : true);
       assert.match(request.document.document_url, /^data:application\/pdf;base64,/);
       assert.match(request.document_annotation_prompt, /grossAmount is the total for the entire quantity including VAT/);
     }
@@ -75,3 +76,4 @@ for (const label of ["Grand total", "Skupaj z DDV", "Total incl. VAT"]) {
     assert.equal(invoice.totals.grossAmount, "24.40");
   });
 }
+

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { AlertTriangle, Check, CheckCircle2, FileText, Loader2, Mail, RefreshCw, Upload, XCircle } from "lucide-react";
-import { flowItems, isOcrReady, isOcrWorking, shouldPollFlow, type FlowDelivery, type FlowSnapshot, type FlowUpload } from "@/lib/invoice-processing-flow";
+import { flowItems, flowPollDelay, isOcrReady, isOcrWorking, shouldPollFlow, type FlowDelivery, type FlowSnapshot, type FlowUpload } from "@/lib/invoice-processing-flow";
 
 const InvoiceEditor = dynamic(() => import("@/app/invoice-review/[id]/review-client").then((module) => module.InvoiceReviewClient), {
   loading: () => <p className="p-8 text-center text-slate-500">…</p>,
@@ -40,6 +40,7 @@ export function InvoiceProcessingFlow({ uploads, uploading, locale, onBack }: {
     let stopped = false, inFlight = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
     let previous = "", unchanged = 0;
+    const startedAt = Date.now();
     async function load() {
       clearTimeout(timer);
       if (stopped || inFlight || document.visibilityState === "hidden") return;
@@ -60,7 +61,7 @@ export function InvoiceProcessingFlow({ uploads, uploading, locale, onBack }: {
         unchanged = signature === previous ? unchanged + 1 : 0;
         previous = signature;
         if (shouldPollFlow(latestUploads.current.filter((item) => item.status === "accepted"), data)) {
-          timer = setTimeout(() => void load(), Math.min(15000, 3000 + unchanged * 2000));
+          timer = setTimeout(() => void load(), flowPollDelay(Date.now() - startedAt, unchanged));
         }
       } catch (problem) {
         if (stopped || controller.signal.aborted) return;

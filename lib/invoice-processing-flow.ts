@@ -62,6 +62,11 @@ export function positiveId(value: unknown): number | undefined {
   return Number.isSafeInteger(id) && id > 0 ? id : undefined;
 }
 
+/** Responsive during normal OCR; bounded backoff for long-running batches. */
+export function flowPollDelay(elapsedMs: number, unchanged: number): number {
+  return elapsedMs < 90_000 ? 2000 : Math.min(15000, 3000 + unchanged * 2000);
+}
+
 export function isOcrWorking(status: string) {
   return ["uploaded", "queued", "processing", "waiting", "uploading"].includes(status);
 }
