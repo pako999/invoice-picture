@@ -79,7 +79,7 @@ export async function readDeterministically(input: { base64: string; mimeType: s
 export async function readWithMistral(input: { base64: string; mimeType: string; filename: string }, unknownPageLimit?: number): Promise<ReaderResult> {
   const apiKey = process.env.MISTRAL_API_KEY;
   if (!apiKey) throw new Error("MISTRAL_API_KEY is not configured");
-  const model = process.env.MISTRAL_OCR_MODEL || "mistral-ocr-4-1";
+  const model = process.env.MISTRAL_OCR_MODEL || "mistral-ocr-latest";
   const cleanBase64 = input.base64.includes("base64,")
     ? input.base64.slice(input.base64.indexOf("base64,") + "base64,".length).replace(/\s+/g, "")
     : input.base64.replace(/\s+/g, "");

@@ -57,8 +57,8 @@ test("direct and retry OCR both request HTML tables, blocks and tax-inclusive fi
     for (const request of requests) {
       assert.equal(request.table_format, "html");
       assert.equal(request.include_blocks, true);
-      // Direct OCR omits unused crops; bulk fallback keeps its existing payload.
-      assert.equal(request.include_image_base64, request === requests[0] ? false : true);
+      assert.equal(request.include_image_base64, false);
+      assert.equal(request.document.type, "document_url");
       assert.match(request.document.document_url, /^data:application\/pdf;base64,/);
       assert.match(request.document_annotation_prompt, /grossAmount is the total for the entire quantity including VAT/);
     }
@@ -66,6 +66,37 @@ test("direct and retry OCR both request HTML tables, blocks and tax-inclusive fi
     globalThis.fetch = oldFetch;
     if (oldKey === undefined) delete process.env.MISTRAL_API_KEY;
     else process.env.MISTRAL_API_KEY = oldKey;
+  }
+});
+
+test("JPEG and PNG use image_url with their MIME type and the recommended default model", async () => {
+  const oldFetch = globalThis.fetch;
+  const oldKey = process.env.MISTRAL_API_KEY;
+  const oldModel = process.env.MISTRAL_OCR_MODEL;
+  process.env.MISTRAL_API_KEY = "test-key";
+  delete process.env.MISTRAL_OCR_MODEL;
+  const requests: Record<string, any>[] = [];
+  globalThis.fetch = async (_url, init) => {
+    requests.push(JSON.parse(String(init?.body)));
+    return Response.json({ document_annotation: JSON.stringify(emptyInvoice()), pages: [] });
+  };
+  try {
+    for (const mimeType of ["image/jpeg", "image/png"]) {
+      await readWithMistral({ base64: "aW1hZ2U=", mimeType, filename: "invoice" });
+      const request = requests.at(-1)!;
+      assert.deepEqual(request.document, { type: "image_url", image_url: `data:${mimeType};base64,aW1hZ2U=` });
+      assert.equal(request.model, "mistral-ocr-latest");
+      assert.equal(request.include_image_base64, false);
+      assert.equal(request.include_blocks, true);
+      assert.equal(request.table_format, "html");
+      assert.equal(request.pages, undefined);
+    }
+  } finally {
+    globalThis.fetch = oldFetch;
+    if (oldKey === undefined) delete process.env.MISTRAL_API_KEY;
+    else process.env.MISTRAL_API_KEY = oldKey;
+    if (oldModel === undefined) delete process.env.MISTRAL_OCR_MODEL;
+    else process.env.MISTRAL_OCR_MODEL = oldModel;
   }
 });
 

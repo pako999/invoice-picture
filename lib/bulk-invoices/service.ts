@@ -48,9 +48,10 @@ export async function ocrBulkPages(args: {
   const pages = Array.from({ length: endPage - args.startPage + 1 }, (_, i) => args.startPage + i);
   const reservation = await reserveOcrProviderBudget({ clerkUserId: args.clerkUserId, provider: "mistral", pages: pages.length });
   const requestBody = JSON.stringify({
-    model: process.env.MISTRAL_OCR_MODEL || "mistral-ocr-4-1",
+    model: process.env.MISTRAL_OCR_MODEL || "mistral-ocr-latest",
     document: { type: "document_url", document_url: args.documentUrl },
     pages,
+    include_image_base64: false,
     include_blocks: true,
     table_format: "html",
     confidence_scores_granularity: "page",
@@ -76,7 +77,7 @@ export async function ocrBulkPages(args: {
             markdown: pageOcrText(page),
             confidence: pageConfidence(page),
           })),
-          model: String(raw.model || process.env.MISTRAL_OCR_MODEL || "mistral-ocr-4-1"),
+          model: String(raw.model || process.env.MISTRAL_OCR_MODEL || "mistral-ocr-latest"),
           nextPage: endPage + 1,
           done: endPage + 1 >= args.pageCount,
         };
@@ -136,7 +137,7 @@ export async function createMistralOcrBatch(args: {
   );
   if (pagesThisBatch <= 0) throw new Error("Bulk OCR has no remaining pages to submit");
   const pages = Array.from({ length: pagesThisBatch }, (_, i) => args.startPage + i);
-  const model = process.env.MISTRAL_OCR_MODEL || "mistral-ocr-4-1";
+  const model = process.env.MISTRAL_OCR_MODEL || "mistral-ocr-latest";
   const reservation = await reserveOcrProviderBudget({
     clerkUserId: args.clerkUserId,
     provider: "mistral",
@@ -162,6 +163,7 @@ export async function createMistralOcrBatch(args: {
           body: {
             document: { type: "document_url", document_url: args.documentUrl },
             pages,
+            include_image_base64: false,
             include_blocks: true,
             table_format: "html",
             confidence_scores_granularity: "page",
@@ -206,7 +208,7 @@ export async function pollMistralOcrBatch(args: {
   }
 
   const status = String(raw.status || "").toUpperCase() as MistralOcrBatchState["status"];
-  const model = String(raw.model || process.env.MISTRAL_OCR_MODEL || "mistral-ocr-4-1");
+  const model = String(raw.model || process.env.MISTRAL_OCR_MODEL || "mistral-ocr-latest");
   if (status === "QUEUED" || status === "RUNNING" || status === "CANCELLATION_REQUESTED") {
     return { status, pages: [], model, error: null };
   }
@@ -523,11 +525,11 @@ export async function extractBulkInvoiceFromDocument(documentUrl: string, ocrCon
   }
   const pdfDataUrl = `data:application/pdf;base64,${pdfBytes.toString("base64")}`;
 
-  const model = process.env.MISTRAL_OCR_MODEL || "mistral-ocr-4-1";
+  const model = process.env.MISTRAL_OCR_MODEL || "mistral-ocr-latest";
   const requestBody = JSON.stringify({
     model,
     document: { type: "document_url", document_url: pdfDataUrl },
-    include_image_base64: true,
+    include_image_base64: false,
     include_blocks: true,
     table_format: "html",
     confidence_scores_granularity: "block",
@@ -693,3 +695,4 @@ function batchError(raw: any, label="OCR") {
     : "";
   return (errors || `Mistral Batch ${label} ended with status ${String(raw?.status || "unknown")}`).slice(0, 1000);
 }
+
