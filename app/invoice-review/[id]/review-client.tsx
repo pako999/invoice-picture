@@ -41,7 +41,13 @@ const fieldGroups: Array<{ title: string; fields: Array<[string, string]> }> = [
   { title: "Zneski", fields: [["totals.amountBeforeDiscount", "Vrednost pred rabatom"], ["totals.netAmount", "Neto"], ["totals.discountAmount", "Popust"], ["totals.vatAmount", "DDV"], ["totals.grossAmount", "Bruto"], ["totals.amountPaid", "Plačano"], ["totals.amountDue", "Za plačilo"]] },
 ];
 
-export function InvoiceReviewClient({ documentId }: { documentId: number }) {
+export function InvoiceReviewClient({ documentId, onUpdated, onBack, reviewIds, onNavigate }: {
+  documentId: number;
+  onUpdated?: () => void;
+  onBack?: () => void;
+  reviewIds?: number[];
+  onNavigate?: (documentId: number) => void;
+}) {
   const router = useRouter();
   const [mobilePanel, setMobilePanel] = useState<"data" | "document">("data");
   const [detail, setDetail] = useState<Detail | null>(null);
@@ -97,6 +103,12 @@ export function InvoiceReviewClient({ documentId }: { documentId: number }) {
       return;
     }
     if (action === "approve" || action === "reject") {
+      if (onUpdated) {
+        await load();
+        onUpdated();
+        setMessage(action === "approve" ? "Račun je potrjen. Status samodejnega pošiljanja je prikazan zgoraj." : "Račun je zavrnjen.");
+        return;
+      }
       let nextPath = "/invoices";
       try {
         const pendingRes = await fetch("/api/invoice-reader?status=needs_review", { cache: "no-store" });
@@ -113,7 +125,7 @@ export function InvoiceReviewClient({ documentId }: { documentId: number }) {
     }
     setMessage(action === "reprocess" ? "Račun je ponovno v čakalni vrsti." : "Spremembe so shranjene.");
     await load();
-  }, [documentId, form, initial, reason, load, router]);
+  }, [documentId, form, initial, reason, load, router, onUpdated]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -124,13 +136,16 @@ export function InvoiceReviewClient({ documentId }: { documentId: number }) {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [submit, siblings, documentId]);
+  }, [submit, siblings, documentId, reviewIds, onNavigate, onBack]);
 
   function goRelative(offset: number) {
-    const index = siblings.indexOf(documentId);
+    const navigationIds = reviewIds ?? siblings;
+    const index = navigationIds.indexOf(documentId);
     if (index < 0) return router.push("/invoices");
-    const target = siblings[index + offset];
-    if (target) router.push(`/invoice-review/${target}`);
+    const target = navigationIds[index + offset];
+    if (target && onNavigate) onNavigate(target);
+    else if (onNavigate) return;
+    else if (target) router.push(`/invoice-review/${target}`);
     else router.push("/invoices");
   }
 
@@ -174,7 +189,7 @@ export function InvoiceReviewClient({ documentId }: { documentId: number }) {
       <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0"><h1 className="text-2xl font-bold tracking-tight text-slate-950 dark:text-white">Podrobnosti računa</h1><p className="mt-1 break-all text-sm text-slate-500">ID: {documentId} · {detail.document.filename}</p></div>
         <nav aria-label="Navigacija pregleda" className="flex flex-wrap items-center gap-2">
-          <Link href="/invoices" className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700"><ChevronLeft className="h-4 w-4" />Nazaj</Link>
+          {onBack ? <button type="button" onClick={onBack} className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700"><ChevronLeft className="h-4 w-4" />Vsi naloženi računi</button> : <Link href="/invoices" className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700"><ChevronLeft className="h-4 w-4" />Nazaj</Link>}
           <a href="#processing-history" className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700"><History className="h-4 w-4" />Zgodovina</a>
           <button type="button" onClick={() => goRelative(-1)} className="rounded-lg border border-slate-200 bg-white p-2.5 text-slate-700" title="Prejšnji račun (Alt+←)" aria-label="Prejšnji račun"><ChevronLeft className="h-4 w-4" /></button>
           <button type="button" onClick={() => goRelative(1)} className="rounded-lg border border-slate-200 bg-white p-2.5 text-slate-700" title="Naslednji račun (Alt+→)" aria-label="Naslednji račun"><ChevronRight className="h-4 w-4" /></button>
@@ -329,3 +344,4 @@ function bboxToStyle(bbox: unknown): React.CSSProperties | null {
   const scale = max <= 1 ? 100 : max <= 1000 ? 0.1 : 0.05;
   return { left: `${x1 * scale}%`, top: `${y1 * scale}%`, width: `${Math.max(1, (x2 - x1) * scale)}%`, height: `${Math.max(1, (y2 - y1) * scale)}%` };
 }
+

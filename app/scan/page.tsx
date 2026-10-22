@@ -6,6 +6,8 @@ import type { CommercialPlan } from "@/lib/plans";
 import { OcrLimitUpgradeModal } from "@/components/ocr-limit-upgrade-modal";
 import { queuePdfUpload } from "@/lib/client-pdf-upload";
 import { DocumentUploadSection } from "@/components/document-upload-section";
+import { InvoiceProcessingFlow } from "@/components/invoice-processing-flow";
+import { positiveId, type FlowUpload } from "@/lib/invoice-processing-flow";
 
 interface SubStatus {
   isFree: boolean;
@@ -46,7 +48,7 @@ function readFileAsBase64(file: File): Promise<{ base64: string; mime: string }>
 
 // Compress image to max 1600px and 80% quality — keeps file small but preview-ready
 function compressImage(file: File): Promise<{ base64: string; mime: string }> {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const img = new Image();
     const url = URL.createObjectURL(file);
     img.onload = () => {
@@ -65,6 +67,7 @@ function compressImage(file: File): Promise<{ base64: string; mime: string }> {
       const [, base64] = dataUrl.split(",");
       resolve({ base64, mime: "image/jpeg" });
     };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Slike ni mogoče prebrati. Poskusite JPG, PNG ali PDF.")); };
     img.src = url;
   });
 }
@@ -118,8 +121,9 @@ export default function ScanPage() {
   const [showLimitModal, setShowLimitModal] = useState(false);
   const [ocrLimit, setOcrLimit] = useState<{ plan: CommercialPlan; message: string | null; originalSent: boolean } | null>(null);
   const [sendProgress, setSendProgress] = useState({ current: 0, total: 0 });
-  const [queuedCount, setQueuedCount] = useState(0);
-  const [bulkJobIds, setBulkJobIds] = useState<number[]>([]);
+  const [flowUploads, setFlowUploads] = useState<FlowUpload[]>([]);
+  const [showFlow, setShowFlow] = useState(false);
+  const sendingRef = useRef(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -205,120 +209,80 @@ export default function ScanPage() {
 
   const selectedCompany = companies.find(c => c.id === selectedCompanyId) ?? null;
   const hasRecipient = selectedCompany !== null || !!recipientEmail;
-  const sentToLabel = selectedCompany ? selectedCompany.name : recipientEmail;
 
   async function handleSend() {
-    if (files.length === 0) return;
+    if (files.length === 0 || sendingRef.current) return;
+    sendingRef.current = true;
+    const selectedFiles = [...files];
     setStatus("sending");
     setErrMsg("");
-    setQueuedCount(0);
-    setBulkJobIds([]);
-    setSendProgress({ current: 0, total: files.length });
+    setFlowUploads(selectedFiles.map((item) => ({ key: item.id, filename: item.file.name, status: "waiting" })));
+    setShowFlow(true);
+    setSendProgress({ current: 0, total: selectedFiles.length });
     const failed: SelectedFile[] = [];
-    let sent = 0;
-    let queued = 0;
-    let lastFailureMessage = "";
+    const update = (key: string, changes: Partial<FlowUpload>) => setFlowUploads((current) => current.map((item) => item.key === key ? { ...item, ...changes } : item));
 
-    for (let index = 0; index < files.length; index += 1) {
-      const selected = files[index];
-      setSendProgress({ current: index + 1, total: files.length });
-
-      try {
-        let responseStatus: number;
-        let json: Record<string, any>;
-
-        if (selected.file.type === "application/pdf") {
-          const pages = await pdfPageCount(selected.file);
-          if (pages === 1 && selected.file.size <= MAX_IMAGE_FILE_SIZE) {
-            const encoded = await readFileAsBase64(selected.file);
-            const body: Record<string, unknown> = {
-              subject: subject || "Račun",
-              imageBase64: encoded.base64,
-              filename: selected.file.name,
-              mime: "application/pdf",
-            };
-            if (selectedCompanyId) body.companyId = selectedCompanyId;
-            const res = await fetch("/api/send", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(body),
-            });
-            responseStatus = res.status;
-            json = await res.json();
+    try {
+      for (let index = 0; index < selectedFiles.length; index += 1) {
+        const selected = selectedFiles[index];
+        update(selected.id, { status: "uploading" });
+        setSendProgress({ current: index + 1, total: selectedFiles.length });
+        try {
+          let responseStatus: number;
+          let json: Record<string, any>;
+          if (selected.file.type === "application/pdf" && (await pdfPageCount(selected.file) !== 1 || selected.file.size > MAX_IMAGE_FILE_SIZE)) {
+            const result = await queuePdfUpload(selected.file, { subject: subject || "Račun", ...(selectedCompanyId ? { companyId: selectedCompanyId } : {}) });
+            responseStatus = result.status;
+            json = result.json;
           } else {
-            const queuedPdf = await queuePdfUpload(selected.file, {
-              subject: subject || "Račun",
-              ...(selectedCompanyId ? { companyId: selectedCompanyId } : {}),
+            const encoded = selected.file.type === "application/pdf" ? await readFileAsBase64(selected.file) : await compressImage(selected.file);
+            const response = await fetch("/api/send", {
+              method: "POST", headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ subject: subject || "Račun", imageBase64: encoded.base64, filename: selected.file.name, mime: encoded.mime, ...(selectedCompanyId ? { companyId: selectedCompanyId } : {}) }),
             });
-            responseStatus = queuedPdf.status;
-            json = queuedPdf.json;
+            responseStatus = response.status;
+            json = await response.json();
           }
-        } else {
-          const encoded = await compressImage(selected.file);
-          const body: Record<string, unknown> = {
-            subject: subject || "Račun",
-            imageBase64: encoded.base64,
-            filename: selected.file.name,
-            mime: encoded.mime,
-          };
-          if (selectedCompanyId) body.companyId = selectedCompanyId;
-
-          const res = await fetch("/api/send", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(body),
-          });
-          responseStatus = res.status;
-          json = await res.json();
+          if ((responseStatus === 402 && json.code === "ocr_plan_limit_reached") || (responseStatus === 403 && json.code === "free_limit_reached") || json.code === "subscription_required") {
+            if (json.code === "ocr_plan_limit_reached") setOcrLimit({ plan: json.plan ?? "free", message: json.error ?? null, originalSent: false });
+            if (json.code === "free_limit_reached") setShowLimitModal(true);
+            for (const remaining of selectedFiles.slice(index)) {
+              failed.push(remaining);
+              update(remaining.id, { status: "failed", error: json.error || "Nalaganje ni bilo dokončano. Preverite paket ali poskusite znova." });
+            }
+            break;
+          }
+          const documentId = positiveId(json.processingDocumentId ?? json.documentId);
+          if ((responseStatus < 200 || responseStatus >= 300 || !json.success) && !documentId) throw new Error(json.error || "Nalaganje ni uspelo");
+          const invoiceId = positiveId(json.id ?? json.invoiceId), bulkJobId = positiveId(json.bulkJobId);
+          if (!invoiceId && !documentId && !bulkJobId) throw new Error("Nalaganje ni uspelo");
+          update(selected.id, { status: "accepted", invoiceId, documentId, bulkJobId, error: json.ocrMessage || json.ocrError || (!json.success ? json.error : undefined) });
+          if (json.ocrLimitReached) setOcrLimit({ plan: json.ocrPlan ?? "free", message: json.ocrMessage ?? null, originalSent: true });
+          URL.revokeObjectURL(selected.url);
+        } catch (problem) {
+          failed.push(selected);
+          update(selected.id, { status: "failed", error: problem instanceof Error ? problem.message : "Nalaganje ni uspelo" });
         }
-
-        if (responseStatus === 402 && json.code === "ocr_plan_limit_reached") {
-          setOcrLimit({ plan: json.plan ?? "free", message: json.error ?? null, originalSent: false });
-          failed.push(...files.slice(index));
-          break;
-        }
-        if (responseStatus === 402 || json.code === "subscription_required") {
-          window.location.href = "/upgrade";
-          return;
-        }
-        if (responseStatus === 403 && json.code === "free_limit_reached") {
-          setShowLimitModal(true);
-          failed.push(...files.slice(index));
-          break;
-        }
-        if (responseStatus < 200 || responseStatus >= 300 || !json.success) {
-          throw new Error(json.error ?? "Napaka");
-        }
-
-        if (json.ocrLimitReached) {
-          setOcrLimit({ plan: json.ocrPlan ?? "free", message: json.ocrMessage ?? null, originalSent: true });
-        }
-        if (json.queued) queued += 1;
-        if (Number.isInteger(Number(json.bulkJobId))) setBulkJobIds((current) => [...current, Number(json.bulkJobId)]);
-        else sent += 1;
-
-        URL.revokeObjectURL(selected.url);
-      } catch (err) {
-        failed.push(selected);
-        lastFailureMessage = err instanceof Error ? err.message : "Napaka pri pošiljanju";
       }
+      setFiles(failed);
+      if (failed.length === 0) setSubject("Račun");
+    } finally {
+      sendingRef.current = false;
+      setStatus("idle");
+      setSendProgress({ current: 0, total: 0 });
+      void fetch("/api/subscription", { cache: "no-store" }).then((response) => response.ok ? response.json() : null).then((sub) => {
+        if (sub) setSubStatus({ isFree: sub.isFree, monthlyUsage: sub.monthlyUsage, monthlyLimit: sub.monthlyLimit });
+      }).catch(() => {});
     }
-
-    setQueuedCount(queued);
-    setFiles(failed);
-    setSendProgress({ current: 0, total: 0 });
-    setStatus(failed.length === 0 ? "ok" : "err");
-    if (failed.length === 0) setSubject("Račun");
-    else setErrMsg(lastFailureMessage
-      ? `${sent + queued} dokumentov sprejetih, ${failed.length} neuspešnih. Razlog: ${lastFailureMessage}`
-      : `${sent + queued} dokumentov sprejetih, ${failed.length} neuspešnih. Poskusite znova.`);
-
-    fetch("/api/subscription").then(r => r.ok ? r.json() : null).then(sub => {
-      if (sub) setSubStatus({ isFree: sub.isFree, monthlyUsage: sub.monthlyUsage, monthlyLimit: sub.monthlyLimit });
-    });
   }
 
   const isFreeAtLimit = subStatus?.isFree && subStatus.monthlyLimit !== null && subStatus.monthlyUsage >= subStatus.monthlyLimit;
+
+  if (showFlow) return <>
+    {showLimitModal && <FreeLimitModal onClose={() => setShowLimitModal(false)} />}
+    {ocrLimit && <OcrLimitUpgradeModal locale="sl" plan={ocrLimit.plan} message={ocrLimit.message} originalSent={ocrLimit.originalSent} onClose={() => setOcrLimit(null)} />}
+    <InvoiceProcessingFlow uploads={flowUploads} uploading={status === "sending"} locale="sl" onBack={() => setShowFlow(false)} />
+  </>;
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-10 pb-[60vh]">
@@ -329,6 +293,8 @@ export default function ScanPage() {
       <p className="text-gray-500 dark:text-slate-400 mb-6">
         Fotografirajte ali naložite račun (slika ali PDF) in ga pošljite z enim klikom.
       </p>
+
+      {flowUploads.length > 0 && <button type="button" onClick={() => setShowFlow(true)} className="mb-6 w-full rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-bold text-blue-800">Spremljaj obdelavo in pošiljanje →</button>}
 
       {/* Free plan usage counter */}
       {subStatus?.isFree && subStatus.monthlyLimit !== null && (
@@ -422,18 +388,6 @@ export default function ScanPage() {
       )}
 
       {/* Notifications */}
-      {status === "ok" && (
-        <div className="mb-5 flex items-center gap-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 px-4 py-3 rounded-xl text-sm font-medium">
-          ✅ {queuedCount > 0 ? `${queuedCount} PDF ${queuedCount === 1 ? "je sprejet" : "so sprejeti"} za samodejno razdelitev na posamezne račune in OCR` : (files.length === 0 ? "Vsi dokumenti so bili poslani" : "Dokument uspešno poslan")}{sentToLabel ? ` — ${sentToLabel}` : ""}!
-        </div>
-      )}
-      {status === "ok" && bulkJobIds.length > 0 && (
-        <div className="mb-5">
-          <Link href={`/bulk-invoices/${bulkJobIds[bulkJobIds.length - 1]}`} className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-blue-700">
-            Preglej razdelitev in OCR PDF paketa →
-          </Link>
-        </div>
-      )}
       {status === "err" && (
         <div className="mb-5 flex items-center gap-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 rounded-xl text-sm font-medium">
           ❌ {errMsg}
@@ -510,6 +464,11 @@ export default function ScanPage() {
               </button>
             </div>
 
+          </div>
+        )}
+
+      </DocumentUploadSection>
+
             {/* Camera input — opens directly to camera */}
             <input
               ref={cameraInputRef}
@@ -528,10 +487,7 @@ export default function ScanPage() {
               className="hidden"
               onChange={(e) => { if (e.target.files) addFiles(Array.from(e.target.files)); e.target.value = ""; }}
             />
-          </div>
-        )}
 
-      </DocumentUploadSection>
 
       {/* Subject */}
 
@@ -590,3 +546,4 @@ export default function ScanPage() {
     </div>
   );
 }
+
