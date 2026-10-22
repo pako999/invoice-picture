@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { invoiceIssueLabel } from "@/lib/invoice-intelligence/issue-labels";
 import Link from "next/link";
@@ -61,6 +61,7 @@ export function InvoiceReviewClient({ documentId, onUpdated, onBack, reviewIds, 
   const [busy, setBusy] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [siblings, setSiblings] = useState<number[]>([]);
+  const submitting = useRef(false);
 
   const load = useCallback(async () => {
     const [detailRes, listRes] = await Promise.all([
@@ -89,8 +90,11 @@ export function InvoiceReviewClient({ documentId, onUpdated, onBack, reviewIds, 
   }, [detail?.document.status, load]);
 
   const submit = useCallback(async (action: "save" | "approve" | "reject" | "reprocess") => {
+    if (submitting.current) return;
+    submitting.current = true;
     setBusy(action);
     setMessage(null);
+    try {
     const changes: Record<string, string | null> = {};
     for (const [key, value] of Object.entries(form)) if ((initial[key] ?? "") !== value) changes[key] = value || null;
     const res = await fetch(`/api/invoice-reader/${documentId}`, {
@@ -98,8 +102,7 @@ export function InvoiceReviewClient({ documentId, onUpdated, onBack, reviewIds, 
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action, changes, reason: reason || undefined }),
     });
-    const json = await res.json();
-    setBusy(null);
+    const json = await res.json().catch(() => { throw new Error("Strežnik ni vrnil veljavnega odgovora"); });
     if (!res.ok) { setMessage(json.error ?? "Napaka"); return; }
     if (action === "reprocess" && Number.isInteger(Number(json.bulkJobId))) {
       router.push(`/bulk-invoices/${Number(json.bulkJobId)}`);
@@ -107,9 +110,21 @@ export function InvoiceReviewClient({ documentId, onUpdated, onBack, reviewIds, 
     }
     if (action === "approve" || action === "reject") {
       if (onUpdated) {
-        await load();
         onUpdated();
-        setMessage(action === "approve" ? "Račun je potrjen. Status samodejnega pošiljanja je prikazan zgoraj." : "Račun je zavrnjen.");
+        let nextDocumentId: number | undefined;
+        try {
+          const pendingRes = await fetch("/api/invoice-reader?status=needs_review", { cache: "no-store" });
+          if (pendingRes.ok) {
+            const pending = await pendingRes.json() as { documents?: Array<{ id: number }> };
+            nextDocumentId = pending.documents?.find((document) => document.id !== documentId && (!reviewIds || reviewIds.includes(document.id)))?.id;
+          }
+        } catch { /* Return to the processing overview if refreshing the queue fails. */ }
+        if (nextDocumentId && onNavigate) onNavigate(nextDocumentId);
+        else if (onBack) onBack();
+        else {
+          setMessage(action === "approve" ? "Račun je potrjen." : "Račun je zavrnjen.");
+          await load();
+        }
         return;
       }
       let nextPath = "/invoices";
@@ -128,7 +143,13 @@ export function InvoiceReviewClient({ documentId, onUpdated, onBack, reviewIds, 
     }
     setMessage(action === "reprocess" ? "Račun je ponovno v čakalni vrsti." : "Spremembe so shranjene.");
     await load();
-  }, [documentId, form, initial, reason, load, router, onUpdated]);
+    } catch (error) {
+      setMessage(error instanceof Error ? `Zahteve ni bilo mogoče zaključiti: ${error.message}. Osvežite status računa pred ponovnim poskusom.` : "Zahteve ni bilo mogoče zaključiti. Osvežite status računa.");
+    } finally {
+      submitting.current = false;
+      setBusy(null);
+    }
+  }, [documentId, form, initial, reason, load, router, onUpdated, onNavigate, onBack, reviewIds]);
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -267,8 +288,9 @@ export function InvoiceReviewClient({ documentId, onUpdated, onBack, reviewIds, 
       </div>
 
       <div className="fixed inset-x-0 bottom-0 z-[60] border-t border-slate-200 bg-white/95 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-2xl backdrop-blur dark:border-slate-700 dark:bg-slate-950/95">
+        {message && <p role="status" aria-live="polite" className="mx-auto mb-2 max-w-7xl break-words text-sm text-slate-700 dark:text-slate-200">{message}</p>}
         <div className="mx-auto flex w-full min-w-0 max-w-7xl items-center justify-between gap-3">
-          <div className="hidden text-sm text-slate-500 md:block">{message || "Ctrl/Cmd+S shrani · Alt+A potrdi · Alt+←/→ navigacija"}</div>
+          <div className="hidden text-sm text-slate-500 md:block">Ctrl/Cmd+S shrani · Alt+A potrdi · Alt+←/→ navigacija</div>
           {isProcessing ? <div className="flex min-h-12 items-center gap-2 font-bold text-blue-700"><Loader2 className="h-5 w-5 animate-spin" /> Mistral OCR obdeluje…</div> : <div className="grid w-full min-w-0 grid-cols-2 gap-2 md:flex md:w-auto md:flex-wrap">
             <Action busy={busy} name="approve" onClick={() => submit("approve")} icon={<Check className="h-5 w-5" />}>Potrdi in nadaljuj</Action>
             <Action busy={busy} name="save" onClick={() => submit("save")} icon={<Save className="h-5 w-5" />}>Shrani osnutek</Action>

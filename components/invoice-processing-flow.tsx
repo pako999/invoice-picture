@@ -32,7 +32,7 @@ export function InvoiceProcessingFlow({ uploads, uploading, locale, onBack }: {
   const snapshot = statusResult?.key === requestKey ? statusResult.data : null;
   const refreshStatus = useCallback(() => setRefresh((value) => value + 1), []);
 
-  useEffect(() => { root.current?.scrollIntoView({ block: "start", behavior: "instant" }); }, []);
+  useEffect(() => { root.current?.scrollIntoView({ block: "start", behavior: "instant" }); }, [selectedId]);
   useEffect(() => {
     const input = JSON.parse(requestKey) as { invoiceIds: number[]; documentIds: number[]; bulkJobIds: number[] };
     if (!input.invoiceIds.length && !input.documentIds.length && !input.bulkJobIds.length) return;
