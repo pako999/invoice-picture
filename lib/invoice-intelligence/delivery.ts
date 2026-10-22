@@ -8,6 +8,7 @@ import { normalizedInvoiceSchema } from "./types";
 import { buildInvoiceApiPayload, resolveXmlDelivery } from "./delivery-format";
 import { getCompanyDeliverySettings, getDeliverySecret } from "./delivery-settings";
 import { createZip } from "@/lib/zip";
+import { dispatchInvoiceDelivery } from "./dispatch";
 
 export async function queuePendingApprovedDeliveries(limit = 100) {
   const sql = rawDb();
@@ -50,24 +51,32 @@ export async function queuePendingApprovedDeliveries(limit = 100) {
 
 export async function queueInvoiceDelivery(documentId: number) {
   const sql = rawDb();
-  await sql`
+  const queued = await sql`
     INSERT INTO "invoiceDeliveryJobs" ("documentId", "status", "attempts", "availableAt", "createdAt", "updatedAt")
-    VALUES (${documentId}, 'queued', 0, now(), now(), now())
+    SELECT d."id", 'queued', 0, now(), now(), now()
+    FROM "invoiceDocuments" d
+    JOIN "companyDeliverySettings" s ON s."companyId"=d."companyId" AND s."clerkUserId"=d."clerkUserId"
+    WHERE d."id"=${documentId} AND d."status"='approved' AND d."approvedJson" IS NOT NULL
+      AND s."mode" IN ('api_json','xml_email','xml_zip_email')
     ON CONFLICT ("documentId") DO UPDATE SET
       "status" = CASE WHEN "invoiceDeliveryJobs"."status" = 'completed' THEN 'completed' ELSE 'queued' END,
       "availableAt" = CASE WHEN "invoiceDeliveryJobs"."status" = 'completed' THEN "invoiceDeliveryJobs"."availableAt" ELSE now() END,
       "lastError" = CASE WHEN "invoiceDeliveryJobs"."status" = 'completed' THEN "invoiceDeliveryJobs"."lastError" ELSE NULL END,
       "lockedAt" = NULL,
       "updatedAt" = now()
+    WHERE "invoiceDeliveryJobs"."status" NOT IN ('processing', 'completed')
+    RETURNING "id"
   `;
+  if (queued.length) dispatchInvoiceDelivery(documentId);
 }
 
-export async function runQueuedDeliveryJobs(limit = 5) {
+export async function runQueuedDeliveryJobs(limit = 5, targetDocumentId?: number) {
   const sql = rawDb();
   const rows = await sql`
     SELECT "id", "documentId", "attempts", "maxAttempts"
     FROM "invoiceDeliveryJobs"
     WHERE "status" IN ('queued', 'failed') AND "availableAt" <= now() AND "attempts" < "maxAttempts"
+      AND (${targetDocumentId === undefined} OR "documentId" = ${targetDocumentId ?? 0})
     ORDER BY "availableAt" ASC
     LIMIT ${Math.max(1, Math.min(20, limit))}
   `;
@@ -80,6 +89,7 @@ export async function runQueuedDeliveryJobs(limit = 5) {
       UPDATE "invoiceDeliveryJobs"
       SET "status" = 'processing', "attempts" = ${attempt}, "lockedAt" = now(), "updatedAt" = now()
       WHERE "id" = ${jobId} AND "status" IN ('queued', 'failed')
+        AND "availableAt" <= now() AND "attempts" = ${Number(row.attempts)} AND "attempts" < "maxAttempts"
       RETURNING "id"
     `;
     if (!locked.length) continue;
@@ -154,6 +164,7 @@ export async function deliverInvoiceDocument(documentId: number) {
         "User-Agent": "SlikajRacun/1.0",
         "X-SlikajRacun-Event": "invoice.approved",
         "X-SlikajRacun-Document-Id": String(documentId),
+        "Idempotency-Key": `invoice-api/${document.clerkUserId}/${documentId}`,
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       body: JSON.stringify(payload),
@@ -190,7 +201,7 @@ export async function deliverInvoiceDocument(documentId: number) {
       noticeHtml: fallbackNotice,
     }),
     attachments: [{ filename: resolved.filename, content: Buffer.from(resolved.xml, "utf8").toString("base64"), contentType: "application/xml" }],
-  });
+  }, { idempotencyKey: `invoice-xml/${document.clerkUserId}/${documentId}` });
   if (result.error) throw new Error(`XML email delivery failed: ${result.error.message}`);
   await markSourceInvoice(documentId, true);
   await audit(documentId, "structured_delivery_success", {
@@ -224,3 +235,4 @@ function rawDb() {
   if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL is not set");
   return neon(process.env.DATABASE_URL);
 }
+

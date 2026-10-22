@@ -39,6 +39,7 @@ export function InvoiceProcessingFlow({ uploads, uploading, locale, onBack }: {
     const controller = new AbortController();
     let stopped = false, inFlight = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
+    let previous = "", unchanged = 0;
     async function load() {
       clearTimeout(timer);
       if (stopped || inFlight || document.visibilityState === "hidden") return;
@@ -55,7 +56,12 @@ export function InvoiceProcessingFlow({ uploads, uploading, locale, onBack }: {
         if (stopped) return;
         setStatusResult({ key: requestKey, data: data as FlowSnapshot });
         setError("");
-        if (shouldPollFlow(latestUploads.current.filter((item) => item.status === "accepted"), data)) timer = setTimeout(() => void load(), 3000);
+        const signature = JSON.stringify(data);
+        unchanged = signature === previous ? unchanged + 1 : 0;
+        previous = signature;
+        if (shouldPollFlow(latestUploads.current.filter((item) => item.status === "accepted"), data)) {
+          timer = setTimeout(() => void load(), Math.min(15000, 3000 + unchanged * 2000));
+        }
       } catch (problem) {
         if (stopped || controller.signal.aborted) return;
         setError(problem instanceof Error ? problem.message : (en ? "Could not refresh progress." : "Napredka ni mogoče osvežiti."));

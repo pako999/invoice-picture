@@ -1,5 +1,7 @@
 import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
+import { queueInvoiceDelivery } from "@/lib/invoice-intelligence/delivery";
+export const maxDuration = 300;
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "@/lib/db";
@@ -116,6 +118,10 @@ export async function POST(req:Request){
     await db.insert(invoiceValidationResults).values({documentId,status:autoApprove?"valid":"needs_review",warningsJson:JSON.stringify(extracted.validation.warnings),errorsJson:JSON.stringify(extracted.validation.errors),differencesJson:JSON.stringify(extracted.validation.differences)});
     await db.insert(invoiceProcessingAttempts).values({documentId,provider:extracted.provider,model:extracted.model,status:"succeeded",durationMs:Date.now()-started,pagesProcessed:Number(group.endPage)-Number(group.startPage)+1,costMicros:null,completedAt:new Date()});
     await db.insert(invoiceAuditLogs).values({documentId,clerkUserId:String(job.clerkUserId),action:autoApprove?"auto_approved":"sent_to_review",metadataJson:JSON.stringify({bulkJobId:data.jobId,groupIndex:Number(group.groupIndex),pages:[Number(group.startPage),Number(group.endPage)]})});
+    if(autoApprove && documentId) {
+      try { await queueInvoiceDelivery(documentId); }
+      catch(error) { console.error("bulk_auto_delivery_enqueue_failed", {documentId,error:String(error)}); }
+    }
     const nextDeliveryStatus=isReprocess
       ? String(group.deliveryStatus)
       : deliveryMode==='email_ocr'?'pending':'not_required';
@@ -169,3 +175,4 @@ function nextRateLimitAttempt(lastError: unknown) {
  const match=String(lastError??"").match(/^\[rate-limit:(\d+)\]/);
  return Number(match?.[1]??0)+1;
 }
+

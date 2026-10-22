@@ -5,6 +5,7 @@ import { getDb } from "@/lib/db";
 import { invoiceDocuments, invoiceProcessingJobs } from "@/lib/schema";
 import { OcrCommercialQuotaError, resolveOcrEntitlement } from "@/lib/invoice-intelligence/quota";
 import { getPlanConfig } from "@/lib/plans";
+import { dispatchInvoiceProcessing } from "./dispatch";
 
 export async function enqueueInvoiceDocument(input:{clerkUserId:string;companyId:number|null;sourceInvoiceId:number|null;filename:string;mimeType:string;base64:string}){
   const bytes=Buffer.from(input.base64,"base64");
@@ -15,7 +16,7 @@ export async function enqueueInvoiceDocument(input:{clerkUserId:string;companyId
   const readerConfigured=Boolean(process.env.MISTRAL_API_KEY)||/xml/i.test(input.mimeType)||/\.xml$/i.test(input.filename);
   const db=getDb();
   const[existing]=await db.select({id:invoiceDocuments.id}).from(invoiceDocuments).where(eq(invoiceDocuments.idempotencyKey,idempotencyKey)).limit(1);
-  if(existing)return existing.id;
+  if(existing){if(readerConfigured)dispatchInvoiceProcessing(existing.id);return existing.id;}
   let priority=false;let documentId:number|null=null;const filename=sanitizeFilename(input.filename);
   if(readerConfigured){
     const quota=await resolveOcrEntitlement(input.clerkUserId);priority=getPlanConfig(quota.plan).priorityProcessing;
@@ -36,7 +37,11 @@ export async function enqueueInvoiceDocument(input:{clerkUserId:string;companyId
     documentId=document?.id??null;
   }
   if(!documentId)return null;
-  if(readerConfigured)await db.insert(invoiceProcessingJobs).values({documentId,status:"queued",availableAt:priority?new Date(Date.now()-60000):new Date()}).onConflictDoNothing();
+  if(readerConfigured){
+    await db.insert(invoiceProcessingJobs).values({documentId,status:"queued",availableAt:priority?new Date(Date.now()-60000):new Date()}).onConflictDoNothing();
+    dispatchInvoiceProcessing(documentId);
+  }
   return documentId;
 }
 function sanitizeFilename(filename:string){const base=filename.split(/[\\/]/).pop()||"invoice";return base.replace(/[\u0000-\u001f\u007f]/g,"").replace(/[^a-zA-Z0-9._()\- čšžćđČŠŽĆĐ]/g,"_").slice(0,255);}
+

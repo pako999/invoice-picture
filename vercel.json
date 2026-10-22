@@ -1,6 +1,7 @@
 {
   "framework": "nextjs",
   "crons": [
+    { "path": "/api/cron/invoice-maintenance", "schedule": "30 3 * * *" },
     {
       "path": "/api/cron/process-invoices",
       "schedule": "*/15 * * * *"
@@ -11,3 +12,4 @@
     }
   ]
 }
+

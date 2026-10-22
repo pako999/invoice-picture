@@ -1,4 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
+import { after, NextRequest, NextResponse } from "next/server";
+import { runQueuedUploadJobs } from "@/lib/invoice-upload-queue";
+export const maxDuration = 300;
 import { workspaceAuth as auth } from "@/lib/workspace";
 import { neon } from "@neondatabase/serverless";
 import { and, eq } from "drizzle-orm";
@@ -184,6 +186,10 @@ export async function POST(req: NextRequest) {
       throw error;
     }
 
+    after(async () => {
+      try { await runQueuedUploadJobs(1, 1, invoice.id); }
+      catch (error) { console.error("invoice_upload_dispatch_failed", { invoiceId: invoice.id, error: String(error) }); }
+    });
     return NextResponse.json({
       success: true,
       queued: true,
@@ -206,3 +212,4 @@ function sanitizeFilename(filename: string) {
     .replace(/[^a-zA-Z0-9._()\- čšžćđČŠŽĆĐ]/g, "_")
     .slice(0, 255);
 }
+

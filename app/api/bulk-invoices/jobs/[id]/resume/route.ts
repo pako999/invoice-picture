@@ -2,8 +2,10 @@ import { NextResponse } from "next/server";
 import { workspaceAuth as auth } from "@/lib/workspace";
 import { getOcrUsageSummary } from "@/lib/invoice-intelligence/quota";
 import { bulkSql } from "@/lib/bulk-invoices/service";
+import { dispatchBulkJob } from "@/lib/bulk-invoices/dispatch";
+export const maxDuration = 300;
 export async function POST(_req:Request,{params}:{params:Promise<{id:string}>}){
- const {userId}=await auth();if(!userId)return NextResponse.json({error:"Unauthorized"},{status:401});const id=Number((await params).id);const sql=bulkSql();
+ const {userId,getToken}=await auth();if(!userId)return NextResponse.json({error:"Unauthorized"},{status:401});const id=Number((await params).id);const sql=bulkSql();
  const rows=await sql`SELECT "totalInvoices","stage","pageCount","ocrNextPage","lastError" FROM "bulkInvoiceJobs" WHERE "id"=${id} AND "clerkUserId"=${userId} LIMIT 1`;if(!rows.length)return NextResponse.json({error:"Not found"},{status:404});
  const retryableProviderFailure=rows[0].stage==='failed'&&(/^\[(?:rate-limit|provider-access)/).test(String(rows[0].lastError??''));
  if(rows[0].stage!=='quota_wait'&&!retryableProviderFailure)return NextResponse.json({error:"Job ne čaka na ponovni poskus."},{status:409});
@@ -17,5 +19,7 @@ export async function POST(_req:Request,{params}:{params:Promise<{id:string}>}){
  }
  const nextStage=ocrIncomplete?'ocr':'classify';
  await sql`UPDATE "bulkInvoiceJobs" SET "stage"=${nextStage},"status"='processing',"attempts"=0,"lockedAt"=NULL,"lastError"=NULL,"completedAt"=NULL,"updatedAt"=now() WHERE "id"=${id}`;
+ const token=await getToken();if(token)dispatchBulkJob(id,userId,token);
  return NextResponse.json({success:true,stage:nextStage});
 }
+

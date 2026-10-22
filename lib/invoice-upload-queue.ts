@@ -25,10 +25,10 @@ type UploadJob = {
   maxAttempts: number;
 };
 
-export async function runQueuedUploadJobs(limit = 20, concurrency = 5) {
+export async function runQueuedUploadJobs(limit = 20, concurrency = 5, invoiceId?: number) {
   const sql = rawDb();
 
-  await recoverAndCleanUploadQueue();
+  if (invoiceId === undefined) await recoverAndCleanUploadQueue();
 
   const rows = await sql`
     SELECT
@@ -39,6 +39,7 @@ export async function runQueuedUploadJobs(limit = 20, concurrency = 5) {
     WHERE "status" IN ('queued','failed')
       AND "availableAt" <= now()
       AND "attempts" < "maxAttempts"
+      AND (${invoiceId === undefined} OR "invoiceId" = ${invoiceId ?? 0})
     ORDER BY "availableAt" ASC, "id" ASC
     LIMIT ${Math.max(1, Math.min(50, limit))}
   ` as unknown as UploadJob[];
@@ -69,6 +70,7 @@ async function processOneUploadJob(job: UploadJob) {
         "updatedAt" = now()
     WHERE "id" = ${job.id}
       AND "status" IN ('queued','failed')
+      AND "availableAt" <= now() AND "attempts" = ${job.attempts} AND "attempts" < "maxAttempts"
     RETURNING "attempts", "maxAttempts"
   `;
 
@@ -250,3 +252,4 @@ function rawDb() {
   if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL is not set");
   return neon(process.env.DATABASE_URL);
 }
+

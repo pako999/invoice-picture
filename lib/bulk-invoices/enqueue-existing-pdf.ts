@@ -5,6 +5,7 @@ import { getCompanyDeliverySettings } from "@/lib/invoice-intelligence/delivery-
 import type { DeliveryMode } from "@/lib/invoice-intelligence/delivery-format";
 import { BULK_PDF_GATEWAY_URL, BULK_PDF_MAX_BYTES } from "@/lib/bulk-invoices/config";
 import { assertBulkJobAdmission } from "@/lib/bulk-invoices/admission";
+import { dispatchBulkJob } from "./dispatch";
 
 type EnqueueExistingPdfArgs = {
   clerkToken: string;
@@ -66,6 +67,7 @@ export async function enqueueExistingPdfAsBulkJob(args: EnqueueExistingPdfArgs) 
     stage: "queued",
   }).returning({ id: bulkInvoiceJobs.id });
   if (!job) throw new Error("PDF paketa ni bilo mogoče ustvariti.");
+  dispatchBulkJob(job.id, args.clerkUserId, args.clerkToken);
   return job.id;
 }
 
@@ -115,3 +117,4 @@ function normalizeHeaders(value: unknown) {
 function sanitizeFilename(value: string) {
   return value.split(/[\\/]/).pop()?.replace(/[\u0000-\u001f\u007f]/g, "").replace(/[^a-zA-Z0-9._()\- čšžćđČŠŽĆĐ]/g, "_").slice(0, 255) || "racuni.pdf";
 }
+

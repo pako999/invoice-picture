@@ -11,6 +11,7 @@ import { enqueueInvoiceDocument } from "@/lib/invoice-intelligence/queue";
 import { OcrCommercialQuotaError } from "@/lib/invoice-intelligence/quota";
 import { getCompanyDeliverySettings } from "@/lib/invoice-intelligence/delivery-settings";
 import { isStructuredDeliveryMode, type DeliveryMode } from "@/lib/invoice-intelligence/delivery-format";
+export const maxDuration = 300;
 
 const MAX_FILE_BYTES=10*1024*1024; const ALLOWED_MIME=new Set(["application/pdf","image/jpeg","image/png","image/webp","image/heic","image/heif","application/xml","text/xml"]);
 const schema=z.object({subject:z.string().min(1).max(255).default("Račun"),imageBase64:z.string().min(1).max(14*1024*1024),filename:z.string().min(1).max(255),mime:z.string().max(96).default("image/jpeg"),companyId:z.number().int().positive().optional(),messageBody:z.string().max(2000).optional()});

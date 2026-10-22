@@ -9,6 +9,8 @@ import { bulkSql } from "@/lib/bulk-invoices/service";
 import { assertBulkJobAdmission, BulkAdmissionError } from "@/lib/bulk-invoices/admission";
 import { getCompanyDeliverySettings } from "@/lib/invoice-intelligence/delivery-settings";
 import type { DeliveryMode } from "@/lib/invoice-intelligence/delivery-format";
+import { dispatchBulkJob } from "@/lib/bulk-invoices/dispatch";
+export const maxDuration = 300;
 
 const schema = z.object({
   objectKey: z.string().min(1).max(1024),
@@ -64,6 +66,7 @@ export async function POST(req: NextRequest) {
       ON CONFLICT ("clerkUserId","objectKey") DO UPDATE SET "updatedAt"=now()
       RETURNING "id","stage","status"
     `;
+    dispatchBulkJob(Number(rows[0].id), userId, token);
     return NextResponse.json({ success: true, job: rows[0] }, { status: 201 });
   } catch (error) {
     if (error instanceof BulkAdmissionError) {
@@ -73,3 +76,4 @@ export async function POST(req: NextRequest) {
   }
 }
 function sanitize(v:string){return v.split(/[\\/]/).pop()?.replace(/[\u0000-\u001f\u007f]/g,"").replace(/[^a-zA-Z0-9._()\- čšžćđČŠŽĆĐ]/g,"_").slice(0,255)||"bulk.pdf";}
+

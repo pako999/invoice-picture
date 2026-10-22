@@ -31,6 +31,7 @@ import {
 import { getOcrUsageSummary, OcrCommercialQuotaError } from "./quota";
 import { normalizedInvoiceSchema, type NormalizedInvoice, type ReaderResult, type ValidationResult } from "./types";
 import { normalizeInvoiceValues, validateInvoice } from "./validation";
+import { queueInvoiceDelivery } from "./delivery";
 
 const CRITICAL_FIELDS = [
   "supplier.name",
@@ -186,10 +187,15 @@ export async function processInvoiceDocument(documentId: number, runBudget?: Ocr
     metadataJson: JSON.stringify({ provider: result.provider, model: result.model, duplicates: duplicates.length, estimatedPages, safetyPageCap: safety.maxPagesPerDocument }),
   });
 
+  // Delivery is separate: never repeat OCR because sending failed.
+  if (autoApprove) {
+    try { await queueInvoiceDelivery(documentId); }
+    catch (error) { console.error("invoice_auto_delivery_enqueue_failed", { documentId, error: String(error) }); }
+  }
   return { status: finalStatus, provider: result.provider, validation, duplicates };
 }
 
-export async function runQueuedInvoiceJobs(limit = 3) {
+export async function runQueuedInvoiceJobs(limit = 3, documentId?: number) {
   const db = getDb();
   const now = new Date();
   const safety = getOcrSafetyConfig();
@@ -197,6 +203,7 @@ export async function runQueuedInvoiceJobs(limit = 3) {
   const runBudget = createOcrRunBudget();
   const jobs = await db.select().from(invoiceProcessingJobs)
     .where(and(
+      documentId === undefined ? undefined : eq(invoiceProcessingJobs.documentId, documentId),
       inArray(invoiceProcessingJobs.status, ["queued", "failed"]),
       lte(invoiceProcessingJobs.availableAt, now),
       // Exclude exhausted jobs BEFORE LIMIT so they cannot starve new uploads.
@@ -217,6 +224,8 @@ export async function runQueuedInvoiceJobs(limit = 3) {
       eq(invoiceProcessingJobs.id, job.id),
       inArray(invoiceProcessingJobs.status, ["queued", "failed"]),
       lt(invoiceProcessingJobs.attempts, invoiceProcessingJobs.maxAttempts),
+      lte(invoiceProcessingJobs.availableAt, new Date()),
+      eq(invoiceProcessingJobs.attempts, job.attempts),
     )).returning({ id: invoiceProcessingJobs.id });
     if (!locked) continue;
 
@@ -447,3 +456,4 @@ function isSafetyDeferral(error: unknown): error is OcrRunBudgetError | OcrSafet
 }
 
 function messageOf(error: unknown) { return error instanceof Error ? error.message : String(error); }
+

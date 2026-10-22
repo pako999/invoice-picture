@@ -58,9 +58,18 @@ export default {
       }
       if (request.method === "POST" && url.pathname === "/sign-upload") return signUpload(request);
       if (request.method === "POST" && url.pathname === "/sign-download") return signDownload(request);
+      if (request.method === "POST" && url.pathname === "/run") {
+        const ownerId = await authenticatedUserId(request);
+        if (!ownerId) return json({ error: "Unauthorized" }, 401);
+        const body = await request.json().catch(() => ({})) as Record<string, unknown>;
+        const jobId = Number(body.jobId);
+        if (!Number.isSafeInteger(jobId) || jobId <= 0) return json({ error: "Invalid job" }, 400);
+        return drain({ jobId, ownerId }, 60_000);
+      }
       if ((request.method === "GET" || request.method === "POST") && url.pathname === "/work") {
         console.log(`[bulkpdf] /work ${request.method} trigger=${Boolean(request.headers.get("x-neon-trigger-invocation-id"))}`);
-        return work(request);
+        if (!request.headers.get("x-neon-trigger-invocation-id")) return json({ error: "Trigger authorization required" }, 403);
+        return drain({}, 600_000);
       }
       return new Response("Not found", { status: 404 });
     } catch (error) {
@@ -102,10 +111,26 @@ async function signDownload(request: Request) {
   return json({ url: await signedDownloadUrl(key) });
 }
 
-async function work(request: Request) {
-  if (!request.headers.get("x-neon-trigger-invocation-id")) {
-    return json({ error: "Trigger authorization required" }, 403);
+// Bounded request, not a resident daemon. Durable stage/locks survive termination.
+// Never re-query an empty queue. Provider-pending steps back off instead of spinning.
+async function drain(scope: { jobId?: number; ownerId?: string }, budgetMs: number) {
+  const deadline = Date.now() + budgetMs;
+  let steps = 0;
+  for (; steps < 100 && Date.now() < deadline; steps++) {
+    const response = await work(scope);
+    const body = await response.json() as Record<string, any>;
+    if (!response.ok || body.idle) return json({ ...body, steps }, response.status);
+    const result = body.result || {};
+    if (result.retrying || result.success === false) return json({ ...body, steps });
+    if (result.batchPending || result.batchSubmitted || (result.batch && result.pages === 0)) {
+      // Leave long provider batches to the scheduled recovery run; no idle DB loop.
+      return json({ ...body, steps, providerPending: true });
+    }
   }
+  return json({ ok: true, steps, continuation: true });
+}
+
+async function work(scope: { jobId?: number; ownerId?: string }) {
   if (!INTERNAL_SECRET) {
     console.error("[bulkpdf] BULK_INTERNAL_SECRET is missing");
     return json({ error: "Worker is not configured" }, 503);
@@ -113,7 +138,7 @@ async function work(request: Request) {
 
   let claimedJobId: number | null = null;
   try {
-    const next = await appPost<{ job: BulkJob | null }>("/api/internal/bulk/next", {});
+    const next = await appPost<{ job: BulkJob | null }>("/api/internal/bulk/next", scope);
     const job = next.job;
     if (!job) return json({ ok: true, idle: true });
     claimedJobId = Number(job.id);
@@ -326,3 +351,4 @@ function cors(response: Response) {
 function messageOf(error: unknown) {
   return error instanceof Error ? error.message : String(error);
 }
+

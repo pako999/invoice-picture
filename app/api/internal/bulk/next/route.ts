@@ -5,39 +5,16 @@ export async function POST(req:Request){
  if(!verifyBulkInternalSecret(req.headers.get("x-bulk-secret")))return NextResponse.json({error:"Unauthorized"},{status:401});
  const sql=bulkSql();
 
- // Repair recent legacy/orphan states where a group is marked extracted but its
- // invoiceDocument no longer exists. Split-only PDFs intentionally have no
- // invoiceDocument, so never reopen them. Preserve completed email deliveries
- // when repairing OCR data to avoid resending an already delivered original.
- await sql`
-  WITH orphaned AS (
-    UPDATE "bulkInvoiceGroups" g
-    SET "status"='reprocess',
-        "deliveryStatus"=CASE
-          WHEN g."deliveryStatus" IN ('completed','not_required') THEN g."deliveryStatus"
-          WHEN j."deliveryMode"='email_ocr' THEN 'pending'
-          ELSE 'not_required'
-        END,
-        "deliveryError"=NULL,"updatedAt"=now()
-    FROM "bulkInvoiceJobs" j
-    WHERE g."jobId"=j."id"
-      AND g."status"='extracted'
-      AND g."documentId" IS NULL
-      AND j."deliveryMode" <> 'split_pdf_email'
-      AND g."archiveHidden" = false
-      AND j."updatedAt" >= now()-interval '14 days'
-    RETURNING g."jobId"
-  )
-  UPDATE "bulkInvoiceJobs" j
-  SET "status"='processing',"stage"='extract',"completedAt"=NULL,"lockedAt"=NULL,
-      "lastError"=NULL,
-      "processedInvoices"=(
-        SELECT count(*)::int FROM "bulkInvoiceGroups" g2
-        WHERE g2."jobId"=j."id" AND g2."documentId" IS NOT NULL
-      ),
-      "updatedAt"=now()
-  WHERE j."id" IN (SELECT DISTINCT "jobId" FROM orphaned)
- `;
+ const input=await req.json().catch(()=>({}));
+ const jobId=input.jobId==null?null:Number(input.jobId);
+ const ownerId=typeof input.ownerId==='string'?input.ownerId:null;
+ if(jobId!==null&&(!Number.isSafeInteger(jobId)||jobId<=0||!ownerId))return NextResponse.json({error:"Invalid scope"},{status:400});
+ // One read when idle, no lock transaction or maintenance writes.
+ const ready=await sql`SELECT "id" FROM "bulkInvoiceJobs" WHERE "status"='processing'
+   AND "stage" IN ('queued','uploaded','ocr','classify','split','extract')
+   AND (${jobId===null} OR ("id"=${jobId} AND "clerkUserId"=${ownerId}))
+   AND ("lockedAt" IS NULL OR "lockedAt"<now()-interval '15 minutes') LIMIT 1`;
+ if(!ready.length)return NextResponse.json({job:null});
 
  const claim=await sql.transaction([
   sql`SELECT pg_advisory_xact_lock(hashtextextended('bulk-worker-admission',0))`,
@@ -45,6 +22,7 @@ export async function POST(req:Request){
   WITH candidate AS (
     SELECT "id" FROM "bulkInvoiceJobs" candidate_job
     WHERE "status"='processing'
+      AND (${jobId===null} OR ("id"=${jobId} AND "clerkUserId"=${ownerId}))
       AND "stage" NOT IN ('boundary_review','quota_wait','completed','failed')
       AND (
         "stage" <> 'queued' OR (
@@ -75,3 +53,4 @@ export async function POST(req:Request){
  const rows=claim[1];
  return NextResponse.json({job:rows[0]??null});
 }
+
