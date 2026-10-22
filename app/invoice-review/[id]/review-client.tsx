@@ -64,21 +64,25 @@ export function InvoiceReviewClient({ documentId, onUpdated, onBack, reviewIds, 
   const submitting = useRef(false);
 
   const load = useCallback(async () => {
-    const [detailRes, listRes] = await Promise.all([
-      fetch(`/api/invoice-reader/${documentId}`, { cache: "no-store" }),
-      fetch("/api/invoice-reader", { cache: "no-store" }),
-    ]);
+    const detailRes = await fetch(`/api/invoice-reader/${documentId}`, { cache: "no-store" });
     if (!detailRes.ok) throw new Error("Dokumenta ni mogoče odpreti");
     const json = await detailRes.json() as Detail;
-    const list = await listRes.json();
     const isProcessing = json.document.status === "queued" || json.document.status === "processing";
     const invoice = isProcessing ? null : json.document.status === "approved" ? json.document.approved ?? json.document.normalized : json.document.normalized ?? json.document.approved;
     const flat = invoice ? flatten(invoice) : {};
     setDetail(json);
     setForm(flat);
     setInitial(flat);
-    setSiblings((list.documents ?? []).filter((d: { status: string }) => d.status === "needs_review").map((d: { id: number }) => d.id));
   }, [documentId]);
+
+  useEffect(() => {
+    if (reviewIds) return;
+    let active = true;
+    void fetchReviewQueue({}).then((documents) => {
+      if (active) setSiblings(documents.map((document) => document.id));
+    }).catch(() => { /* A navigation-list failure must not hide the invoice. */ });
+    return () => { active = false; };
+  }, [documentId, reviewIds]);
 
   useEffect(() => { load().catch((e) => setMessage(e.message)); }, [load]);
 
@@ -113,11 +117,8 @@ export function InvoiceReviewClient({ documentId, onUpdated, onBack, reviewIds, 
         onUpdated();
         let nextDocumentId: number | undefined;
         try {
-          const pendingRes = await fetch("/api/invoice-reader?status=needs_review", { cache: "no-store" });
-          if (pendingRes.ok) {
-            const pending = await pendingRes.json() as { documents?: Array<{ id: number }> };
-            nextDocumentId = pending.documents?.find((document) => document.id !== documentId && (!reviewIds || reviewIds.includes(document.id)))?.id;
-          }
+          const pending = await fetchReviewQueue({ ids: reviewIds, excludeId: documentId, limit: 1 });
+          nextDocumentId = pending[0]?.id;
         } catch { /* Return to the processing overview if refreshing the queue fails. */ }
         if (nextDocumentId && onNavigate) onNavigate(nextDocumentId);
         else if (onBack) onBack();
@@ -129,12 +130,8 @@ export function InvoiceReviewClient({ documentId, onUpdated, onBack, reviewIds, 
       }
       let nextPath = "/invoices";
       try {
-        const pendingRes = await fetch("/api/invoice-reader?status=needs_review", { cache: "no-store" });
-        if (pendingRes.ok) {
-          const pending = await pendingRes.json() as { documents?: Array<{ id: number }> };
-          const nextDocument = pending.documents?.find((document) => document.id !== documentId);
-          if (nextDocument) nextPath = `/invoice-review/${nextDocument.id}`;
-        }
+        const pending = await fetchReviewQueue({ excludeId: documentId, limit: 1 });
+        if (pending[0]) nextPath = `/invoice-review/${pending[0].id}`;
       } catch {
         // The queue overview remains a safe fallback when refreshing the queue fails.
       }
@@ -344,6 +341,16 @@ function Action({ children, busy, name, onClick, icon }: { children: React.React
       ? "border-red-200 bg-white text-red-700 hover:bg-red-50"
       : "border-slate-200 bg-white text-slate-900 hover:bg-slate-50";
   return <button data-action={name} disabled={busy != null} onClick={onClick} className={`inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border px-3 py-3 text-sm font-bold shadow-sm disabled:opacity-50 md:w-auto md:px-4 md:py-2 ${appearance}`}>{busy === name ? <Loader2 className="h-4 w-4 animate-spin" /> : icon}{children}</button>;
+}
+
+async function fetchReviewQueue(input: { ids?: number[]; excludeId?: number; limit?: number }) {
+  const response = await fetch("/api/invoice-reader/review-queue", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input), cache: "no-store",
+  });
+  if (!response.ok) throw new Error("Seznama računov ni mogoče osvežiti.");
+  const data = await response.json() as { documents: Array<{ id: number }> };
+  return data.documents;
 }
 
 function flatten(invoice: InvoiceData) {
