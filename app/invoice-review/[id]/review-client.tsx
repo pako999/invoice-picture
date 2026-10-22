@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { invoiceIssueLabel } from "@/lib/invoice-intelligence/issue-labels";
 import Link from "next/link";
 import { InvoiceDocumentViewer } from "@/components/invoice-document-viewer";
 import { SepaPaymentExport } from "@/components/sepa-payment-export";
@@ -49,6 +50,8 @@ export function InvoiceReviewClient({ documentId, onUpdated, onBack, reviewIds, 
   onNavigate?: (documentId: number) => void;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const locale = pathname === "/en" || pathname.startsWith("/en/") ? "en" : "sl";
   const [mobilePanel, setMobilePanel] = useState<"data" | "document">("data");
   const [detail, setDetail] = useState<Detail | null>(null);
   const [form, setForm] = useState<Record<string, string>>( {} );
@@ -228,7 +231,10 @@ export function InvoiceReviewClient({ documentId, onUpdated, onBack, reviewIds, 
       {!isProcessing && (validationIssues.length > 0 || detail.duplicates.length > 0) ? (
         <div className="mb-4 min-w-0 break-words rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
           <div className="mb-2 flex items-center gap-2 font-bold"><AlertTriangle className="h-4 w-4" /> Potreben je pregled</div>
-          <ul className="list-disc space-y-1 pl-5">{validationIssues.map((x) => <li key={x}>{x}</li>)}{detail.duplicates.length > 0 && <li>Možen podvojen račun: {detail.duplicates.map((d) => `#${d.duplicateOfDocumentId}`).join(", ")}</li>}</ul>
+          <ul className="list-disc space-y-1 pl-5">{validationIssues.map((x) => {
+            const issue = invoiceIssueLabel(x, locale);
+            return <li key={x}>{issue.text}{issue.original && <details className="mt-1 text-sm"><summary className="cursor-pointer">Izvirno sporočilo</summary><p>{issue.original}</p></details>}</li>;
+          })}{detail.duplicates.length > 0 && <li>Možen podvojen račun: {detail.duplicates.map((d) => `#${d.duplicateOfDocumentId}`).join(", ")}</li>}</ul>
         </div>
       ) : null}
 

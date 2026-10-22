@@ -10,6 +10,7 @@ import {
 import { VAT_EXTRACTION_PROMPT } from "./extraction-prompt";
 import { normalizeInvoiceValues } from "./validation";
 import { mistralPagesForInput } from "./safety";
+import { reconcileReceiptTotals } from "./receipt-totals";
 
 const MISTRAL_ENDPOINT = "https://api.mistral.ai/v1/ocr";
 const AZURE_API_VERSION = process.env.AZURE_DOCUMENT_INTELLIGENCE_API_VERSION ?? "2024-11-30";
@@ -358,7 +359,7 @@ export function reconcileMistralInvoiceWithOcrText(invoice: NormalizedInvoice, t
   }
 
   mergeMissingInvoiceFields(invoice, fallback);
-  return invoice;
+  return reconcileReceiptTotals(invoice, text);
 }
 
 function enrichPartyFromNearbyLines(
@@ -876,3 +877,4 @@ function documentConfidence(fields: Record<string, any>) {
   const values = critical.map((k) => fields[k]?.confidence).filter((x) => typeof x === "number") as number[];
   return values.length ? values.reduce((a, b) => a + b, 0) / values.length : null;
 }
+
