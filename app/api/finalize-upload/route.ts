@@ -1,3 +1,4 @@
+import { traceInvoiceStage } from "@/lib/invoice-intelligence/trace";
 import { after, NextRequest, NextResponse } from "next/server";
 import { runQueuedUploadJobs } from "@/lib/invoice-upload-queue";
 export const maxDuration = 300;
@@ -29,7 +30,7 @@ export async function POST(req: NextRequest) {
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   try {
-    const input = schema.parse(await req.json());
+    const input = schema.parse(await traceInvoiceStage("file_read", null, { operation: "request_json_body" }, () => req.json()));
     const status = await getStatus(userId);
     const cfg = getPlanConfig(status.commercialPlan);
 

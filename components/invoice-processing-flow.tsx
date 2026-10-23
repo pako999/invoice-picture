@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
+import { finishClientInvoiceTraces } from "@/lib/client-invoice-trace";
 import Link from "next/link";
 import { AlertTriangle, Check, CheckCircle2, FileText, Loader2, Mail, RefreshCw, Upload, XCircle } from "lucide-react";
 import { flowItems, flowPollDelay, isOcrReady, isOcrWorking, shouldPollFlow, type FlowDelivery, type FlowSnapshot, type FlowUpload } from "@/lib/invoice-processing-flow";
@@ -55,6 +56,7 @@ export function InvoiceProcessingFlow({ uploads, uploading, locale, onBack }: {
           ? (en ? "Your session expired. Sign in again to view progress." : "Seja je potekla. Za ogled napredka se ponovno prijavite.")
           : (en ? "Progress could not be refreshed. Retrying…" : "Napredka ni mogoče osvežiti. Poskušam znova…"));
         if (stopped) return;
+        finishClientInvoiceTraces(data as FlowSnapshot);
         setStatusResult({ key: requestKey, data: data as FlowSnapshot });
         setError("");
         const signature = JSON.stringify(data);

@@ -6,6 +6,7 @@ import { releaseUnusedOcrProviderBudget, reserveOcrProviderBudget } from "@/lib/
 import { getOcrUsageSummary, quotaPageError } from "@/lib/invoice-intelligence/quota";
 import { parseInvoiceTextDeterministically, reconcileMistralInvoiceWithOcrText } from "@/lib/invoice-intelligence/providers";
 import { measureInvoiceStage } from "@/lib/invoice-intelligence/timing";
+import { tracedMistralFetch, tracedMistralJson, tracedMistralText, traceInvoiceStage, traceInvoiceSync } from "@/lib/invoice-intelligence/trace";
 
 const OCR_ENDPOINT = "https://api.mistral.ai/v1/ocr";
 const CHAT_ENDPOINT = "https://api.mistral.ai/v1/chat/completions";
@@ -60,13 +61,13 @@ export async function ocrBulkPages(args: {
   try {
     const deadline = Date.now() + 150_000;
     for (let attempt = 1; attempt <= 3; attempt += 1) {
-      const response = await measureInvoiceStage("bulk_ocr_request", { startPage: args.startPage, pages: pages.length, attempt }, () => fetch(OCR_ENDPOINT, {
+      const response = await measureInvoiceStage("bulk_ocr_request", { startPage: args.startPage, pages: pages.length, attempt }, () => tracedMistralFetch(OCR_ENDPOINT, {
         method: "POST",
         headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
         body: requestBody(),
         signal: providerAttemptSignal(deadline, Number(process.env.INVOICE_OCR_TIMEOUT_MS ?? 90_000)),
-      }));
-      const raw = await response.json().catch(() => ({}));
+      }, null, { operation: "bulk_page_ocr", start_page: args.startPage, pages: pages.length, attempt }));
+      const raw = await tracedMistralJson(response).catch(() => ({}));
       if (response.ok) {
         const responsePages = Array.isArray(raw.pages) ? raw.pages : [];
         if (responsePages.length !== pages.length) {
@@ -153,7 +154,7 @@ export async function createMistralOcrBatch(args: {
   });
 
   try {
-    const response = await fetch(BATCH_ENDPOINT, {
+    const response = await tracedMistralFetch(BATCH_ENDPOINT, {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -178,8 +179,8 @@ export async function createMistralOcrBatch(args: {
         }],
       }),
       signal: AbortSignal.timeout(90_000),
-    });
-    const raw = await response.json().catch(() => ({}));
+    }, null, { operation: "batch_ocr_submit", pages: pages.length });
+    const raw = await tracedMistralJson(response).catch(() => ({}));
     if (!response.ok || typeof raw.id !== "string") {
       throw new Error(`Mistral Batch OCR submission failed (${response.status}): ${providerError(raw)}`);
     }
@@ -205,11 +206,11 @@ export async function pollMistralOcrBatch(args: {
 }): Promise<MistralOcrBatchState> {
   const apiKey = process.env.MISTRAL_API_KEY;
   if (!apiKey) throw new Error("MISTRAL_API_KEY is not configured");
-  const response = await fetch(`${BATCH_ENDPOINT}/${encodeURIComponent(args.batchId)}?inline=true`, {
+  const response = await tracedMistralFetch(`${BATCH_ENDPOINT}/${encodeURIComponent(args.batchId)}?inline=true`, {
     headers: { Authorization: `Bearer ${apiKey}` },
     signal: AbortSignal.timeout(60_000),
-  });
-  const raw = await response.json().catch(() => ({}));
+  }, null, { operation: "batch_ocr_poll", batch_id: args.batchId });
+  const raw = await tracedMistralJson(response).catch(() => ({}));
   if (!response.ok) {
     throw new Error(`Mistral Batch OCR status failed (${response.status}): ${providerError(raw)}`);
   }
@@ -226,15 +227,15 @@ export async function pollMistralOcrBatch(args: {
 
   let records: unknown[] = Array.isArray(raw.outputs) ? raw.outputs : [];
   if (!records.length && typeof raw.output_file === "string" && raw.output_file) {
-    const output = await fetch(`${FILES_ENDPOINT}/${encodeURIComponent(raw.output_file)}/content`, {
+    const output = await tracedMistralFetch(`${FILES_ENDPOINT}/${encodeURIComponent(raw.output_file)}/content`, {
       headers: { Authorization: `Bearer ${apiKey}` },
       signal: AbortSignal.timeout(90_000),
-    });
+    }, null, { operation: "batch_ocr_result_download" });
     if (!output.ok) {
-      const detail = await output.text().catch(() => "");
+      const detail = await tracedMistralText(output).catch(() => "");
       throw new Error(`Mistral Batch OCR result download failed (${output.status}): ${detail.slice(0, 500)}`);
     }
-    records = parseJsonLines(await output.text());
+    records = parseJsonLines(await tracedMistralText(output));
   }
 
   const body = batchResponseBody(records[0]);
@@ -522,17 +523,17 @@ export async function extractBulkInvoiceFromDocument(documentUrl: string, ocrCon
   // Mistral OCR accepts base64 PDFs only when the complete encoded PDF is
   // embedded in a data URL. Fetch the private child PDF first, encode the
   // actual bytes, then send data:application/pdf;base64,{base64_pdf}.
-  const sourceResponse = await fetch(documentUrl, {
+  const sourceResponse = await traceInvoiceStage("file_read",null,{operation:"child_pdf_download_headers"},()=>fetch(documentUrl, {
     signal: providerAttemptSignal(deadline, 60_000),
-  });
+  }));
   if (!sourceResponse.ok) {
     throw new Error(`Could not download bulk PDF for OCR (${sourceResponse.status})`);
   }
-  const pdfBytes = Buffer.from(await sourceResponse.arrayBuffer());
+  const pdfBytes = Buffer.from(await traceInvoiceStage("file_read", null, { operation: "child_pdf_download_body" }, () => sourceResponse.arrayBuffer()));
   if (!pdfBytes.length || pdfBytes.subarray(0, 4).toString("ascii") !== "%PDF") {
     throw new Error("Bulk OCR source is not a valid PDF");
   }
-  const pdfDataUrl = `data:application/pdf;base64,${pdfBytes.toString("base64")}`;
+  const pdfDataUrl = traceInvoiceSync("preprocess", pdfBytes.length, { operation: "child_pdf_base64" }, () => `data:application/pdf;base64,${pdfBytes.toString("base64")}`);
 
   const model = process.env.MISTRAL_OCR_MODEL || "mistral-ocr-latest";
   const requestBody = JSON.stringify({
@@ -562,13 +563,13 @@ export async function extractBulkInvoiceFromDocument(documentUrl: string, ocrCon
   });
 
   for (let attempt = 1; attempt <= 3; attempt += 1) {
-    const response = await fetch(OCR_ENDPOINT, {
+    const response = await tracedMistralFetch(OCR_ENDPOINT, {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: requestBody,
       signal: providerAttemptSignal(deadline, 90_000),
-    });
-    const raw = await response.json().catch(() => ({}));
+    }, pdfBytes.length, { operation: "child_annotated_ocr", model, attempt });
+    const raw = await tracedMistralJson(response).catch(() => ({}));
     if (response.ok) {
       const annotationRaw = raw.document_annotation;
       const annotation = typeof annotationRaw === "string" ? JSON.parse(annotationRaw) : annotationRaw;
@@ -593,8 +594,8 @@ export async function extractBulkInvoiceFromDocument(documentUrl: string, ocrCon
 
 type StructuredRequest={model:string;name:string;schema:unknown;prompt:string;retryRateLimit?:boolean};
 type StructuredBatchStatus="QUEUED"|"RUNNING"|"SUCCESS"|"FAILED"|"TIMEOUT_EXCEEDED"|"CANCELLATION_REQUESTED"|"CANCELLED";
-async function createMistralStructuredBatch(args:StructuredRequest,source:string){const apiKey=process.env.MISTRAL_API_KEY;if(!apiKey)throw new Error("MISTRAL_API_KEY is not configured");const response=await fetch(BATCH_ENDPOINT,{method:"POST",headers:{Authorization:`Bearer ${apiKey}`,"Content-Type":"application/json"},body:JSON.stringify({endpoint:"/v1/chat/completions",model:args.model,timeout_hours:24,metadata:{source},requests:[{custom_id:source,body:structuredRequestBody(args)}]}),signal:AbortSignal.timeout(90000)});const raw=await response.json().catch(()=>({}));if(!response.ok||typeof raw.id!=="string")throw new Error(`Mistral Batch ${source} submission failed (${response.status}): ${providerError(raw)}`);return{batchId:String(raw.id),status:String(raw.status||"QUEUED") as StructuredBatchStatus};}
-async function pollMistralStructuredBatch(batchId:string,label:string):Promise<{status:StructuredBatchStatus;result:any|null;error:string|null}>{const apiKey=process.env.MISTRAL_API_KEY;if(!apiKey)throw new Error("MISTRAL_API_KEY is not configured");const response=await fetch(`${BATCH_ENDPOINT}/${encodeURIComponent(batchId)}?inline=true`,{headers:{Authorization:`Bearer ${apiKey}`},signal:AbortSignal.timeout(60000)});const raw=await response.json().catch(()=>({}));if(!response.ok)throw new Error(`Mistral Batch ${label} status failed (${response.status}): ${providerError(raw)}`);recordBatchTiming(raw,batchId,label);const status=String(raw.status||"").toUpperCase() as StructuredBatchStatus;if(status==="QUEUED"||status==="RUNNING"||status==="CANCELLATION_REQUESTED")return{status,result:null,error:null};if(status!=="SUCCESS")return{status,result:null,error:batchError(raw,label)};let records:unknown[]=Array.isArray(raw.outputs)?raw.outputs:[];if(!records.length&&typeof raw.output_file==="string"&&raw.output_file){const output=await fetch(`${FILES_ENDPOINT}/${encodeURIComponent(raw.output_file)}/content`,{headers:{Authorization:`Bearer ${apiKey}`},signal:AbortSignal.timeout(90000)});if(!output.ok)throw new Error(`Mistral Batch ${label} result download failed (${output.status})`);records=parseJsonLines(await output.text());}const body=batchResponseBody(records[0],label);const content=body?.choices?.[0]?.message?.content;const result=typeof content==="string"?JSON.parse(content):content;if(!result||typeof result!=="object")throw new Error(`Mistral Batch ${label} returned no structured content`);return{status,result,error:null};}
+async function createMistralStructuredBatch(args:StructuredRequest,source:string){const apiKey=process.env.MISTRAL_API_KEY;if(!apiKey)throw new Error("MISTRAL_API_KEY is not configured");const response=await tracedMistralFetch(BATCH_ENDPOINT,{method:"POST",headers:{Authorization:`Bearer ${apiKey}`,"Content-Type":"application/json"},body:JSON.stringify({endpoint:"/v1/chat/completions",model:args.model,timeout_hours:24,metadata:{source},requests:[{custom_id:source,body:structuredRequestBody(args)}]}),signal:AbortSignal.timeout(90000)},null,{operation:"batch_structured_submit",source});const raw=await tracedMistralJson(response).catch(()=>({}));if(!response.ok||typeof raw.id!=="string")throw new Error(`Mistral Batch ${source} submission failed (${response.status}): ${providerError(raw)}`);return{batchId:String(raw.id),status:String(raw.status||"QUEUED") as StructuredBatchStatus};}
+async function pollMistralStructuredBatch(batchId:string,label:string):Promise<{status:StructuredBatchStatus;result:any|null;error:string|null}>{const apiKey=process.env.MISTRAL_API_KEY;if(!apiKey)throw new Error("MISTRAL_API_KEY is not configured");const response=await tracedMistralFetch(`${BATCH_ENDPOINT}/${encodeURIComponent(batchId)}?inline=true`,{headers:{Authorization:`Bearer ${apiKey}`},signal:AbortSignal.timeout(60000)},null,{operation:"batch_structured_poll",batch_id:batchId,label});const raw=await tracedMistralJson(response).catch(()=>({}));if(!response.ok)throw new Error(`Mistral Batch ${label} status failed (${response.status}): ${providerError(raw)}`);recordBatchTiming(raw,batchId,label);const status=String(raw.status||"").toUpperCase() as StructuredBatchStatus;if(status==="QUEUED"||status==="RUNNING"||status==="CANCELLATION_REQUESTED")return{status,result:null,error:null};if(status!=="SUCCESS")return{status,result:null,error:batchError(raw,label)};let records:unknown[]=Array.isArray(raw.outputs)?raw.outputs:[];if(!records.length&&typeof raw.output_file==="string"&&raw.output_file){const output=await tracedMistralFetch(`${FILES_ENDPOINT}/${encodeURIComponent(raw.output_file)}/content`,{headers:{Authorization:`Bearer ${apiKey}`},signal:AbortSignal.timeout(90000)},null,{operation:"batch_structured_result_download"});if(!output.ok)throw new Error(`Mistral Batch ${label} result download failed (${output.status})`);records=parseJsonLines(await tracedMistralText(output));}const body=batchResponseBody(records[0],label);const content=body?.choices?.[0]?.message?.content;const result=typeof content==="string"?traceInvoiceSync("parse",Buffer.byteLength(content),{operation:"batch_structured_content"},()=>JSON.parse(content)):content;if(!result||typeof result!=="object")throw new Error(`Mistral Batch ${label} returned no structured content`);return{status,result,error:null};}
 function structuredRequestBody(args:StructuredRequest){return{model:args.model,temperature:0,messages:[{role:"user",content:args.prompt}],response_format:{type:"json_schema",json_schema:{name:args.name,strict:true,schema:args.schema}}};}
 async function mistralStructured(args: StructuredRequest) {
   const apiKey = process.env.MISTRAL_API_KEY;
@@ -603,16 +604,16 @@ async function mistralStructured(args: StructuredRequest) {
 
   const deadline = Date.now() + 150_000;
   for (let attempt = 1; attempt <= 3; attempt += 1) {
-    const response = await measureInvoiceStage("bulk_structured_request", { model: args.model, operation: args.name, attempt, requestBytes: Buffer.byteLength(requestBody) }, () => fetch(CHAT_ENDPOINT, {
+    const response = await measureInvoiceStage("bulk_structured_request", { model: args.model, operation: args.name, attempt, requestBytes: Buffer.byteLength(requestBody) }, () => tracedMistralFetch(CHAT_ENDPOINT, {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: requestBody,
       signal: providerAttemptSignal(deadline, 90_000),
-    }));
-    const body = await response.json().catch(() => ({}));
+    }, Buffer.byteLength(args.prompt), { operation: args.name, model: args.model, attempt }));
+    const body = await tracedMistralJson(response).catch(() => ({}));
     if (response.ok) {
       const content = body?.choices?.[0]?.message?.content;
-      if (typeof content === "string") return JSON.parse(content);
+      if (typeof content === "string") return traceInvoiceSync("parse", Buffer.byteLength(content), { operation: args.name }, () => JSON.parse(content));
       if (content && typeof content === "object") return content;
       throw new Error("Mistral returned no structured content");
     }

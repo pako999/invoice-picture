@@ -1,3 +1,4 @@
+import { traceInvoiceStage, traceInvoiceSync } from "@/lib/invoice-intelligence/trace";
 import { eq } from "drizzle-orm";
 import { neon } from "@neondatabase/serverless";
 import { getDb } from "@/lib/db";
@@ -83,13 +84,13 @@ async function processOneUploadJob(job: UploadJob) {
   const maxAttempts = Number(locked[0].maxAttempts);
 
   try {
-    const chunks = await sql`
+    const chunks = await traceInvoiceStage("file_read",job.byteSize,{operation:"stored_upload_chunks",invoice_id:job.invoiceId},()=>sql`
       SELECT "chunkIndex", "totalChunks", encode("data", 'base64') AS "data"
       FROM "invoiceUploadChunks"
       WHERE "uploadId" = ${job.uploadId}
         AND "clerkUserId" = ${job.clerkUserId}
       ORDER BY "chunkIndex" ASC
-    ` as Array<{ chunkIndex: number; totalChunks: number; data: string }>;
+    `) as Array<{ chunkIndex: number; totalChunks: number; data: string }>;
 
     const complete =
       chunks.length === job.totalChunks &&
@@ -99,7 +100,7 @@ async function processOneUploadJob(job: UploadJob) {
       );
     if (!complete) throw new Error("PDF upload chunks are incomplete");
 
-    const bytes = Buffer.concat(chunks.map((chunk) => Buffer.from(chunk.data, "base64")));
+    const bytes = traceInvoiceSync("preprocess",job.byteSize,{operation:"assemble_upload_chunks",invoice_id:job.invoiceId},()=>Buffer.concat(chunks.map((chunk) => Buffer.from(chunk.data, "base64"))));
     if (bytes.length !== job.byteSize || bytes.length <= 0 || bytes.length > 10 * 1024 * 1024) {
       throw new Error("PDF size validation failed");
     }
