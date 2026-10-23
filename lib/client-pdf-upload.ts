@@ -1,3 +1,4 @@
+import { traceInvoiceStage } from "@/lib/invoice-intelligence/trace";
 import { BULK_PDF_MAX_BYTES } from "@/lib/bulk-invoices/public-config";
 
 const MAX_RETRY_ATTEMPTS = 5;
@@ -38,11 +39,11 @@ export async function queuePdfUpload(
   };
   const uploadMethod = typeof signed.json.method === "string" ? signed.json.method : "PUT";
 
-  const uploaded = await fetchWithRetry(uploadUrl, {
+  const uploaded = await traceInvoiceStage("upload", file.size, { source: "browser", operation: "storage_put_with_existing_retries" }, () => fetchWithRetry(uploadUrl, {
     method: uploadMethod,
     headers: uploadHeaders,
     body: file,
-  });
+  }));
   if (!uploaded.ok) {
     throw new Error(`PDF upload v zasebno shrambo ni uspel (${uploaded.status})`);
   }

@@ -1,3 +1,4 @@
+import { beginInvoiceTrace, traceInvoiceStage } from "../../../lib/invoice-intelligence/trace";
 import { createHash, randomUUID } from "node:crypto";
 import { GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
@@ -150,7 +151,7 @@ async function work(scope: { jobId?: number; ownerId?: string }, sourceCache: { 
 
     if (job.stage === "uploaded") {
       const bytes = await downloadObject(job.objectKey);
-      const pdf = await PDFDocument.load(bytes, { updateMetadata: false });
+      const pdf = await traceInvoiceStage("preprocess",bytes.byteLength,{operation:"pdf_load_and_count",job_id:job.id},()=>PDFDocument.load(bytes, { updateMetadata: false }));
       sourceCache.key = job.objectKey;
       sourceCache.pdf = pdf;
       const pageCount = pdf.getPageCount();
@@ -188,18 +189,21 @@ async function work(scope: { jobId?: number; ownerId?: string }, sourceCache: { 
       if (!pending.length) throw new Error("No pending PDF groups were found while the split stage is active");
 
       if (sourceCache.key !== job.objectKey || !sourceCache.pdf) {
-        sourceCache.pdf = await PDFDocument.load(await downloadObject(job.objectKey), { updateMetadata: false });
+        const bytes = await downloadObject(job.objectKey);
+        sourceCache.pdf = await traceInvoiceStage("preprocess",bytes.byteLength,{operation:"pdf_load_for_split",job_id:job.id},()=>PDFDocument.load(bytes, { updateMetadata: false }));
         sourceCache.key = job.objectKey;
       }
       const source = sourceCache.pdf;
       const children = [] as Array<Record<string, unknown>>;
       for (const { range, groupIndex } of pending) {
         validateRange(range, source.getPageCount());
+        const finishSplitTrace = beginInvoiceTrace("preprocess",null,{operation:"split_child_pdf",job_id:job.id,group_index:groupIndex});
         const child = await PDFDocument.create();
         const indexes = Array.from({ length: range.endPage - range.startPage + 1 }, (_, i) => range.startPage + i);
         const pages = await child.copyPages(source, indexes);
         pages.forEach((page) => child.addPage(page));
         const bytes = await child.save();
+        finishSplitTrace({output_bytes:bytes.byteLength});
         const objectKey = `bulk/${job.clerkUserId}/jobs/${job.id}/invoice-${String(groupIndex + 1).padStart(3, "0")}.pdf`;
         await uploadPdf(objectKey, bytes);
         children.push({
@@ -299,22 +303,24 @@ async function signedDownloadUrl(key: string) {
 }
 
 async function downloadObject(key: string) {
+  return traceInvoiceStage("file_read",null,{operation:"object_storage_pdf_download"},async()=>{
   const result = await s3.send(new GetObjectCommand({ Bucket: BUCKET, Key: key }));
   if (!result.Body) throw new Error(`Object ${key} has no body`);
   const bytes = await result.Body.transformToByteArray();
   if (!bytes.byteLength || bytes.byteLength > MAX_BYTES) throw new Error(`Object ${key} has an invalid size`);
   if (Buffer.from(bytes.subarray(0, 4)).toString() !== "%PDF") throw new Error(`Object ${key} is not a PDF`);
   return bytes;
+  });
 }
 
 async function uploadPdf(key: string, bytes: Uint8Array) {
-  await s3.send(new PutObjectCommand({
+  await traceInvoiceStage("upload",bytes.byteLength,{operation:"child_pdf_storage_put"},()=>s3.send(new PutObjectCommand({
     Bucket: BUCKET,
     Key: key,
     Body: bytes,
     ContentType: "application/pdf",
     ContentLength: bytes.byteLength,
-  }));
+  })));
 }
 
 function validateRange(range: BulkRange, pageCount: number) {

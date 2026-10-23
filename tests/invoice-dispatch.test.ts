@@ -1,3 +1,4 @@
+import * as invoiceTrace from "../lib/invoice-intelligence/trace";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -43,6 +44,7 @@ function worker(responses: unknown[], overrides: Record<string, unknown> = {}) {
   const calls: Array<{ path: string; body: any }> = [];
   const mod = loadModule("neon/functions/bulkpdf/index.ts", {
     "node:crypto": {},
+    "../../../lib/invoice-intelligence/trace": invoiceTrace,
     "@aws-sdk/client-s3": { S3Client: class {}, GetObjectCommand: class {} },
     "@aws-sdk/s3-request-presigner": { getSignedUrl: async () => "https://storage.example/test.pdf" },
     jose: { createRemoteJWKSet: () => ({}), jwtVerify: async (token: string) => {

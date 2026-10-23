@@ -1,3 +1,4 @@
+import * as invoiceTrace from "../lib/invoice-intelligence/trace";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -6,6 +7,9 @@ import { useRealtimeBulkProcessing } from "../lib/bulk-invoices/processing-mode"
 import { measureInvoiceStage } from "../lib/invoice-intelligence/timing";
 
 function load(path: string, modules: Record<string, unknown>, globals: Record<string, unknown> = {}) {
+  if (globals.fetch && modules["@/lib/invoice-intelligence/trace"]) {
+    modules = { ...modules, "@/lib/invoice-intelligence/trace": load("lib/invoice-intelligence/trace.ts", {}, globals) };
+  }
   const source = readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
   const js = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS } }).outputText;
   const exports: Record<string, any> = {};
@@ -47,6 +51,7 @@ function ocrRoute(job: Record<string, any>, overrides: Record<string, unknown> =
     "@/lib/bulk-invoices/config": { verifyBulkInternalSecret: () => true, BULK_OCR_BATCH_PAGES: 25 },
     "@/lib/bulk-invoices/processing-mode": { useRealtimeBulkProcessing: (count: number) => count <= 50 },
     "@/lib/invoice-intelligence/timing": { measureInvoiceStage },
+    "@/lib/invoice-intelligence/trace": invoiceTrace,
     "@/lib/invoice-intelligence/quota": { OcrCommercialQuotaError: class extends Error {} },
     "@/lib/bulk-invoices/service": {
       bulkSql: () => sql,
@@ -104,6 +109,7 @@ test("429 adapts to one page and releases only unprocessed reserved pages", asyn
     "@/lib/invoice-intelligence/validation": {},
     "@/lib/invoice-intelligence/providers": {},
     "@/lib/invoice-intelligence/timing": { measureInvoiceStage },
+    "@/lib/invoice-intelligence/trace": invoiceTrace,
     "@/lib/invoice-intelligence/quota": { getOcrUsageSummary: async () => ({ dailyPageLimit: 100, dayPages: 0, remainingPages: 100 }) },
     "@/lib/invoice-intelligence/safety": {
       reserveOcrProviderBudget: async ({ pages }: any) => { assert.equal(pages, 25); return {}; },
@@ -140,6 +146,7 @@ test("structured retries share a time budget and yield before a long Retry-After
     "@/lib/invoice-intelligence/types": {}, "@/lib/invoice-intelligence/validation": {},
     "@/lib/invoice-intelligence/providers": {}, "@/lib/invoice-intelligence/quota": {},
     "@/lib/invoice-intelligence/safety": {}, "@/lib/invoice-intelligence/timing": { measureInvoiceStage },
+    "@/lib/invoice-intelligence/trace": invoiceTrace,
   }, {
     process: { env: { MISTRAL_API_KEY: "test-only" } },
     Date: { now: () => now },

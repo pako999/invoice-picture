@@ -1,4 +1,6 @@
 "use client";
+import { traceInvoiceStage, traceInvoiceSync } from "@/lib/invoice-intelligence/trace";
+import { startClientInvoiceTrace, bindClientInvoiceTrace, failClientInvoiceTrace } from "@/lib/client-invoice-trace";
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import type { Company } from "@/lib/schema";
@@ -26,14 +28,14 @@ const MAX_IMAGE_FILE_SIZE = 10 * 1024 * 1024;
 const MAX_PDF_FILE_SIZE = 200 * 1024 * 1024;
 
 async function pdfPageCount(file: File): Promise<number | null> {
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  const source = new TextDecoder("latin1").decode(bytes);
+  const bytes = new Uint8Array(await traceInvoiceStage("file_read", file.size, { source: "browser", operation: "pdf_page_count_read" }, () => file.arrayBuffer()));
+  const source = traceInvoiceSync("preprocess", file.size, { source: "browser", operation: "pdf_page_count_decode" }, () => new TextDecoder("latin1").decode(bytes));
   const pages = source.match(/\/Type\s*\/Page\b/g)?.length ?? 0;
   return pages > 0 ? pages : null;
 }
 
 function readFileAsBase64(file: File): Promise<{ base64: string; mime: string }> {
-  return new Promise((resolve, reject) => {
+  return traceInvoiceStage("file_read", file.size, { source: "browser", operation: "file_reader_data_url" }, () => new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => {
       const result = reader.result as string;
@@ -43,11 +45,11 @@ function readFileAsBase64(file: File): Promise<{ base64: string; mime: string }>
     };
     reader.onerror = reject;
     reader.readAsDataURL(file);
-  });
+  }));
 }
 
 function compressImage(file: File): Promise<{ base64: string; mime: string }> {
-  return new Promise((resolve, reject) => {
+  return traceInvoiceStage("preprocess", file.size, { source: "browser", operation: "image_resize_jpeg_1600px" }, () => new Promise((resolve, reject) => {
     const img = new Image();
     const url = URL.createObjectURL(file);
     img.onload = () => {
@@ -68,7 +70,7 @@ function compressImage(file: File): Promise<{ base64: string; mime: string }> {
     };
     img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("The image could not be read. Try a JPG, PNG or PDF.")); };
     img.src = url;
-  });
+  }));
 }
 
 function isPdf(mime: string) {
@@ -223,6 +225,7 @@ export default function ScanPage() {
     try {
       for (let index = 0; index < selectedFiles.length; index += 1) {
         const selected = selectedFiles[index];
+        startClientInvoiceTrace(selected.id, selected.file.size);
         update(selected.id, { status: "uploading" });
         setSendProgress({ current: index + 1, total: selectedFiles.length });
         try {
@@ -234,10 +237,10 @@ export default function ScanPage() {
             json = result.json;
           } else {
             const encoded = selected.file.type === "application/pdf" ? await readFileAsBase64(selected.file) : await compressImage(selected.file);
-            const response = await fetch("/api/send", {
+            const response = await traceInvoiceStage("upload", selected.file.size, { source: "browser", operation: "send_request", boundary: "response_headers_received" }, () => fetch("/api/send", {
               method: "POST", headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ subject: subject || "Invoice", imageBase64: encoded.base64, filename: selected.file.name, mime: encoded.mime, ...(selectedCompanyId ? { companyId: selectedCompanyId } : {}) }),
-            });
+            }));
             responseStatus = response.status;
             json = await response.json();
           }
@@ -245,6 +248,7 @@ export default function ScanPage() {
             if (json.code === "ocr_plan_limit_reached") setOcrLimit({ plan: json.plan ?? "free", message: json.error ?? null, originalSent: false });
             if (json.code === "free_limit_reached") setShowLimitModal(true);
             for (const remaining of selectedFiles.slice(index)) {
+              failClientInvoiceTrace(remaining.id);
               failed.push(remaining);
               update(remaining.id, { status: "failed", error: json.error || "Upload not completed. Check your plan or retry." });
             }
@@ -254,10 +258,12 @@ export default function ScanPage() {
           if ((responseStatus < 200 || responseStatus >= 300 || !json.success) && !documentId) throw new Error(json.error || "Upload failed");
           const invoiceId = positiveId(json.id ?? json.invoiceId), bulkJobId = positiveId(json.bulkJobId);
           if (!invoiceId && !documentId && !bulkJobId) throw new Error("Upload failed");
+          bindClientInvoiceTrace(selected.id, { invoiceId, documentId, bulkJobId });
           update(selected.id, { status: "accepted", invoiceId, documentId, bulkJobId, error: json.ocrMessage || json.ocrError || (!json.success ? json.error : undefined) });
           if (json.ocrLimitReached) setOcrLimit({ plan: json.ocrPlan ?? "free", message: json.ocrMessage ?? null, originalSent: true });
           URL.revokeObjectURL(selected.url);
         } catch (problem) {
+          failClientInvoiceTrace(selected.id);
           failed.push(selected);
           update(selected.id, { status: "failed", error: problem instanceof Error ? problem.message : "Upload failed" });
         }

@@ -1,3 +1,4 @@
+import { traceInvoiceStage, traceInvoiceSync } from "./trace";
 import { createHash } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { neon } from "@neondatabase/serverless";
@@ -8,7 +9,7 @@ import { getPlanConfig } from "@/lib/plans";
 import { dispatchInvoiceProcessing } from "./dispatch";
 
 export async function enqueueInvoiceDocument(input:{clerkUserId:string;companyId:number|null;sourceInvoiceId:number|null;filename:string;mimeType:string;base64:string}){
-  const bytes=Buffer.from(input.base64,"base64");
+  const bytes=traceInvoiceSync("preprocess",null,{operation:"queue_base64_decode"},()=>Buffer.from(input.base64,"base64"));
   const sha256=createHash("sha256").update(bytes).digest("hex");
   const idempotencyKey=createHash("sha256").update(`${input.clerkUserId}:${input.sourceInvoiceId??"upload"}:${sha256}`).digest("hex");
   const retentionDays=Number(process.env.INVOICE_RETENTION_DAYS??365);
@@ -38,7 +39,7 @@ export async function enqueueInvoiceDocument(input:{clerkUserId:string;companyId
   }
   if(!documentId)return null;
   if(readerConfigured){
-    await db.insert(invoiceProcessingJobs).values({documentId,status:"queued",availableAt:priority?new Date(Date.now()-60000):new Date()}).onConflictDoNothing();
+    await traceInvoiceStage("db_write",bytes.length,{document_id:documentId,operation:"enqueue_processing_job"},()=>db.insert(invoiceProcessingJobs).values({documentId,status:"queued",availableAt:priority?new Date(Date.now()-60000):new Date()}).onConflictDoNothing());
     dispatchInvoiceProcessing(documentId);
   }
   return documentId;

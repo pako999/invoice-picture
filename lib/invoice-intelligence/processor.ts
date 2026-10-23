@@ -33,6 +33,7 @@ import { normalizedInvoiceSchema, type NormalizedInvoice, type ReaderResult, typ
 import { normalizeInvoiceValues, validateInvoice } from "./validation";
 import { queueInvoiceDelivery } from "./delivery";
 import { measureInvoiceStage } from "./timing";
+import { traceInvoiceStage, emitInvoiceTrace } from "./trace";
 
 const CRITICAL_FIELDS = [
   "supplier.name",
@@ -67,7 +68,7 @@ export async function processInvoiceDocument(documentId: number, runBudget?: Ocr
   let mistralError: unknown = null;
   let mistralReservation: OcrProviderBudgetReservation | null = null;
 
-  const deterministic = await recordAttempt(documentId, "deterministic", "deterministic-v1", async () => readDeterministically(input));
+  const deterministic = await recordAttempt(documentId, "deterministic", "deterministic-v1", async () => traceInvoiceStage("parse", document.byteSize, { document_id: documentId, operation: "deterministic_reader" }, () => readDeterministically(input)));
   if (deterministic) {
     deterministic.invoice = await applySupplierMappings(document.clerkUserId, deterministic.invoice);
     validation = validateInvoice(deterministic.invoice);
@@ -162,8 +163,8 @@ export async function processInvoiceDocument(documentId: number, runBudget?: Ocr
   result.invoice.validationStatus = autoApprove ? "valid" : "needs_review";
 
   const persistenceStarted = performance.now();
-  await persistResult(documentId, result, validation, autoApprove);
-  await db.update(invoiceDocuments).set({
+  await traceInvoiceStage("db_write", document.byteSize, { document_id: documentId, operation: "result_detail_tables" }, () => persistResult(documentId, result!, validation!, autoApprove));
+  await traceInvoiceStage("db_write", document.byteSize, { document_id: documentId, operation: "usable_document_result" }, () => db.update(invoiceDocuments).set({
     status: finalStatus,
     documentType: result.invoice.documentType,
     documentLanguage: result.invoice.documentLanguage,
@@ -180,7 +181,8 @@ export async function processInvoiceDocument(documentId: number, runBudget?: Ocr
     processedAt: new Date(),
     approvedAt: autoApprove ? new Date() : null,
     updatedAt: new Date(),
-  }).where(eq(invoiceDocuments.id, documentId));
+  }).where(eq(invoiceDocuments.id, documentId)));
+  emitInvoiceTrace("end_to_end", document.byteSize, Date.now() - document.createdAt.getTime(), { document_id: documentId, boundary: "document_created_to_usable_result_persisted", includes_browser_upload: false });
 
   console.info("invoice_stage_timing", { stage: "persist_result", documentId, ok: true, durationMs: Math.round(performance.now() - persistenceStarted) });
 
