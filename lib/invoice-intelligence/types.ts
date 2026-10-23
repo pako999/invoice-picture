@@ -209,19 +209,33 @@ export const invoiceJsonSchema = {
         type: "object",
         additionalProperties: false,
         required: ["productCode", "description", "quantity", "unit", "unitPriceBeforeDiscount", "unitPriceNet", "discountPercent", "discountAmount", "vatRate", "netAmount", "vatAmount", "grossAmount"],
-        properties: Object.fromEntries([
+        properties: {
+          ...Object.fromEntries([
           "productCode", "description", "quantity", "unit", "unitPriceBeforeDiscount", "unitPriceNet", "discountPercent", "discountAmount",
           "vatRate", "netAmount", "vatAmount", "grossAmount",
-        ].map((key) => [key, nullableStringJsonSchema])),
+          ].map((key) => [key, nullableStringJsonSchema])),
+          unitPriceBeforeDiscount: { ...nullableStringJsonSchema, description: "Printed unit price EXCLUDING VAT before discount. Null if only a VAT-inclusive retail price is printed; never copy a price including VAT here." },
+          unitPriceNet: { ...nullableStringJsonSchema, description: "Printed unit price EXCLUDING VAT after discount, for one unit. Null when no net unit price is printed. Never put a VAT-inclusive price here." },
+          netAmount: { ...nullableStringJsonSchema, description: "Printed line total WITHOUT VAT for the entire quantity after discounts. Null if only the VAT-inclusive line total is printed. Do not treat retail receipt prices as net or add VAT to them." },
+          vatAmount: { ...nullableStringJsonSchema, description: "VAT amount printed for this line, not the VAT percentage or document VAT total. Null if no line VAT amount is printed; do not invent tax by applying a rate to a VAT-inclusive price." },
+          grossAmount: { ...nullableStringJsonSchema, description: "Printed line total WITH VAT INCLUDED for the entire quantity after discounts. Retail receipt item totals are usually already VAT-inclusive. Preserve that total exactly; never add VAT again. This is not the unit price when quantity exceeds one." },
+        },
       },
     },
     totals: {
       type: "object",
       additionalProperties: false,
       required: ["amountBeforeDiscount", "netAmount", "discountAmount", "vatAmount", "grossAmount", "amountPaid", "amountDue"],
-      properties: Object.fromEntries([
+      properties: {
+        ...Object.fromEntries([
         "amountBeforeDiscount", "netAmount", "discountAmount", "vatAmount", "grossAmount", "amountPaid", "amountDue",
-      ].map((key) => [key, nullableStringJsonSchema])),
+        ].map((key) => [key, nullableStringJsonSchema])),
+        netAmount: { ...nullableStringJsonSchema, description: "Printed full-document total WITHOUT VAT after discounts; use the taxable base from the printed VAT summary on retail receipts." },
+        vatAmount: { ...nullableStringJsonSchema, description: "Printed full-document VAT amount. The net total plus this VAT amount must equal the VAT-inclusive gross total." },
+        grossAmount: { ...nullableStringJsonSchema, description: "Printed full-document total WITH VAT INCLUDED. 'Končna vsota vsebuje DDV', 'Skupaj z DDV', and 'Total incl. VAT' already include tax. Never add VAT again or replace this total with a zero unpaid balance." },
+        amountPaid: { ...nullableStringJsonSchema, description: "Amount actually paid toward this invoice. Cash tender alone is not the amount paid: subtract printed change. Null without explicit payment evidence." },
+        amountDue: { ...nullableStringJsonSchema, description: "Printed remaining unpaid balance, including zero for a fully paid invoice. Separate from the full VAT-inclusive invoice total; null when absent." },
+      },
     },
     vatBreakdown: {
       type: "array",

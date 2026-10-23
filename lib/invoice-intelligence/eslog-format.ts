@@ -1,8 +1,10 @@
 import type { InvoiceLineItemData, NormalizedInvoice, VatBreakdownData } from "./types";
+import { assertReceiptLineAmountsForExport } from "./receipt-lines";
 
 const ESLOG_NAMESPACE = "urn:eslog:2.00";
 
 export function generateEslog20Xml(invoice: NormalizedInvoice) {
+  assertReceiptLineAmountsForExport(invoice);
   const invoiceNumber = required(invoice.invoiceNumber, "Invoice number");
   const issueDate = required(invoice.issueDate, "Issue date");
   const currency = invoice.currency || "EUR";

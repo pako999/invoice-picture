@@ -19,6 +19,7 @@ const sl: Record<string, string> = {
   "Document is marked as draft; manual review is required before delivery": "Dokument je označen kot osnutek. Pred pošiljanjem ga preglejte.",
   "Quotation/proforma document requires manual review before delivery.": "Ponudbo oziroma predračun je treba pred pošiljanjem pregledati.",
   "Receipt amounts reconciled with printed VAT-inclusive total and VAT summary; review corrected amounts and line items before approval.": "Zneski so popravljeni glede na natisnjeni seštevek z DDV in davčni povzetek. Pred potrditvijo preglejte popravljene zneske in postavke.",
+  "VAT-inclusive receipt line amounts reconciled with printed prices and VAT summary; net prices and VAT derived only when rounded line totals agree exactly. Review before approval.": "Cene postavk že vključujejo DDV. Neto zneski in DDV so izračunani samo ob točnem ujemanju z davčnim povzetkom. Pred potrditvijo preglejte postavke.",
 };
 const fields: Record<string, string> = { "supplier.name": "naziv dobavitelja", invoiceNumber: "številka računa", issueDate: "datum izdaje", currency: "valuta", "totals.netAmount": "neto znesek", "totals.vatAmount": "DDV", "totals.grossAmount": "bruto znesek" };
 const lineIssues: Record<string, string> = {

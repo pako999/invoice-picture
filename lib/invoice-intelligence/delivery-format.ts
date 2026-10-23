@@ -1,5 +1,6 @@
 import type { NormalizedInvoice } from "./types";
 import { generateEslog20Xml } from "./eslog-format";
+import { assertReceiptLineAmountsForExport } from "./receipt-lines";
 
 export { generateEslog20Xml } from "./eslog-format";
 
@@ -23,6 +24,7 @@ export function buildInvoiceApiPayload(args: {
   invoice: NormalizedInvoice;
   source: { filename: string; mimeType: string; sha256: string; base64: string | null; storageObjectKey?: string | null };
 }) {
+  assertReceiptLineAmountsForExport(args.invoice);
   return {
     schemaVersion: "1.0",
     event: "invoice.approved",
@@ -42,6 +44,7 @@ export function buildInvoiceApiPayload(args: {
 }
 
 export function generateUbl21Xml(invoice: NormalizedInvoice) {
+  assertReceiptLineAmountsForExport(invoice);
   const isCredit = invoice.documentType === "credit_note";
   const root = isCredit ? "CreditNote" : "Invoice";
   const ns = isCredit

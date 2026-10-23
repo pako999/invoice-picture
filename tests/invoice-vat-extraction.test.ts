@@ -64,6 +64,12 @@ test("direct and retry OCR both request HTML tables, blocks and tax-inclusive fi
       assert.equal(request.document.type, "document_url");
       assert.ok(request.document.document_url.startsWith("data:application/pdf;base64,") || request.document.document_url === "https://storage.example.com/test.pdf");
       assert.match(request.document_annotation_prompt, /grossAmount is the total for the entire quantity including VAT/);
+      assert.equal(request.document_annotation_format.type, "json_schema");
+      assert.equal(request.document_annotation_format.json_schema.strict, true);
+      const fields = request.document_annotation_format.json_schema.schema.properties.lineItems.items.properties;
+      assert.match(fields.netAmount.description, /WITHOUT VAT/);
+      assert.match(fields.vatAmount.description, /VAT amount printed for this line/);
+      assert.match(fields.grossAmount.description, /WITH VAT INCLUDED/);
     }
   } finally {
     globalThis.fetch = oldFetch;

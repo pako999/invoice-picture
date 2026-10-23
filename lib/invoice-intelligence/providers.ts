@@ -16,6 +16,7 @@ import { VAT_EXTRACTION_PROMPT } from "./extraction-prompt";
 import { normalizeInvoiceValues } from "./validation";
 import { mistralPagesForInput } from "./safety";
 import { reconcileReceiptTotals } from "./receipt-totals";
+import { reconcileVatInclusiveReceiptLines } from "./receipt-lines";
 import { measureInvoiceStage } from "./timing";
 import { traceInvoiceSync } from "./trace";
 
@@ -373,7 +374,8 @@ export function reconcileMistralInvoiceWithOcrText(invoice: NormalizedInvoice, t
   }
 
   mergeMissingInvoiceFields(invoice, fallback);
-  return reconcileReceiptTotals(invoice, text);
+  reconcileReceiptTotals(invoice, text);
+  return reconcileVatInclusiveReceiptLines(invoice, text);
 }
 
 function enrichPartyFromNearbyLines(

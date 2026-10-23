@@ -7,6 +7,7 @@ import { getStatus } from "@/lib/subscription";
 import { getPlanConfig } from "@/lib/plans";
 import { normalizedInvoiceSchema } from "@/lib/invoice-intelligence/types";
 import { generateEslog20Xml } from "@/lib/invoice-intelligence/eslog-format";
+import { InvoiceLineAmountsError } from "@/lib/invoice-intelligence/receipt-lines";
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { userId } = await auth();
@@ -22,7 +23,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   try {
     const invoice = normalizedInvoiceSchema.parse(JSON.parse(document.approvedJson));
     return new NextResponse(generateEslog20Xml(invoice), { headers: { "Content-Type": "application/xml; charset=utf-8", "Content-Disposition": `attachment; filename="racun-${id}.eslog.xml"`, "Cache-Control": "private, no-store" } });
-  } catch {
+  } catch (error) {
+    if (error instanceof InvoiceLineAmountsError) return NextResponse.json({ error: error.message }, { status: 409 });
     return NextResponse.json({ error: "Podatki računa niso popolni za XML eSLOG. Preverite številko, datum in podatke računa." }, { status: 400 });
   }
 }
