@@ -1,3 +1,4 @@
+import * as providerFile from "../lib/bulk-invoices/provider-file";
 import * as invoiceTrace from "../lib/invoice-intelligence/trace";
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -44,6 +45,7 @@ function worker(responses: unknown[], overrides: Record<string, unknown> = {}) {
   const calls: Array<{ path: string; body: any }> = [];
   const mod = loadModule("neon/functions/bulkpdf/index.ts", {
     "node:crypto": {},
+    "../../../lib/bulk-invoices/provider-file": providerFile,
     "../../../lib/invoice-intelligence/trace": invoiceTrace,
     "@aws-sdk/client-s3": { S3Client: class {}, GetObjectCommand: class {} },
     "@aws-sdk/s3-request-presigner": { getSignedUrl: async () => "https://storage.example/test.pdf" },
@@ -77,6 +79,14 @@ test("bulk run is scoped to verified owner and stops immediately when idle", asy
   assert.equal(result.status, 200);
   assert.deepEqual(calls, [{ path: "/api/internal/bulk/next", body: { jobId: 9, ownerId: "owner-a" } }]);
   assert.equal((await result.json()).idle, true);
+});
+
+test("scheduled worker drains document batches and stops when both queues are idle", async () => {
+  const { api,calls }=worker([{job:null,documentJob:{documentId:231}},{success:true,pending:true},{job:null}]);
+  const response=await api.fetch(new Request("https://worker/work",{method:"POST",headers:{"x-neon-trigger-invocation-id":"test-trigger"}}));
+  assert.equal(response.status,200);
+  assert.deepEqual(calls.map(call=>call.path),["/api/internal/bulk/next","/api/internal/invoice-batch","/api/internal/bulk/next"]);
+  assert.deepEqual(calls[1].body,{documentId:231});
 });
 
 test("bulk run yields pending provider batch instead of busy-polling the database", async () => {

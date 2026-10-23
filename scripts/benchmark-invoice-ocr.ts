@@ -1,3 +1,4 @@
+import { mistralOcrModel } from "../lib/invoice-intelligence/mistral-config";
 import { readFile } from "node:fs/promises";
 import { readWithMistral } from "../lib/invoice-intelligence/providers";
 import { mistralPagesForInput } from "../lib/invoice-intelligence/safety";
@@ -10,6 +11,7 @@ async function main() {
   if (!filename || !Number.isInteger(runs) || runs < 1 || runs > 5) {
     throw new Error("Usage: node --env-file=.env.local --import tsx scripts/benchmark-invoice-ocr.ts /path/invoice.pdf [1-5 runs]");
   }
+  process.env.INVOICE_PROVIDER_BENCHMARK = "1";
   const key = process.env.MISTRAL_API_KEY;
   if (!key) throw new Error("MISTRAL_API_KEY is required");
   const mimeType = /\.pdf$/i.test(filename) ? "application/pdf" : /\.png$/i.test(filename) ? "image/png" : /\.jpe?g$/i.test(filename) ? "image/jpeg" : null;
@@ -17,7 +19,7 @@ async function main() {
   const bytes = await readFile(filename);
   if (!bytes.length || bytes.length > 10 * 1024 * 1024) throw new Error("Use a representative file up to 10 MB");
   const input = { filename, mimeType, base64: bytes.toString("base64") };
-  const model = process.env.MISTRAL_OCR_MODEL || "mistral-ocr-latest";
+  const model = mistralOcrModel();
   const pages = mistralPagesForInput(input, 500);
   const dataUrl = `data:${mimeType};base64,${input.base64}`;
   const request = {

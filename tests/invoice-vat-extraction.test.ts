@@ -41,6 +41,8 @@ test("merged HTML columns are left for structured extraction instead of shifting
 test("direct and retry OCR both request HTML tables, blocks and tax-inclusive fields", async () => {
   const oldFetch = globalThis.fetch;
   const oldKey = process.env.MISTRAL_API_KEY;
+  const oldBenchmark = process.env.INVOICE_PROVIDER_BENCHMARK;
+  process.env.INVOICE_PROVIDER_BENCHMARK = "1";
   process.env.MISTRAL_API_KEY = "test-key";
   const requests: Record<string, any>[] = [];
   globalThis.fetch = async (_url, init) => {
@@ -54,16 +56,18 @@ test("direct and retry OCR both request HTML tables, blocks and tax-inclusive fi
     assert.equal(direct.invoice.lineItems[0].grossAmount, "24.40");
     assert.equal(retry.invoice.lineItems[0].grossAmount, "24.40");
     assert.equal(requests.length, 2);
+    assert.equal(requests[1].document.document_url, "https://storage.example.com/test.pdf");
     for (const request of requests) {
       assert.equal(request.table_format, "html");
       assert.equal(request.include_blocks, true);
       assert.equal(request.include_image_base64, false);
       assert.equal(request.document.type, "document_url");
-      assert.match(request.document.document_url, /^data:application\/pdf;base64,/);
+      assert.ok(request.document.document_url.startsWith("data:application/pdf;base64,") || request.document.document_url === "https://storage.example.com/test.pdf");
       assert.match(request.document_annotation_prompt, /grossAmount is the total for the entire quantity including VAT/);
     }
   } finally {
     globalThis.fetch = oldFetch;
+    if (oldBenchmark === undefined) delete process.env.INVOICE_PROVIDER_BENCHMARK; else process.env.INVOICE_PROVIDER_BENCHMARK = oldBenchmark;
     if (oldKey === undefined) delete process.env.MISTRAL_API_KEY;
     else process.env.MISTRAL_API_KEY = oldKey;
   }
@@ -73,6 +77,8 @@ test("JPEG and PNG use image_url with their MIME type and the recommended defaul
   const oldFetch = globalThis.fetch;
   const oldKey = process.env.MISTRAL_API_KEY;
   const oldModel = process.env.MISTRAL_OCR_MODEL;
+  const oldBenchmark = process.env.INVOICE_PROVIDER_BENCHMARK;
+  process.env.INVOICE_PROVIDER_BENCHMARK = "1";
   process.env.MISTRAL_API_KEY = "test-key";
   delete process.env.MISTRAL_OCR_MODEL;
   const requests: Record<string, any>[] = [];
@@ -85,7 +91,7 @@ test("JPEG and PNG use image_url with their MIME type and the recommended defaul
       await readWithMistral({ base64: "aW1hZ2U=", mimeType, filename: "invoice" });
       const request = requests.at(-1)!;
       assert.deepEqual(request.document, { type: "image_url", image_url: `data:${mimeType};base64,aW1hZ2U=` });
-      assert.equal(request.model, "mistral-ocr-latest");
+      assert.equal(request.model, "mistral-ocr-4-1");
       assert.equal(request.include_image_base64, false);
       assert.equal(request.include_blocks, true);
       assert.equal(request.table_format, "html");
@@ -93,6 +99,7 @@ test("JPEG and PNG use image_url with their MIME type and the recommended defaul
     }
   } finally {
     globalThis.fetch = oldFetch;
+    if (oldBenchmark === undefined) delete process.env.INVOICE_PROVIDER_BENCHMARK; else process.env.INVOICE_PROVIDER_BENCHMARK = oldBenchmark;
     if (oldKey === undefined) delete process.env.MISTRAL_API_KEY;
     else process.env.MISTRAL_API_KEY = oldKey;
     if (oldModel === undefined) delete process.env.MISTRAL_OCR_MODEL;

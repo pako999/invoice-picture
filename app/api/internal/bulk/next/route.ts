@@ -10,11 +10,18 @@ export async function POST(req:Request){
  const ownerId=typeof input.ownerId==='string'?input.ownerId:null;
  if(jobId!==null&&(!Number.isSafeInteger(jobId)||jobId<=0||!ownerId))return NextResponse.json({error:"Invalid scope"},{status:400});
  // One read when idle, no lock transaction or maintenance writes.
- const ready=await sql`SELECT "id" FROM "bulkInvoiceJobs" WHERE "status"='processing'
-   AND "stage" IN ('queued','uploaded','ocr','classify','split','extract')
-   AND (${jobId===null} OR ("id"=${jobId} AND "clerkUserId"=${ownerId}))
-   AND ("lockedAt" IS NULL OR "lockedAt"<now()-interval '15 minutes') LIMIT 1`;
- if(!ready.length)return NextResponse.json({job:null});
+ const [ready]=await sql`SELECT
+   (SELECT json_build_object('id',"id",'updatedAt',"updatedAt") FROM "bulkInvoiceJobs" WHERE "status"='processing'
+     AND "stage" IN ('queued','uploaded','ocr','classify','split','extract')
+     AND (${jobId===null} OR ("id"=${jobId} AND "clerkUserId"=${ownerId}))
+     AND ("lockedAt" IS NULL OR "lockedAt"<now()-interval '15 minutes') ORDER BY "updatedAt","id" LIMIT 1) AS bulk,
+   (SELECT json_build_object('documentId',"documentId",'availableAt',"availableAt") FROM "invoiceProcessingJobs"
+     WHERE ${jobId===null && ownerId===null} AND "preferBatch"=true AND "status" IN ('queued','failed')
+     AND "availableAt"<=now() AND "attempts"<LEAST("maxAttempts",2) ORDER BY "availableAt","id" LIMIT 1) AS document`;
+ if(ready?.document && (!ready.bulk || new Date(ready.document.availableAt).getTime()<=new Date(ready.bulk.updatedAt).getTime())) {
+   return NextResponse.json({job:null,documentJob:ready.document});
+ }
+ if(!ready?.bulk)return NextResponse.json({job:null});
 
  const claim=await sql.transaction([
   sql`SELECT pg_advisory_xact_lock(hashtextextended('bulk-worker-admission',0))`,
@@ -37,7 +44,7 @@ export async function POST(req:Request){
       AND ("lockedAt" IS NULL OR "lockedAt" < now()-interval '15 minutes')
       AND (
         "lastError" IS NULL
-        OR "lastError" NOT LIKE '[rate-limit:%'
+        OR ("lastError" NOT LIKE '[rate-limit:%' AND "lastError" NOT LIKE '[stage-error:%')
         OR "updatedAt" <= now()-interval '2 minutes'
       )
     ORDER BY "updatedAt" ASC,"id" ASC
@@ -51,6 +58,7 @@ export async function POST(req:Request){
     j."status",j."stage",j."pageCount",j."ocrNextPage",j."classifyCursor",j."totalInvoices",j."processedInvoices"
  `]);
  const rows=claim[1];
+ if(!rows.length&&ready?.document)return NextResponse.json({job:null,documentJob:ready.document});
  return NextResponse.json({job:rows[0]??null});
 }
 

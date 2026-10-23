@@ -3,7 +3,7 @@ import { createHash, timingSafeEqual } from "node:crypto";
 export const BULK_PDF_GATEWAY_URL = "https://br-weathered-frog-alr3b4zn-bulkpdf.compute.c-3.eu-central-1.aws.neon.tech";
 export const BULK_PDF_MAX_BYTES = 200 * 1024 * 1024;
 export const BULK_PDF_MAX_PAGES = 500;
-export const BULK_OCR_BATCH_PAGES = 25;
+export const BULK_OCR_BATCH_PAGES = 500;
 export const BULK_CLASSIFY_BATCH_PAGES = 25;
 export const BULK_EXTRACT_BATCH_SIZE = 5;
 export const BULK_BOUNDARY_CONFIDENCE_THRESHOLD = 0.72;

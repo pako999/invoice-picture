@@ -1,3 +1,6 @@
+import { mayRetryProviderError, ProviderRequestError } from "@/lib/invoice-intelligence/provider-errors";
+import { after } from "next/server";
+import { runQueuedInvoiceJobs } from "@/lib/invoice-intelligence/processor";
 import { NextRequest, NextResponse } from "next/server";
 import { workspaceAuth as auth } from "@/lib/workspace";
 import { and, desc, eq } from "drizzle-orm";
@@ -316,6 +319,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         target: invoiceProcessingJobs.documentId,
         set: {
           status: "processing",
+          batchStateJson: null,
+          preferBatch: false,
           attempts: 1,
           availableAt: now,
           lockedAt: now,
@@ -341,20 +346,27 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         return NextResponse.json({ success: true, status: processed.status, processedInline: true });
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
+        const automaticRetry = mayRetryProviderError(error,1);
+        const retryInMs = error instanceof ProviderRequestError ? Math.max(1000,error.retryAfterMs) : 0;
         await db.update(invoiceProcessingJobs).set({
           status: "failed",
           lastError: message.slice(0, 2000),
           lockedAt: null,
-          availableAt: new Date(Date.now() + 2 * 60_000),
+          attempts: automaticRetry ? 1 : 2,
+          maxAttempts: 2,
+          availableAt: new Date(Date.now() + retryInMs),
           updatedAt: new Date(),
         }).where(eq(invoiceProcessingJobs.documentId, documentId));
         await db.update(invoiceDocuments).set({
-          status: "failed",
-          validationStatus: "failed",
+          status: automaticRetry ? "queued" : "failed",
+          validationStatus: automaticRetry ? "pending" : "failed",
           warningsJson: JSON.stringify([message]),
           processedAt: new Date(),
           updatedAt: new Date(),
         }).where(eq(invoiceDocuments.id, documentId));
+        if (automaticRetry && retryInMs <= 30_000) {
+          after(async () => { await new Promise(resolve=>setTimeout(resolve,retryInMs)); await runQueuedInvoiceJobs(1,documentId); });
+        }
         return NextResponse.json({
           error: `Ponovna OCR obdelava ni uspela: ${message}`,
           retryable: true,

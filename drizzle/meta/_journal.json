@@ -113,6 +113,13 @@
       "when": 1792572000000,
       "tag": "0016_company_bank_profile",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1792729800000,
+      "tag": "0017_provider_control",
+      "breakpoints": true
     }
   ]
 }

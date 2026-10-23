@@ -91,6 +91,7 @@ export const bulkInvoiceJobs = pgTable("bulkInvoiceJobs", {
   filename: varchar("filename", { length: 255 }).notNull(),
   byteSize: integer("byteSize").notNull(),
   status: varchar("status", { length: 32 }).default("processing").notNull(),
+  preferBatch: boolean("preferBatch").notNull().default(false),
   stage: varchar("stage", { length: 32 }).default("uploaded").notNull(),
   pageCount: integer("pageCount"),
   ocrNextPage: integer("ocrNextPage").default(0).notNull(),
@@ -272,8 +273,10 @@ export const invoiceProcessingJobs = pgTable("invoiceProcessingJobs", {
   id: serial("id").primaryKey(),
   documentId: integer("documentId").notNull().references(() => invoiceDocuments.id, { onDelete: "cascade" }),
   status: processingJobStatusEnum("status").default("queued").notNull(),
+  preferBatch: boolean("preferBatch").notNull().default(false),
+  batchStateJson: text("batchStateJson"),
   attempts: integer("attempts").default(0).notNull(),
-  maxAttempts: integer("maxAttempts").default(4).notNull(),
+  maxAttempts: integer("maxAttempts").default(2).notNull(),
   availableAt: timestamp("availableAt").defaultNow().notNull(),
   lockedAt: timestamp("lockedAt"),
   lastError: text("lastError"),
@@ -363,3 +366,29 @@ export const invoiceDocumentMeter = pgTable("invoiceDocumentMeter", {
  clerkUserId: varchar("clerkUserId", {length:255}).notNull(),
  createdAt: timestamp("createdAt").notNull(),
 }, t => ({ownerMonth: index("invoiceDocumentMeter_owner_month_idx").on(t.clerkUserId,t.createdAt)}));
+
+/** Shared across Vercel instances; a crashed request cannot retain a slot. */
+export const invoiceProviderSlots = pgTable("invoiceProviderSlots", {
+  slot: integer("slot").primaryKey(),
+  token: text("token"),
+  expiresAt: timestamp("expiresAt").notNull().default(new Date(0)),
+});
+
+/** Provider estimates are not customer billing receipts. Includes chat work. */
+export const invoiceProviderUsage = pgTable("invoiceProviderUsage", {
+  id: serial("id").primaryKey(), requestKey: text("requestKey").notNull().unique(),
+  clerkUserId: varchar("clerkUserId", { length: 255 }).notNull(),
+  documentId: integer("documentId").references(() => invoiceDocuments.id, { onDelete: "set null" }),
+  bulkJobId: integer("bulkJobId").references(() => bulkInvoiceJobs.id, { onDelete: "set null" }),
+  operation: text("operation").notNull(), model: text("model").notNull(), mode: text("mode").notNull(),
+  httpStatus: integer("httpStatus"), completionUnknown: boolean("completionUnknown").notNull().default(false),
+  usageJson: text("usageJson"), estimatedCostMicros: integer("estimatedCostMicros"),
+  createdAt: timestamp("createdAt").notNull().defaultNow(),
+}, t => ({ ownerIdx: index("invoiceProviderUsage_owner_idx").on(t.clerkUserId, t.createdAt) }));
+
+export const invoiceOriginalDeliveryJobs = pgTable("invoiceOriginalDeliveryJobs", {
+  invoiceId: integer("invoiceId").primaryKey().references(() => invoices.id, { onDelete: "cascade" }),
+  messageBody: text("messageBody"), status: varchar("status", { length: 16 }).notNull().default("queued"),
+  attempts: integer("attempts").notNull().default(0), availableAt: timestamp("availableAt").notNull().defaultNow(),
+  lockedAt: timestamp("lockedAt"), lastError: text("lastError"),
+}, t => ({ queueIdx: index("invoiceOriginalDeliveryJobs_queue_idx").on(t.status,t.availableAt) }));

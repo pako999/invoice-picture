@@ -1,3 +1,7 @@
+import { DocumentBatchPending, parseDocumentBatchState } from "./document-batch";
+import { withProviderContext } from "./provider-usage";
+import { ProviderRequestError, reservationWasRejected, mayRetryProviderError } from "./provider-errors";
+import { mistralOcrModel } from "./mistral-config";
 import { and, asc, eq, inArray, lt, lte, ne } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import {
@@ -46,7 +50,7 @@ const CRITICAL_FIELDS = [
   "totals.grossAmount",
 ] as const;
 
-export async function processInvoiceDocument(documentId: number, runBudget?: OcrRunBudget) {
+export async function processInvoiceDocument(documentId: number, runBudget?: OcrRunBudget, batchJob?: { id: number; batchStateJson: string | null }) {
   const db = getDb();
   const [document] = await db.select().from(invoiceDocuments).where(eq(invoiceDocuments.id, documentId)).limit(1);
   if (!document) throw new Error("Invoice document not found");
@@ -62,7 +66,9 @@ export async function processInvoiceDocument(documentId: number, runBudget?: Ocr
   const input = { base64: document.originalBase64, mimeType: document.mimeType, filename: document.filename };
   const safety = getOcrSafetyConfig();
   const estimatedPages = estimateSourcePages(input);
-  let reservedProviderPages = providerReservationPages(input);
+  const batchState = batchJob ? parseDocumentBatchState(batchJob.batchStateJson) : null;
+  let reservedProviderPages = batchState?.pages ?? providerReservationPages(input);
+  let reservationCreatedThisRun = false;
   let result: ReaderResult | null = null;
   let validation: ValidationResult | null = null;
   let mistralError: unknown = null;
@@ -77,7 +83,7 @@ export async function processInvoiceDocument(documentId: number, runBudget?: Ocr
 
   if (!result) {
     try {
-      if (isPdfInput(input) && estimatedPages == null) {
+      if (!batchState && isPdfInput(input) && estimatedPages == null) {
         const usage = await getOcrUsageSummary(document.clerkUserId);
         const remainingDailyPages = Math.max(0, usage.dailyPageLimit - usage.dayPages);
         reservedProviderPages = Math.max(1, Math.min(
@@ -87,10 +93,11 @@ export async function processInvoiceDocument(documentId: number, runBudget?: Ocr
           runBudget?.remainingPages ?? safety.maxPagesPerCron,
         ));
       }
-      mistralReservation = await reserveOcrProviderBudget({ clerkUserId: document.clerkUserId, provider: "mistral", pages: reservedProviderPages, runBudget });
-      result = await recordAttempt(documentId, "mistral", process.env.MISTRAL_OCR_MODEL || "mistral-ocr-latest", async () => readWithMistral(input, reservedProviderPages));
+      mistralReservation = batchState?.reservation ?? await reserveOcrProviderBudget({ clerkUserId: document.clerkUserId, provider: "mistral", pages: reservedProviderPages, runBudget, ...(batchJob ? { costPerPageMicros: 2500 } : {}) });
+      reservationCreatedThisRun = !batchState;
+      result = await recordAttempt(documentId, "mistral", mistralOcrModel(), async () => withProviderContext({ clerkUserId: document.clerkUserId, documentId }, () => readWithMistral(input, reservedProviderPages, batchJob ? { jobId: batchJob.id, pages: reservedProviderPages, reservation: mistralReservation! } : undefined)));
       if (result) {
-        await releaseUnusedOcrProviderBudget({ reservation: mistralReservation, pages: Number.isFinite(result.pagesProcessed) ? Math.max(0, reservedProviderPages - result.pagesProcessed) : 0, runBudget });
+        await releaseUnusedOcrProviderBudget({ reservation: mistralReservation, pages: Number.isFinite(result.pagesProcessed) ? Math.max(0, reservedProviderPages - result.pagesProcessed) : 0, runBudget: reservationCreatedThisRun ? runBudget : undefined });
         mistralReservation = null;
         result.invoice = await applySupplierMappings(document.clerkUserId, result.invoice);
         validation = validateInvoice(result.invoice);
@@ -107,13 +114,15 @@ export async function processInvoiceDocument(documentId: number, runBudget?: Ocr
         }
       }
     } catch (error) {
-      if (mistralReservation && estimatedPages == null) {
-        await releaseUnusedOcrProviderBudget({ reservation: mistralReservation, pages: reservedProviderPages, runBudget })
+      if (error instanceof DocumentBatchPending) throw error;
+      if (mistralReservation && reservationWasRejected(error)) {
+        await releaseUnusedOcrProviderBudget({ reservation: mistralReservation, pages: reservedProviderPages, runBudget: reservationCreatedThisRun ? runBudget : undefined })
           .catch((releaseError) => console.error("[invoice-ocr] Failed to release unused Mistral reservation", releaseError));
         mistralReservation = null;
       }
       if (error instanceof OcrCommercialQuotaError) throw error;
       if (isSafetyDeferral(error)) throw error;
+      if (error instanceof ProviderRequestError && error.acceptance === "unknown") throw error;
       mistralError = error;
     }
   }
@@ -151,6 +160,7 @@ export async function processInvoiceDocument(documentId: number, runBudget?: Ocr
   if (!result || !validation) {
     const reason = mistralError ? messageOf(mistralError) : "No invoice reader produced a usable result";
     await db.update(invoiceDocuments).set({ status: "failed", validationStatus: "failed", warningsJson: JSON.stringify([reason]), processedAt: new Date(), updatedAt: new Date() }).where(eq(invoiceDocuments.id, documentId));
+    if (mistralError) throw mistralError;
     throw new Error(reason);
   }
 
@@ -214,17 +224,20 @@ export async function runQueuedInvoiceJobs(limit = 3, documentId?: number) {
       lte(invoiceProcessingJobs.availableAt, now),
       // Exclude exhausted jobs BEFORE LIMIT so they cannot starve new uploads.
       lt(invoiceProcessingJobs.attempts, invoiceProcessingJobs.maxAttempts),
+      lt(invoiceProcessingJobs.attempts, 2),
     ))
     .orderBy(asc(invoiceProcessingJobs.availableAt))
     .limit(safeDocumentLimit);
 
-  const results: Array<{ jobId: number; documentId: number; ok: boolean; error?: string; deferred?: boolean }> = [];
+  const results: Array<{ jobId: number; documentId: number; ok: boolean; error?: string; deferred?: boolean; retryInMs?: number }> = [];
   for (const job of jobs) {
-    if (job.attempts >= job.maxAttempts) continue;
+    const maxAttempts = Math.min(job.maxAttempts, 2);
+    if (job.attempts >= maxAttempts) continue;
     const [locked] = await db.update(invoiceProcessingJobs).set({
       status: "processing",
       lockedAt: new Date(),
       attempts: job.attempts + 1,
+      maxAttempts,
       updatedAt: new Date(),
     }).where(and(
       eq(invoiceProcessingJobs.id, job.id),
@@ -244,10 +257,16 @@ export async function runQueuedInvoiceJobs(limit = 3, documentId?: number) {
     });
 
     try {
-      await measureInvoiceStage("document_processing", { documentId: job.documentId, jobId: job.id }, () => processInvoiceDocument(job.documentId, runBudget));
+      await measureInvoiceStage("document_processing", { documentId: job.documentId, jobId: job.id }, () => processInvoiceDocument(job.documentId, runBudget, job.preferBatch ? { id: job.id, batchStateJson: job.batchStateJson } : undefined));
       await db.update(invoiceProcessingJobs).set({ status: "completed", lastError: null, lockedAt: null, updatedAt: new Date() }).where(eq(invoiceProcessingJobs.id, job.id));
       results.push({ jobId: job.id, documentId: job.documentId, ok: true });
     } catch (error) {
+      if (error instanceof DocumentBatchPending) {
+        await db.update(invoiceProcessingJobs).set({status:"queued",attempts:job.attempts,lockedAt:null,availableAt:new Date(Date.now()+error.retryInMs),updatedAt:new Date()}).where(eq(invoiceProcessingJobs.id,job.id));
+        await db.update(invoiceDocuments).set({status:"queued",validationStatus:"pending",updatedAt:new Date()}).where(eq(invoiceDocuments.id,job.documentId));
+        results.push({jobId:job.id,documentId:job.documentId,ok:false,deferred:true});
+        continue;
+      }
       if (error instanceof OcrCommercialQuotaError) {
         const message = messageOf(error).slice(0, 2000);
         await db.update(invoiceProcessingJobs).set({
@@ -297,16 +316,19 @@ export async function runQueuedInvoiceJobs(limit = 3, documentId?: number) {
       }
 
       const attempt = job.attempts + 1;
-      const delayMinutes = Math.min(60, 2 ** Math.min(attempt, 6));
+      const retryable = mayRetryProviderError(error, attempt);
+      const retryInMs = error instanceof ProviderRequestError ? Math.max(1000, error.retryAfterMs) : 0;
       const message = messageOf(error).slice(0, 2000);
       await db.update(invoiceProcessingJobs).set({
-        status: "failed",
+        status: retryable ? "queued" : "failed",
         lastError: message,
         lockedAt: null,
-        availableAt: new Date(Date.now() + delayMinutes * 60_000),
+        attempts: retryable ? attempt : maxAttempts,
+        availableAt: new Date(Date.now() + retryInMs),
         updatedAt: new Date(),
       }).where(eq(invoiceProcessingJobs.id, job.id));
-      if (attempt >= job.maxAttempts) {
+      if (retryable) await db.update(invoiceDocuments).set({ status: "queued", validationStatus: "pending", processedAt: null, updatedAt: new Date() }).where(eq(invoiceDocuments.id, job.documentId));
+      if (!retryable || attempt >= maxAttempts) {
         await db.update(invoiceDocuments).set({
           status: "failed",
           validationStatus: "failed",
@@ -316,7 +338,7 @@ export async function runQueuedInvoiceJobs(limit = 3, documentId?: number) {
         }).where(eq(invoiceDocuments.id, job.documentId));
         await markSourceInvoiceFailed(job.documentId, message);
       }
-      results.push({ jobId: job.id, documentId: job.documentId, ok: false, error: message });
+      results.push({ jobId: job.id, documentId: job.documentId, ok: false, error: message, ...(retryable ? { retryInMs } : {}) });
     }
   }
   return results;
@@ -355,20 +377,22 @@ async function recordAttempt<T extends ReaderResult | null>(documentId: number, 
     }).where(eq(invoiceProcessingAttempts.id, attempt.id));
     return result;
   } catch (error) {
-    await db.update(invoiceProcessingAttempts).set({ status: "failed", errorMessage: messageOf(error).slice(0, 2000), durationMs: Date.now() - started, completedAt: new Date() }).where(eq(invoiceProcessingAttempts.id, attempt.id));
+    await db.update(invoiceProcessingAttempts).set({ status: error instanceof DocumentBatchPending ? "skipped" : "failed", errorMessage: messageOf(error).slice(0, 2000), durationMs: Date.now() - started, completedAt: new Date() }).where(eq(invoiceProcessingAttempts.id, attempt.id));
     throw error;
   }
 }
 
 async function persistResult(documentId: number, result: ReaderResult, validation: ValidationResult, autoApprove: boolean) {
   const db = getDb();
-  await db.delete(invoiceLineItems).where(eq(invoiceLineItems.documentId, documentId));
-  await db.delete(invoiceVatBreakdown).where(eq(invoiceVatBreakdown.documentId, documentId));
-  await db.delete(invoiceFieldEvidence).where(eq(invoiceFieldEvidence.documentId, documentId));
+  const writes: [Parameters<typeof db.batch>[0][number], ...Parameters<typeof db.batch>[0][number][]] = [
+    db.delete(invoiceLineItems).where(eq(invoiceLineItems.documentId, documentId)),
+    db.delete(invoiceVatBreakdown).where(eq(invoiceVatBreakdown.documentId, documentId)),
+    db.delete(invoiceFieldEvidence).where(eq(invoiceFieldEvidence.documentId, documentId)),
+  ];
 
-  if (result.invoice.lineItems.length) await db.insert(invoiceLineItems).values(result.invoice.lineItems.map((item, i) => ({ documentId, position: i, ...item })));
-  if (result.invoice.vatBreakdown.length) await db.insert(invoiceVatBreakdown).values(result.invoice.vatBreakdown.map((row, i) => ({ documentId, position: i, ...row })));
-  if (result.evidence.length) await db.insert(invoiceFieldEvidence).values(result.evidence.map((e) => ({
+  if (result.invoice.lineItems.length) writes.push(db.insert(invoiceLineItems).values(result.invoice.lineItems.map((item, i) => ({ documentId, position: i, ...item }))));
+  if (result.invoice.vatBreakdown.length) writes.push(db.insert(invoiceVatBreakdown).values(result.invoice.vatBreakdown.map((row, i) => ({ documentId, position: i, ...row }))));
+  if (result.evidence.length) writes.push(db.insert(invoiceFieldEvidence).values(result.evidence.map((e) => ({
     documentId,
     fieldPath: e.fieldPath,
     valueText: e.valueText,
@@ -376,15 +400,16 @@ async function persistResult(documentId: number, result: ReaderResult, validatio
     bboxJson: e.bbox == null ? null : JSON.stringify(e.bbox),
     confidenceBps: e.confidence == null ? null : Math.round(e.confidence * 10_000),
     provider: result.provider,
-  })));
+  }))));
 
-  await db.insert(invoiceValidationResults).values({
+  writes.push(db.insert(invoiceValidationResults).values({
     documentId,
     status: autoApprove ? "valid" : validation.status === "failed" ? "needs_review" : validation.status,
     warningsJson: JSON.stringify(validation.warnings),
     errorsJson: JSON.stringify(validation.errors),
     differencesJson: JSON.stringify(validation.differences),
-  });
+  }));
+  await db.batch(writes);
 }
 
 async function detectDuplicates(documentId: number, clerkUserId: string, sha256: string, invoice: NormalizedInvoice) {

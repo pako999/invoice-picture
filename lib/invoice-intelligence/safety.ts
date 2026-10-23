@@ -47,7 +47,7 @@ export async function reserveOcrProviderBudget(args: { clerkUserId: string; prov
   const config = getOcrSafetyConfig();
   const entitlement = await resolveOcrEntitlement(args.clerkUserId);
   const pages = Math.max(1, Math.min(Math.trunc(args.pages), config.maxPagesPerDocument));
-  if (args.runBudget) { if (pages > args.runBudget.remainingPages) throw new OcrRunBudgetError(`OCR cron safety limit reached (${config.maxPagesPerCron} provider pages per run)`); args.runBudget.remainingPages -= pages; }
+  if (args.runBudget) { if (pages > args.runBudget.remainingPages) throw new OcrRunBudgetError(`OCR cron safety limit reached (${config.maxPagesPerCron} provider pages per run)`); }
 
   const before = await getOcrUsageSummary(args.clerkUserId);
   if (before.dayPages + pages > entitlement.dailyPageLimit) throw quotaPageError(entitlement, "daily_pages");
@@ -88,6 +88,7 @@ export async function reserveOcrProviderBudget(args: { clerkUserId: string; prov
       quota_count AS (SELECT (SELECT count(*) FROM global_day)+(SELECT count(*) FROM global_month)+(SELECT count(*) FROM user_day)+(SELECT count(*) FROM user_month) AS n)
       SELECT 1 / CASE WHEN n=4 THEN 1 ELSE 0 END AS "quotaGuard" FROM quota_count
     `;
+    if (args.runBudget) args.runBudget.remainingPages -= pages;
     return { clerkUserId: args.clerkUserId, dayStart, monthStart, costPerPage } satisfies OcrProviderBudgetReservation;
   } catch (error) {
     if (error instanceof OcrCommercialQuotaError) throw error;

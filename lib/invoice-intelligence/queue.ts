@@ -8,7 +8,7 @@ import { OcrCommercialQuotaError, resolveOcrEntitlement } from "@/lib/invoice-in
 import { getPlanConfig } from "@/lib/plans";
 import { dispatchInvoiceProcessing } from "./dispatch";
 
-export async function enqueueInvoiceDocument(input:{clerkUserId:string;companyId:number|null;sourceInvoiceId:number|null;filename:string;mimeType:string;base64:string}){
+export async function enqueueInvoiceDocument(input:{clerkUserId:string;companyId:number|null;sourceInvoiceId:number|null;filename:string;mimeType:string;base64:string;preferBatch?:boolean}){
   const bytes=traceInvoiceSync("preprocess",null,{operation:"queue_base64_decode"},()=>Buffer.from(input.base64,"base64"));
   const sha256=createHash("sha256").update(bytes).digest("hex");
   const idempotencyKey=createHash("sha256").update(`${input.clerkUserId}:${input.sourceInvoiceId??"upload"}:${sha256}`).digest("hex");
@@ -39,7 +39,7 @@ export async function enqueueInvoiceDocument(input:{clerkUserId:string;companyId
   }
   if(!documentId)return null;
   if(readerConfigured){
-    await traceInvoiceStage("db_write",bytes.length,{document_id:documentId,operation:"enqueue_processing_job"},()=>db.insert(invoiceProcessingJobs).values({documentId,status:"queued",availableAt:priority?new Date(Date.now()-60000):new Date()}).onConflictDoNothing());
+    await traceInvoiceStage("db_write",bytes.length,{document_id:documentId,operation:"enqueue_processing_job"},()=>db.insert(invoiceProcessingJobs).values({documentId,status:"queued",preferBatch:Boolean(input.preferBatch),availableAt:priority?new Date(Date.now()-60000):new Date()}).onConflictDoNothing());
     dispatchInvoiceProcessing(documentId);
   }
   return documentId;

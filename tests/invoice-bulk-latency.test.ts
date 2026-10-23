@@ -1,3 +1,7 @@
+import * as crypto from "node:crypto";
+import * as providerErrors from "../lib/invoice-intelligence/provider-errors";
+import * as mistralConfig from "../lib/invoice-intelligence/mistral-config";
+import * as providerUsage from "../lib/invoice-intelligence/provider-usage";
 import * as invoiceTrace from "../lib/invoice-intelligence/trace";
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -9,6 +13,22 @@ import { measureInvoiceStage } from "../lib/invoice-intelligence/timing";
 function load(path: string, modules: Record<string, unknown>, globals: Record<string, unknown> = {}) {
   if (globals.fetch && modules["@/lib/invoice-intelligence/trace"]) {
     modules = { ...modules, "@/lib/invoice-intelligence/trace": load("lib/invoice-intelligence/trace.ts", {}, globals) };
+  }
+  if (path === "lib/bulk-invoices/failure.ts" || path === "lib/invoice-intelligence/trace.ts" || path === "lib/invoice-intelligence/mistral-http.ts") {
+    // Dependencies for these isolated transport helpers are supplied explicitly.
+  } else {
+  const usage = { ...providerUsage, recordProviderUsage: async () => {}, withProviderContext: (_value: unknown, operation: () => unknown) => operation() };
+  const tracer = globals.fetch ? load("lib/invoice-intelligence/trace.ts", {}, globals) : invoiceTrace;
+  const http = path === "lib/bulk-invoices/service.ts" ? load("lib/invoice-intelligence/mistral-http.ts", {
+    "./provider-usage": usage, "./provider-slots": { acquireMistralSlot: async () => async () => {} },
+    "./provider-errors": providerErrors, "./trace": tracer,
+  }, globals) : {};
+  modules = { "node:crypto": crypto, "@/lib/invoice-intelligence/provider-errors": providerErrors,
+    "@/lib/invoice-intelligence/mistral-config": mistralConfig,
+    "@/lib/invoice-intelligence/provider-usage": usage,
+    "@/lib/invoice-intelligence/mistral-http": http,
+    "@/lib/bulk-invoices/failure": load("lib/bulk-invoices/failure.ts", { "@/lib/invoice-intelligence/provider-errors": providerErrors }),
+    ...modules };
   }
   const source = readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
   const js = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS } }).outputText;
@@ -41,15 +61,16 @@ function ocrRoute(job: Record<string, any>, overrides: Record<string, unknown> =
   const sql = async (strings: TemplateStringsArray, ...values: any[]) => {
     const query = strings.join("?");
     if (query.startsWith("SELECT")) return [job];
-    if (query.includes('INSERT INTO "bulkInvoicePages"')) inserts.push(values[1]);
+    if (query.includes('INSERT INTO "bulkInvoicePages"')) inserts.push(...JSON.parse(values[1]).map((p:any)=>p.pageNumber));
     if (query.includes('"ocrNextPage"=')) job.ocrNextPage = values[0];
+    if(query.includes('RETURNING "id"')) return [{id:1}];
     return [];
   };
   const mod = load("app/api/internal/bulk/ocr/route.ts", {
     "next/server": { NextResponse: Response },
     zod: { z: { object: () => ({ parse: (x: unknown) => x }), number: () => ({ int() { return this; }, positive() { return this; }, min() { return this; }, max() { return this; } }), string: () => ({ url() { return this; } }) } },
     "@/lib/bulk-invoices/config": { verifyBulkInternalSecret: () => true, BULK_OCR_BATCH_PAGES: 25 },
-    "@/lib/bulk-invoices/processing-mode": { useRealtimeBulkProcessing: (count: number) => count <= 50 },
+    "@/lib/bulk-invoices/processing-mode": { useRealtimeBulkProcessing: (count: number, bulk: boolean) => !bulk && count <= 50 },
     "@/lib/invoice-intelligence/timing": { measureInvoiceStage },
     "@/lib/invoice-intelligence/trace": invoiceTrace,
     "@/lib/invoice-intelligence/quota": { OcrCommercialQuotaError: class extends Error {} },
@@ -57,7 +78,7 @@ function ocrRoute(job: Record<string, any>, overrides: Record<string, unknown> =
       bulkSql: () => sql,
       ocrBulkPages: async (args: any) => {
         calls.push("realtime");
-        return { pages: Array.from({ length: Math.min(25, args.pageCount - args.startPage) }, (_, i) => ({ pageNumber: args.startPage + i, markdown: "text", confidence: 0.99 })) };
+        return { pages: Array.from({ length: Math.min(args.batchPages, args.pageCount - args.startPage) }, (_, i) => ({ pageNumber: args.startPage + i, markdown: "text", confidence: 0.99 })) };
       },
       createMistralOcrBatch: async () => { calls.push("submit"); return { batchId: "batch-1", startPage: 0, pageCount: 25, createdAt: new Date(), status: "QUEUED" }; },
       pollMistralOcrBatch: async () => { calls.push("poll"); return { status: "RUNNING", pages: [] }; },
@@ -65,19 +86,16 @@ function ocrRoute(job: Record<string, any>, overrides: Record<string, unknown> =
       ...overrides,
     },
   });
-  const invoke = () => mod.POST(new Request("https://app.example/ocr", { method: "POST", body: JSON.stringify({ jobId: 1, documentUrl: "https://storage.example/original.pdf", startPage: job.ocrNextPage ?? 0, batchPages: 25 }) }));
+  const invoke = () => mod.POST(new Request("https://app.example/ocr", { method: "POST", body: JSON.stringify({ jobId: 1, documentUrl: "https://storage.example/original.pdf", startPage: job.ocrNextPage ?? 0, batchPages: 500 }) }));
   return { invoke, calls, inserts };
 }
 
-test("32-page upload advances through original-PDF ranges without submitting batch jobs", async () => {
+test("32-page upload reads the original PDF once without submitting a provider batch", async () => {
   const route = ocrRoute({ clerkUserId: "test", stage: "ocr", pageCount: 32, ocrNextPage: 0 });
-  const first = await (await route.invoke()).json();
-  assert.equal(first.nextPage, 25);
-  assert.equal(first.done, false);
-  const second = await (await route.invoke()).json();
-  assert.equal(second.nextPage, 32);
-  assert.equal(second.done, true);
-  assert.deepEqual(route.calls, ["realtime", "realtime"]);
+  const result = await (await route.invoke()).json();
+  assert.equal(result.nextPage, 32);
+  assert.equal(result.done, true);
+  assert.deepEqual(route.calls, ["realtime"]);
   assert.deepEqual(route.inserts, Array.from({ length: 32 }, (_, i) => i));
 });
 
@@ -88,15 +106,21 @@ test("large uploads submit a batch and existing small batches are polled, never 
   const existing = ocrRoute({ stage: "ocr", pageCount: 10, ocrBatchId: "existing", ocrBatchStartPage: 0, ocrBatchPageCount: 10 });
   assert.equal((await (await existing.invoke()).json()).status, "RUNNING");
   assert.deepEqual(existing.calls, ["poll"]);
+  const collection = ocrRoute({ stage:"ocr",pageCount:1,preferBatch:true });
+  assert.equal((await (await collection.invoke()).json()).batch,true);
+  assert.deepEqual(collection.calls,["submit"]);
 });
 
-test("provider terminal batch failures stop after three submissions instead of looping forever", async () => {
-  const route = ocrRoute({ stage: "ocr", pageCount: 100, ocrBatchId: "failed", ocrBatchPageCount: 25, lastError: "[batch-failure:2] earlier failure" }, {
-    pollMistralOcrBatch: async () => ({ status: "TIMEOUT_EXCEEDED", pages: [], error: "Provider expired the batch" }),
+test("terminal provider batch failure stops without submitting another paid job", async () => {
+  let polls=0;
+  const route = ocrRoute({ stage: "ocr", pageCount: 100, ocrBatchId: "failed", ocrBatchPageCount: 25, lastError: "[batch-failure:1] earlier failure" }, {
+    pollMistralOcrBatch: async () => { polls++; return { status: "TIMEOUT_EXCEEDED", pages: [], error: "Provider expired the batch" }; },
   });
   const result = await (await route.invoke()).json();
   assert.equal(result.success, false);
   assert.equal(result.retrying, false);
+  assert.equal(polls,1);
+  assert.equal(route.calls.includes("submit"),false);
 });
 
 test("429 adapts to one page and releases only unprocessed reserved pages", async () => {
@@ -152,11 +176,11 @@ test("structured retries share a time budget and yield before a long Retry-After
     Date: { now: () => now },
     AbortSignal: { timeout: (ms: number) => { timeouts.push(ms); return {}; } },
     setTimeout: (callback: () => void, ms: number) => { delays.push(ms); now += ms; callback(); },
-    fetch: async () => { calls++; now += 70_000; return Response.json({ message: "unavailable" }, { status: 503, headers: { "Retry-After": "10" } }); },
+    fetch: async () => { calls++; now += 70_000; return Response.json({ message: "unavailable" }, { status: 429, headers: { "Retry-After": "10" } }); },
   });
   // A classifier outage still gives conservative boundaries for manual review.
-  const result = await service.classifyBulkPages({ pages: [{ pageNumber: 0, markdown: "Invoice 123" }] });
-  assert.equal(result.length, 1);
+  const result = await service.classifyBulkPages({ pages: [{ pageNumber: 0, markdown: "Invoice 123" }, { pageNumber: 1, markdown: "Invoice 456" }] });
+  assert.equal(result.length, 2);
   assert.equal(calls, 2);
   assert.deepEqual(timeouts, [90_000, 70_000]);
   assert.deepEqual(delays, [10_000]);
