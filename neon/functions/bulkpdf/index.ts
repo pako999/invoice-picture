@@ -115,10 +115,14 @@ async function signDownload(request: Request) {
 // Never re-query an empty queue. Provider-pending steps back off instead of spinning.
 async function drain(scope: { jobId?: number; ownerId?: string }, budgetMs: number) {
   const deadline = Date.now() + budgetMs;
+  // Invocation-local only: reuse the parsed original across split chunks.
+  const sourceCache: { key?: string; pdf?: PDFDocument } = {};
   let steps = 0;
   for (; steps < 100 && Date.now() < deadline; steps++) {
-    const response = await work(scope);
+    const started = Date.now();
+    const response = await work(scope, sourceCache);
     const body = await response.json() as Record<string, any>;
+    console.log("invoice_stage_timing", { stage: "bulk_worker_step", jobId: body.jobId, workerStage: body.stage, ok: response.ok, durationMs: Date.now() - started });
     if (!response.ok || body.idle) return json({ ...body, steps }, response.status);
     const result = body.result || {};
     if (result.retrying || result.success === false) return json({ ...body, steps });
@@ -130,7 +134,7 @@ async function drain(scope: { jobId?: number; ownerId?: string }, budgetMs: numb
   return json({ ok: true, steps, continuation: true });
 }
 
-async function work(scope: { jobId?: number; ownerId?: string }) {
+async function work(scope: { jobId?: number; ownerId?: string }, sourceCache: { key?: string; pdf?: PDFDocument } = {}) {
   if (!INTERNAL_SECRET) {
     console.error("[bulkpdf] BULK_INTERNAL_SECRET is missing");
     return json({ error: "Worker is not configured" }, 503);
@@ -147,6 +151,8 @@ async function work(scope: { jobId?: number; ownerId?: string }) {
     if (job.stage === "uploaded") {
       const bytes = await downloadObject(job.objectKey);
       const pdf = await PDFDocument.load(bytes, { updateMetadata: false });
+      sourceCache.key = job.objectKey;
+      sourceCache.pdf = pdf;
       const pageCount = pdf.getPageCount();
       if (pageCount < 1 || pageCount > MAX_PAGES) throw new Error(`PDF page count ${pageCount} is outside the supported range`);
       await appPost("/api/internal/bulk/page-count", { jobId: job.id, pageCount });
@@ -181,8 +187,11 @@ async function work(scope: { jobId?: number; ownerId?: string }) {
         .slice(0, SPLIT_BATCH_SIZE);
       if (!pending.length) throw new Error("No pending PDF groups were found while the split stage is active");
 
-      const sourceBytes = await downloadObject(job.objectKey);
-      const source = await PDFDocument.load(sourceBytes, { updateMetadata: false });
+      if (sourceCache.key !== job.objectKey || !sourceCache.pdf) {
+        sourceCache.pdf = await PDFDocument.load(await downloadObject(job.objectKey), { updateMetadata: false });
+        sourceCache.key = job.objectKey;
+      }
+      const source = sourceCache.pdf;
       const children = [] as Array<Record<string, unknown>>;
       for (const { range, groupIndex } of pending) {
         validateRange(range, source.getPageCount());

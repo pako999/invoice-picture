@@ -10,6 +10,7 @@ const schema = z.object({ invoiceIds: ids, documentIds: ids, bulkJobIds: ids })
 
 /** One read-only request per visible upload session; no file bytes or audit writes while polling. */
 export async function POST(req: NextRequest) {
+  const started = performance.now();
   const { userId } = await workspaceAuth();
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   try {
@@ -78,7 +79,7 @@ export async function POST(req: NextRequest) {
       groups: groups.map((row) => ({ jobId: Number(row.jobId), groupIndex: Number(row.groupIndex), documentId: row.documentId == null ? null : Number(row.documentId), status: row.status,
         delivery: deliveryState({ mode: row.mode, target: target(row), sent: row.deliveryStatus === "completed", queueStatus: row.deliveryStatus, error: row.deliveryError }) })),
     };
-    return NextResponse.json(snapshot, { headers: { "Cache-Control": "private, no-store" } });
+    return NextResponse.json(snapshot, { headers: { "Cache-Control": "private, no-store", "Server-Timing": `invoice_status;dur=${Math.round(performance.now() - started)}` } });
   } catch (error) {
     if (error instanceof z.ZodError || error instanceof SyntaxError) return NextResponse.json({ error: "Invalid upload session" }, { status: 400 });
     console.error("invoice_processing_status_failed", error instanceof Error ? error.message : "unknown");

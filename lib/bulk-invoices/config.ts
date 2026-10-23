@@ -48,11 +48,15 @@ export function buildBulkRanges(
   return starts.map((startPage, index) => {
     const endPage = (starts[index + 1] ?? pageCount) - 1;
     const boundary = startPage === 0 ? 1 : byPage.get(startPage)?.boundaryConfidence ?? null;
+    // An uncertain continuation may hide an invoice boundary inside this range.
+    // Require review even if its first page was confidently classified.
+    const uncertainPage = Array.from({ length: endPage - startPage + 1 }, (_, i) => byPage.get(startPage + i))
+      .some((page) => !page || page.startsNewInvoice == null || page.boundaryConfidence == null || page.boundaryConfidence < BULK_BOUNDARY_CONFIDENCE_THRESHOLD);
     return {
       startPage,
       endPage,
       boundaryConfidence: boundary,
-      needsBoundaryReview: boundary == null || boundary < BULK_BOUNDARY_CONFIDENCE_THRESHOLD,
+      needsBoundaryReview: uncertainPage || boundary == null || boundary < BULK_BOUNDARY_CONFIDENCE_THRESHOLD,
     };
   });
 }

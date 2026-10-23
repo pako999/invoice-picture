@@ -2,6 +2,18 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { classifyBulkPagesDeterministically } from "../lib/bulk-invoices/service";
 import { parseInvoiceTextDeterministically } from "../lib/invoice-intelligence/providers";
+import { buildBulkRanges } from "../lib/bulk-invoices/config";
+
+test("uncertain continuation requires boundary review before splitting or auto-approval", () => {
+  const ranges = buildBulkRanges([
+    { pageNumber: 0, startsNewInvoice: true, boundaryConfidence: 1 },
+    { pageNumber: 1, startsNewInvoice: false, boundaryConfidence: 0.45 },
+    { pageNumber: 2, startsNewInvoice: true, boundaryConfidence: 0.98 },
+  ], 3);
+  assert.equal(ranges[0].needsBoundaryReview, true);
+  assert.equal(ranges[1].needsBoundaryReview, false);
+  assert.equal(ranges[0].endPage, 1);
+});
 
 test("bulk boundary fallback keeps multi-page documents together and separates receipts", () => {
   const rows = classifyBulkPagesDeterministically({

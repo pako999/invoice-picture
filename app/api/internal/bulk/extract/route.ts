@@ -9,7 +9,9 @@ import {
   companies, invoiceAuditLogs, invoiceDocuments, invoiceProcessingAttempts, invoiceValidationResults, invoices, userSettings
 } from "@/lib/schema";
 import { verifyBulkInternalSecret,BULK_EXTRACT_BATCH_SIZE } from "@/lib/bulk-invoices/config";
-import { bulkSql,createMistralInvoiceExtractionBatch,extractBulkInvoiceFromDocument,hasUsableBulkOcrMarkdown,pollMistralInvoiceExtractionBatch } from "@/lib/bulk-invoices/service";
+import { bulkSql,createMistralInvoiceExtractionBatch,extractBulkInvoice,extractBulkInvoiceFromDocument,hasUsableBulkOcrMarkdown,pollMistralInvoiceExtractionBatch } from "@/lib/bulk-invoices/service";
+import { useRealtimeBulkProcessing } from "@/lib/bulk-invoices/processing-mode";
+import { measureInvoiceStage } from "@/lib/invoice-intelligence/timing";
 import { normalizeDeliveryMode } from "@/lib/invoice-intelligence/delivery-format";
 
 const schema=z.object({
@@ -84,10 +86,20 @@ export async function POST(req:Request){
     // fallback for empty/unusable page text.
     const started=Date.now();let extracted;
     if(hasUsableBulkOcrMarkdown(markdown) && !data.forceDocumentOcr){
+      if(!group.extractionBatchId&&useRealtimeBulkProcessing(Number(job.pageCount))){
+        extracted=await measureInvoiceStage("bulk_extract",{jobId:data.jobId,groupIndex:Number(group.groupIndex),mode:"realtime"},()=>extractBulkInvoice(markdown,avg,previousInvoice));
+      }else{
       if(!group.extractionBatchId){const batch=await createMistralInvoiceExtractionBatch(markdown,avg);await sql`UPDATE "bulkInvoiceGroups" SET "extractionBatchId"=${batch.batchId},"extractionBatchCreatedAt"=now(),"updatedAt"=now() WHERE "id"=${group.id}`;await sql`UPDATE "bulkInvoiceJobs" SET "lockedAt"=NULL,"lastError"=NULL,"updatedAt"=now() WHERE "id"=${data.jobId}`;return NextResponse.json({success:true,batchSubmitted:true,batchId:batch.batchId},{status:202});}
       const state=await pollMistralInvoiceExtractionBatch({batchId:String(group.extractionBatchId),markdown,ocrConfidence:avg});
       if(["QUEUED","RUNNING","CANCELLATION_REQUESTED"].includes(state.status)){await sql`UPDATE "bulkInvoiceJobs" SET "lockedAt"=NULL,"updatedAt"=now() WHERE "id"=${data.jobId}`;return NextResponse.json({success:true,batchPending:true,status:state.status},{status:202});}
-      if(!state.result)throw new Error(state.error||`Mistral Batch extraction ended with ${state.status}`);extracted=state.result;
+      if(!state.result){
+        const message=`[batch-extraction-failure] ${state.error||`Mistral Batch extraction ended with ${state.status}`}`;
+        await sql`UPDATE "bulkInvoiceJobs" SET "status"='failed',"stage"='failed',"lockedAt"=NULL,"lastError"=${message.slice(0,2000)},"completedAt"=now(),"updatedAt"=now() WHERE "id"=${data.jobId}`;
+        await sql`UPDATE "invoiceDocuments" d SET "status"='failed',"validationStatus"='failed',"warningsJson"=${JSON.stringify([message])},"processedAt"=now(),"updatedAt"=now()
+          FROM "bulkInvoiceGroups" g WHERE g."jobId"=${data.jobId} AND g."status"='reprocess' AND g."documentId"=d."id"`;
+        throw new Error(message);
+      }extracted=state.result;
+      }
     }else if(documentUrl)extracted=await extractBulkInvoiceFromDocument(documentUrl,avg);else throw new Error("Bulk OCR returned no usable text for structured extraction");
     const autoApprove=canAutoApprove(extracted.invoice,extracted.validation.status,avg,Boolean(group.needsBoundaryReview));
     const normalizedJson=JSON.stringify(extracted.invoice);

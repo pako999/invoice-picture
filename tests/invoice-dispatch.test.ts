@@ -39,7 +39,7 @@ test("background failures are logged without breaking the accepted upload", asyn
   assert.equal(errors.length, 1);
 });
 
-function worker(responses: unknown[]) {
+function worker(responses: unknown[], overrides: Record<string, unknown> = {}) {
   const calls: Array<{ path: string; body: any }> = [];
   const mod = loadModule("neon/functions/bulkpdf/index.ts", {
     "node:crypto": {},
@@ -50,6 +50,7 @@ function worker(responses: unknown[]) {
       return { payload: { sub: "owner-a" } };
     } },
     "pdf-lib": {},
+    ...overrides,
   }, {
     process: { env: { BULK_INTERNAL_SECRET: "test-only", CLERK_ISSUER: "https://clerk.example" } },
     console: { log() {}, error() {} },
@@ -81,4 +82,47 @@ test("bulk run yields pending provider batch instead of busy-polling the databas
   const result = await api.fetch(new Request("https://worker/run", { method: "POST", headers: { Authorization: "Bearer valid" }, body: '{"jobId":9}' }));
   assert.equal((await result.json()).providerPending, true);
   assert.equal(calls.length, 2);
+});
+
+test("bulk run advances completed real-time OCR immediately instead of waiting for a schedule", async () => {
+  const { api, calls } = worker([
+    { job: { id: 9, stage: "ocr", objectKey: "bulk/owner-a/a.pdf", ocrNextPage: 0 } },
+    { success: true, batch: false, pages: 25, nextPage: 25 },
+    { job: null },
+  ]);
+  const result = await api.fetch(new Request("https://worker/run", { method: "POST", headers: { Authorization: "Bearer valid" }, body: '{"jobId":9}' }));
+  assert.equal((await result.json()).idle, true);
+  assert.deepEqual(calls.map(call => call.path), ["/api/internal/bulk/next", "/api/internal/bulk/ocr", "/api/internal/bulk/next"]);
+});
+
+test("PDF counting and multiple split chunks share one original download and parse per invocation", async () => {
+  let downloads = 0, parses = 0, uploads = 0;
+  const ranges = Array.from({ length: 21 }, (_, i) => ({ startPage: i, endPage: i, boundaryConfidence: 1, needsBoundaryReview: false }));
+  class GetObjectCommand { constructor(public input: unknown) {} }
+  class PutObjectCommand { constructor(public input: unknown) {} }
+  const original = { getPageCount: () => 21 };
+  const job = { id: 9, clerkUserId: "owner-a", objectKey: "bulk/owner-a/a.pdf" };
+  const { api } = worker([
+    { job: { ...job, stage: "uploaded" } }, {},
+    { job: { ...job, stage: "split" } }, { ranges }, {},
+    { job: { ...job, stage: "split" } }, { ranges, existingGroupIndexes: Array.from({ length: 20 }, (_, i) => i) }, {},
+    { job: null },
+  ], {
+    "node:crypto": { createHash: () => ({ update() { return this; }, digest: () => "test-hash" }) },
+    "@aws-sdk/client-s3": { GetObjectCommand, PutObjectCommand, S3Client: class {
+      async send(command: unknown) {
+        if (command instanceof GetObjectCommand) { downloads++; return { Body: { transformToByteArray: async () => Buffer.from("%PDF-1.4") } }; }
+        uploads++; return {};
+      }
+    } },
+    "pdf-lib": { PDFDocument: {
+      load: async () => { parses++; return original; },
+      create: async () => ({ copyPages: async (_source: unknown, pages: number[]) => pages, addPage() {}, save: async () => Buffer.from("%PDF-child") }),
+    } },
+  });
+  const response = await api.fetch(new Request("https://worker/run", { method: "POST", headers: { Authorization: "Bearer valid" }, body: '{"jobId":9}' }));
+  assert.equal(response.status, 200);
+  assert.equal(downloads, 1);
+  assert.equal(parses, 1);
+  assert.equal(uploads, 21);
 });

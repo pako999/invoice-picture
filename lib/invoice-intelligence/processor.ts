@@ -32,6 +32,7 @@ import { getOcrUsageSummary, OcrCommercialQuotaError } from "./quota";
 import { normalizedInvoiceSchema, type NormalizedInvoice, type ReaderResult, type ValidationResult } from "./types";
 import { normalizeInvoiceValues, validateInvoice } from "./validation";
 import { queueInvoiceDelivery } from "./delivery";
+import { measureInvoiceStage } from "./timing";
 
 const CRITICAL_FIELDS = [
   "supplier.name",
@@ -153,13 +154,14 @@ export async function processInvoiceDocument(documentId: number, runBudget?: Ocr
   }
 
   result.invoice = normalizeInvoiceValues(result.invoice);
-  const duplicates = await detectDuplicates(documentId, document.clerkUserId, document.sha256, result.invoice);
+  const duplicates = await measureInvoiceStage("duplicate_check", { documentId }, () => detectDuplicates(documentId, document.clerkUserId, document.sha256, result.invoice));
   if (duplicates.length) validation = { ...validation, status: "needs_review", warnings: [...validation.warnings, "Possible duplicate invoice detected"] };
 
   const autoApprove = validation.status === "valid" && duplicates.length === 0 && requiredFieldsPresent(result.invoice) && criticalConfidencePasses(result);
   const finalStatus = autoApprove ? "approved" : "needs_review";
   result.invoice.validationStatus = autoApprove ? "valid" : "needs_review";
 
+  const persistenceStarted = performance.now();
   await persistResult(documentId, result, validation, autoApprove);
   await db.update(invoiceDocuments).set({
     status: finalStatus,
@@ -179,6 +181,8 @@ export async function processInvoiceDocument(documentId: number, runBudget?: Ocr
     approvedAt: autoApprove ? new Date() : null,
     updatedAt: new Date(),
   }).where(eq(invoiceDocuments.id, documentId));
+
+  console.info("invoice_stage_timing", { stage: "persist_result", documentId, ok: true, durationMs: Math.round(performance.now() - persistenceStarted) });
 
   await db.insert(invoiceAuditLogs).values({
     documentId,
@@ -229,8 +233,16 @@ export async function runQueuedInvoiceJobs(limit = 3, documentId?: number) {
     )).returning({ id: invoiceProcessingJobs.id });
     if (!locked) continue;
 
+    console.info("invoice_stage_timing", {
+      stage: "queue_wait", documentId: job.documentId, jobId: job.id,
+      // Includes intentional retry delays. Compare with availableAt for scheduler lag.
+      durationMs: Math.max(0, Date.now() - job.createdAt.getTime()),
+      schedulerLagMs: Math.max(0, Date.now() - Math.max(job.createdAt.getTime(), job.availableAt.getTime())),
+      attempt: job.attempts + 1,
+    });
+
     try {
-      await processInvoiceDocument(job.documentId, runBudget);
+      await measureInvoiceStage("document_processing", { documentId: job.documentId, jobId: job.id }, () => processInvoiceDocument(job.documentId, runBudget));
       await db.update(invoiceProcessingJobs).set({ status: "completed", lastError: null, lockedAt: null, updatedAt: new Date() }).where(eq(invoiceProcessingJobs.id, job.id));
       results.push({ jobId: job.id, documentId: job.documentId, ok: true });
     } catch (error) {
@@ -331,7 +343,7 @@ async function recordAttempt<T extends ReaderResult | null>(documentId: number, 
   const started = Date.now();
   const [attempt] = await db.insert(invoiceProcessingAttempts).values({ documentId, provider, model, status: "processing" }).returning({ id: invoiceProcessingAttempts.id });
   try {
-    const result = await fn();
+    const result = await measureInvoiceStage(`reader_${provider}`, { documentId, model }, fn);
     await db.update(invoiceProcessingAttempts).set({
       status: result ? "succeeded" : "skipped",
       durationMs: Date.now() - started,
@@ -375,7 +387,13 @@ async function persistResult(documentId: number, result: ReaderResult, validatio
 
 async function detectDuplicates(documentId: number, clerkUserId: string, sha256: string, invoice: NormalizedInvoice) {
   const db = getDb();
-  const candidates = await db.select().from(invoiceDocuments)
+  // Duplicate matching never needs original file bytes, raw OCR or evidence.
+  // Previously SELECT * transferred up to 250 archived PDFs on every upload.
+  const candidates = await db.select({
+    id: invoiceDocuments.id,
+    sha256: invoiceDocuments.sha256,
+    normalizedJson: invoiceDocuments.normalizedJson,
+  }).from(invoiceDocuments)
     .where(and(eq(invoiceDocuments.clerkUserId, clerkUserId), ne(invoiceDocuments.id, documentId)))
     .limit(250);
   const matches: Array<{ id: number; reason: string }> = [];

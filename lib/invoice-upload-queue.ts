@@ -7,6 +7,7 @@ import { enqueueInvoiceDocument } from "@/lib/invoice-intelligence/queue";
 import { OcrCommercialQuotaError } from "@/lib/invoice-intelligence/quota";
 import { MAX_PDF_UPLOAD_WORKER_CONCURRENCY } from "@/lib/pdf-upload-limits";
 import { isStructuredDeliveryMode, type DeliveryMode } from "@/lib/invoice-intelligence/delivery-format";
+import { measureInvoiceStage } from "@/lib/invoice-intelligence/timing";
 
 type UploadJob = {
   id: number;
@@ -52,7 +53,7 @@ export async function runQueuedUploadJobs(limit = 20, concurrency = 5, invoiceId
     while (pending.length) {
       const row = pending.shift();
       if (!row) return;
-      const result = await processOneUploadJob(row);
+      const result = await measureInvoiceStage("upload_assembly_and_enqueue", { invoiceId: row.invoiceId, bytes: row.byteSize }, () => processOneUploadJob(row));
       results.push(result);
     }
   }));

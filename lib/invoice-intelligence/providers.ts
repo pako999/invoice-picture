@@ -11,6 +11,7 @@ import { VAT_EXTRACTION_PROMPT } from "./extraction-prompt";
 import { normalizeInvoiceValues } from "./validation";
 import { mistralPagesForInput } from "./safety";
 import { reconcileReceiptTotals } from "./receipt-totals";
+import { measureInvoiceStage } from "./timing";
 
 const MISTRAL_ENDPOINT = "https://api.mistral.ai/v1/ocr";
 const AZURE_API_VERSION = process.env.AZURE_DOCUMENT_INTELLIGENCE_API_VERSION ?? "2024-11-30";
@@ -90,7 +91,7 @@ export async function readWithMistral(input: { base64: string; mimeType: string;
     : { type: "document_url", document_url: dataUrl };
   const pages = mistralPagesForInput(input, unknownPageLimit);
 
-  const response = await fetch(MISTRAL_ENDPOINT, {
+  const response = await measureInvoiceStage("mistral_annotated_request", { model, inputBytes: Buffer.byteLength(cleanBase64, "base64") }, () => fetch(MISTRAL_ENDPOINT, {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -126,9 +127,9 @@ export async function readWithMistral(input: { base64: string; mimeType: string;
       },
     }),
     signal: AbortSignal.timeout(Number(process.env.INVOICE_OCR_TIMEOUT_MS ?? 90_000)),
-  });
+  }));
 
-  const raw = await response.json().catch(() => ({}));
+  const raw = await measureInvoiceStage("mistral_response_decode", { model }, () => response.json().catch(() => ({})));
   if (!response.ok) throw new Error(`Mistral OCR failed (${response.status}): ${safeError(raw)}`);
   const annotationRaw = raw.document_annotation;
   const annotation = typeof annotationRaw === "string" ? JSON.parse(annotationRaw) : annotationRaw;
