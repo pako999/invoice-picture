@@ -1,3 +1,4 @@
+import { runOriginalInvoiceEmails } from "@/lib/invoice-intelligence/original-delivery";
 import { NextResponse } from "next/server";
 import { runQueuedInvoiceJobs } from "@/lib/invoice-intelligence/processor";
 import { runQueuedDeliveryJobs } from "@/lib/invoice-intelligence/delivery";
@@ -22,10 +23,14 @@ export async function GET(req: Request) {
     EXISTS(SELECT 1 FROM "invoiceDeliveryJobs" WHERE "status" IN ('queued','failed') AND "availableAt"<=now() AND "attempts"<"maxAttempts") AS delivery,
     EXISTS(SELECT 1 FROM "invoiceUploadJobs" WHERE "status" IN ('queued','failed','processing') AND "availableAt"<=now() AND "attempts"<"maxAttempts") AS upload,
     EXISTS(SELECT 1 FROM "invoiceProcessingJobs" WHERE "status"='processing' AND "lockedAt"<now()-interval '10 minutes') AS stale,
-    EXISTS(SELECT 1 FROM "invoiceDeliveryJobs" WHERE "status"='processing' AND "lockedAt"<now()-interval '10 minutes') AS "staleDelivery"`;
-  if (!pending.ocr && !pending.delivery && !pending.upload && !pending.stale && !pending.staleDelivery) return NextResponse.json({ idle: true });
+    EXISTS(SELECT 1 FROM "invoiceDeliveryJobs" WHERE "status"='processing' AND "lockedAt"<now()-interval '10 minutes') AS "staleDelivery",
+    EXISTS(SELECT 1 FROM "invoiceOriginalDeliveryJobs" WHERE ("status" IN ('queued','failed') OR ("status"='processing' AND "lockedAt"<now()-interval '10 minutes')) AND ("attempts"<2 OR "status"='processing') AND "availableAt"<=now()) AS original`;
+
+  if (!pending.ocr && !pending.delivery && !pending.upload && !pending.stale && !pending.staleDelivery && !pending.original) return NextResponse.json({ idle: true });
   if (pending.stale) {
     await sql`UPDATE "invoiceProcessingJobs" j SET "status"=CASE WHEN d."status" IN ('approved','needs_review') THEN 'completed'::invoice_processing_job_status ELSE 'failed'::invoice_processing_job_status END,
+      "attempts"=CASE WHEN d."status" NOT IN ('approved','needs_review') AND EXISTS(SELECT 1 FROM "invoiceProcessingAttempts" a WHERE a."documentId"=d."id" AND a."provider"='mistral' AND a."status"='processing') AND (j."batchStateJson" IS NULL OR j."batchStateJson"::jsonb->>'id' LIKE 'submitting:%') THEN j."maxAttempts" ELSE j."attempts" END,
+      "lastError"=CASE WHEN EXISTS(SELECT 1 FROM "invoiceProcessingAttempts" a WHERE a."documentId"=d."id" AND a."provider"='mistral' AND a."status"='processing') THEN 'Provider completion is unknown after interruption; review before manually retrying' ELSE j."lastError" END,
       "lockedAt"=NULL,"availableAt"=now(),"updatedAt"=now()
       FROM "invoiceDocuments" d WHERE j."documentId"=d."id" AND j."status"='processing' AND j."lockedAt"<now()-interval '10 minutes'`;
     await sql`UPDATE "invoiceDocuments" d SET "status"='failed',"validationStatus"='failed',"updatedAt"=now(),
@@ -44,9 +49,11 @@ export async function GET(req: Request) {
   const uploadConcurrency = Math.max(1, Math.min(MAX_PDF_UPLOAD_WORKER_CONCURRENCY, Number(process.env.INVOICE_UPLOAD_JOB_CONCURRENCY ?? MAX_PDF_UPLOAD_WORKER_CONCURRENCY)));
   const startedAt = Date.now();
   const uploadResults = pending.upload ? await runQueuedUploadJobs(uploadLimit, uploadConcurrency) : [];
+  const originalResults = pending.original ? await runOriginalInvoiceEmails(5) : [];
   const results = pending.ocr || pending.stale ? await runQueuedInvoiceJobs(limit) : [];
   const deliveryResults = pending.delivery || pending.staleDelivery ? await runQueuedDeliveryJobs(deliveryLimit) : [];
   return NextResponse.json({
+    originalEmailsProcessed: originalResults.length,
     uploadsProcessed: uploadResults.length,
     uploadsSucceeded: uploadResults.filter((r) => r.ok).length,
     uploadsFailed: uploadResults.filter((r) => !r.ok).length,

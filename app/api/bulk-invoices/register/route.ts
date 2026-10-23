@@ -16,6 +16,7 @@ const schema = z.object({
   objectKey: z.string().min(1).max(1024),
   filename: z.string().min(1).max(255),
   byteSize: z.number().int().positive().max(BULK_PDF_MAX_BYTES),
+  preferBatch: z.boolean().optional().default(false),
   companyId: z.number().int().positive().nullable().optional(),
 });
 
@@ -61,8 +62,8 @@ export async function POST(req: NextRequest) {
 
     const filename = sanitize(input.filename);
     const rows = await sql`
-      INSERT INTO "bulkInvoiceJobs" ("clerkUserId","companyId","recipientEmail","deliveryMode","objectKey","filename","byteSize","status","stage","createdAt","updatedAt")
-      VALUES (${userId},${input.companyId ?? null},${recipientEmail},${deliveryMode},${input.objectKey},${filename},${input.byteSize},'processing','queued',now(),now())
+      INSERT INTO "bulkInvoiceJobs" ("clerkUserId","companyId","recipientEmail","deliveryMode","objectKey","filename","byteSize","preferBatch","status","stage","createdAt","updatedAt")
+      VALUES (${userId},${input.companyId ?? null},${recipientEmail},${deliveryMode},${input.objectKey},${filename},${input.byteSize},${input.preferBatch},'processing','queued',now(),now())
       ON CONFLICT ("clerkUserId","objectKey") DO UPDATE SET "updatedAt"=now()
       RETURNING "id","stage","status"
     `;

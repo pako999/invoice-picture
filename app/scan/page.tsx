@@ -1,4 +1,6 @@
 "use client";
+import { MAX_INLINE_SOURCE_BYTES, serializeInlineInvoice } from "@/lib/invoice-inline-upload";
+import { runUploadPool } from "@/lib/upload-pool";
 import { traceInvoiceStage, traceInvoiceSync } from "@/lib/invoice-intelligence/trace";
 import { startClientInvoiceTrace, bindClientInvoiceTrace, failClientInvoiceTrace } from "@/lib/client-invoice-trace";
 import { useState, useRef, useEffect } from "react";
@@ -225,23 +227,24 @@ export default function ScanPage() {
     const update = (key: string, changes: Partial<FlowUpload>) => setFlowUploads((current) => current.map((item) => item.key === key ? { ...item, ...changes } : item));
 
     try {
-      for (let index = 0; index < selectedFiles.length; index += 1) {
-        const selected = selectedFiles[index];
+      let started = 0;
+      let admissionError = "Nalaganje je ustavljeno zaradi omejitve paketa.";
+      await runUploadPool(selectedFiles, subStatus?.isFree ? 1 : 3, async (selected) => {
         startClientInvoiceTrace(selected.id, selected.file.size);
         update(selected.id, { status: "uploading" });
-        setSendProgress({ current: index + 1, total: selectedFiles.length });
+        setSendProgress({ current: ++started, total: selectedFiles.length });
         try {
           let responseStatus: number;
           let json: Record<string, any>;
-          if (selected.file.type === "application/pdf" && (await pdfPageCount(selected.file) !== 1 || selected.file.size > MAX_IMAGE_FILE_SIZE)) {
-            const result = await queuePdfUpload(selected.file, { subject: subject || "Račun", ...(selectedCompanyId ? { companyId: selectedCompanyId } : {}) });
+          if (selected.file.type === "application/pdf" && (await pdfPageCount(selected.file) !== 1 || selected.file.size > MAX_INLINE_SOURCE_BYTES)) {
+            const result = await queuePdfUpload(selected.file, { preferBatch: selectedFiles.length >= 100, subject: subject || "Račun", ...(selectedCompanyId ? { companyId: selectedCompanyId } : {}) });
             responseStatus = result.status;
             json = result.json;
           } else {
             const encoded = selected.file.type === "application/pdf" ? await readFileAsBase64(selected.file) : await compressImage(selected.file);
             const response = await traceInvoiceStage("upload", selected.file.size, { source: "browser", operation: "send_request", boundary: "response_headers_received" }, () => fetch("/api/send", {
               method: "POST", headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ subject: subject || "Račun", imageBase64: encoded.base64, filename: selected.file.name, mime: encoded.mime, ...(selectedCompanyId ? { companyId: selectedCompanyId } : {}) }),
+              body: serializeInlineInvoice({ subject: subject || "Račun", imageBase64: encoded.base64, filename: selected.file.name, mime: encoded.mime, preferBatch: selectedFiles.length >= 100, ...(selectedCompanyId ? { companyId: selectedCompanyId } : {}) }),
             }));
             responseStatus = response.status;
             json = await response.json();
@@ -249,12 +252,11 @@ export default function ScanPage() {
           if ((responseStatus === 402 && json.code === "ocr_plan_limit_reached") || (responseStatus === 403 && json.code === "free_limit_reached") || json.code === "subscription_required") {
             if (json.code === "ocr_plan_limit_reached") setOcrLimit({ plan: json.plan ?? "free", message: json.error ?? null, originalSent: false });
             if (json.code === "free_limit_reached") setShowLimitModal(true);
-            for (const remaining of selectedFiles.slice(index)) {
-              failClientInvoiceTrace(remaining.id);
-              failed.push(remaining);
-              update(remaining.id, { status: "failed", error: json.error || "Nalaganje ni bilo dokončano. Preverite paket ali poskusite znova." });
-            }
-            break;
+            admissionError = json.error || admissionError;
+            failClientInvoiceTrace(selected.id);
+            failed.push(selected);
+            update(selected.id, { status: "failed", error: admissionError });
+            return false;
           }
           const documentId = positiveId(json.processingDocumentId ?? json.documentId);
           if ((responseStatus < 200 || responseStatus >= 300 || !json.success) && !documentId) throw new Error(json.error || "Nalaganje ni uspelo");
@@ -269,8 +271,12 @@ export default function ScanPage() {
           failed.push(selected);
           update(selected.id, { status: "failed", error: problem instanceof Error ? problem.message : "Nalaganje ni uspelo" });
         }
-      }
-      setFiles(failed);
+        return true;
+      }, (remaining) => {
+        failed.push(remaining);
+        update(remaining.id, { status: "failed", error: admissionError });
+      });
+      setFiles(selectedFiles.filter(item => failed.includes(item)));
       if (failed.length === 0) setSubject("Račun");
     } finally {
       sendingRef.current = false;

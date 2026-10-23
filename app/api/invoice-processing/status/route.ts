@@ -20,8 +20,9 @@ export async function POST(req: NextRequest) {
     const [sources, documents, batches, groups] = await Promise.all([
       invoiceIds.length ? sql`
         SELECT i."id", i."filename", i."status", i."errorMessage", i."recipientEmail",
-               coalesce(s."mode", 'email_ocr') AS "mode", s."apiEndpoint", d."id" AS "documentId", d."status" AS "documentStatus"
+               coalesce(s."mode", 'email_ocr') AS "mode", s."apiEndpoint", d."id" AS "documentId", d."status" AS "documentStatus", oj."status" AS "originalQueueStatus", oj."attempts" AS "originalAttempts", oj."lastError" AS "originalError"
         FROM "invoices" i
+        LEFT JOIN "invoiceOriginalDeliveryJobs" oj ON oj."invoiceId"=i."id"
         LEFT JOIN "companyDeliverySettings" s ON s."companyId"=i."companyId" AND s."clerkUserId"=i."clerkUserId"
         LEFT JOIN LATERAL (SELECT "id", "status" FROM "invoiceDocuments"
           WHERE "sourceInvoiceId"=i."id" AND "clerkUserId"=${userId} ORDER BY "id" DESC LIMIT 1) d ON true
@@ -31,12 +32,13 @@ export async function POST(req: NextRequest) {
         SELECT d."id", d."sourceInvoiceId", d."bulkJobId", d."filename", d."status", d."warningsJson",
                coalesce(b."deliveryMode", s."mode", 'email_ocr') AS "mode",
                coalesce(i."recipientEmail", b."recipientEmail", c."recipientEmail") AS "recipientEmail", s."apiEndpoint",
-               i."status" AS "originalStatus", i."errorMessage", dj."status" AS "queueStatus", dj."lastError",
-               dj."attempts", dj."maxAttempts", g."deliveryStatus" AS "groupDeliveryStatus", g."deliveryError",
+               i."status" AS "originalStatus", i."errorMessage", coalesce(dj."status",oj."status") AS "queueStatus", coalesce(dj."lastError",oj."lastError") AS "lastError",
+               coalesce(dj."attempts",oj."attempts") AS "attempts", coalesce(dj."maxAttempts",2) AS "maxAttempts", g."deliveryStatus" AS "groupDeliveryStatus", g."deliveryError",
                EXISTS(SELECT 1 FROM "invoiceAuditLogs" a WHERE a."documentId"=d."id" AND a."clerkUserId"=${userId}
                  AND a."action" IN ('structured_delivery_success','structured_zip_delivery_success')) AS "hasReceipt"
         FROM "invoiceDocuments" d
         LEFT JOIN "invoices" i ON i."id"=d."sourceInvoiceId" AND i."clerkUserId"=d."clerkUserId"
+        LEFT JOIN "invoiceOriginalDeliveryJobs" oj ON oj."invoiceId"=i."id"
         LEFT JOIN "bulkInvoiceJobs" b ON b."id"=d."bulkJobId" AND b."clerkUserId"=d."clerkUserId"
         LEFT JOIN "bulkInvoiceGroups" g ON g."documentId"=d."id" AND g."jobId"=b."id"
         LEFT JOIN "companies" c ON c."id"=d."companyId" AND c."clerkUserId"=d."clerkUserId"
@@ -67,7 +69,7 @@ export async function POST(req: NextRequest) {
     ]);
     const snapshot: FlowSnapshot = {
       invoices: sources.map((row) => ({ id: Number(row.id), filename: row.filename, documentId: row.documentId == null ? null : Number(row.documentId), status: row.status,
-        error: row.errorMessage, delivery: deliveryState({ mode: row.mode, target: target(row), documentStatus: row.documentStatus, sent: row.status === "sent", originalStatus: row.status, error: row.errorMessage }) })),
+        error: row.errorMessage, delivery: deliveryState({ mode: row.mode, target: target(row), documentStatus: row.documentStatus, sent: row.status === "sent", originalStatus: row.status, queueStatus: row.originalQueueStatus, attempts: row.originalAttempts, maxAttempts: 2, error: row.originalError ?? row.errorMessage }) })),
       documents: documents.map((row) => ({ id: Number(row.id), sourceInvoiceId: row.sourceInvoiceId == null ? null : Number(row.sourceInvoiceId), bulkJobId: row.bulkJobId == null ? null : Number(row.bulkJobId), filename: row.filename, status: row.status,
         error: row.status === "failed" ? firstWarning(row.warningsJson) : null,
         delivery: deliveryState({ mode: row.mode, target: target(row), documentStatus: row.status,

@@ -1,3 +1,8 @@
+import { readDocumentBatch } from "./document-batch";
+import type { OcrProviderBudgetReservation } from "./safety";
+import { mistralJsonRequest } from "./mistral-http";
+import { providerResponseError } from "./provider-errors";
+import { mistralOcrModel } from "./mistral-config";
 import { inflateSync } from "node:zlib";
 import {
   emptyInvoice,
@@ -12,7 +17,7 @@ import { normalizeInvoiceValues } from "./validation";
 import { mistralPagesForInput } from "./safety";
 import { reconcileReceiptTotals } from "./receipt-totals";
 import { measureInvoiceStage } from "./timing";
-import { tracedMistralFetch, tracedMistralJson, traceInvoiceSync } from "./trace";
+import { traceInvoiceSync } from "./trace";
 
 const MISTRAL_ENDPOINT = "https://api.mistral.ai/v1/ocr";
 const AZURE_API_VERSION = process.env.AZURE_DOCUMENT_INTELLIGENCE_API_VERSION ?? "2024-11-30";
@@ -78,10 +83,10 @@ export async function readDeterministically(input: { base64: string; mimeType: s
   return null;
 }
 
-export async function readWithMistral(input: { base64: string; mimeType: string; filename: string }, unknownPageLimit?: number): Promise<ReaderResult> {
+export async function readWithMistral(input: { base64: string; mimeType: string; filename: string }, unknownPageLimit?: number, batch?: { jobId: number; pages: number; reservation: OcrProviderBudgetReservation }): Promise<ReaderResult> {
   const apiKey = process.env.MISTRAL_API_KEY;
   if (!apiKey) throw new Error("MISTRAL_API_KEY is not configured");
-  const model = process.env.MISTRAL_OCR_MODEL || "mistral-ocr-latest";
+  const model = mistralOcrModel();
   const cleanBase64 = input.base64.includes("base64,")
     ? input.base64.slice(input.base64.indexOf("base64,") + "base64,".length).replace(/\s+/g, "")
     : input.base64.replace(/\s+/g, "");
@@ -92,10 +97,7 @@ export async function readWithMistral(input: { base64: string; mimeType: string;
     : { type: "document_url", document_url: dataUrl };
   const pages = mistralPagesForInput(input, unknownPageLimit);
 
-  const response = await measureInvoiceStage("mistral_annotated_request", { model, inputBytes: Buffer.byteLength(cleanBase64, "base64") }, () => tracedMistralFetch(MISTRAL_ENDPOINT, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
+  const request = {
       model,
       document,
       ...(pages ? { pages } : {}),
@@ -126,12 +128,19 @@ export async function readWithMistral(input: { base64: string; mimeType: string;
         type: "json_schema",
         json_schema: { name: "normalized_invoice", strict: true, schema: invoiceJsonSchema },
       },
-    }),
+    };
+  let raw: any;
+  if (batch) raw = await readDocumentBatch({ ...batch, request });
+  else {
+  const result = await measureInvoiceStage("mistral_annotated_operation", { model, inputBytes: Buffer.byteLength(cleanBase64, "base64") }, () => mistralJsonRequest(MISTRAL_ENDPOINT, {
+    method: "POST", headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify(request),
     signal: AbortSignal.timeout(Number(process.env.INVOICE_OCR_TIMEOUT_MS ?? 90_000)),
   }, Buffer.byteLength(cleanBase64, "base64"), { operation: "annotated_ocr", model }));
 
-  const raw = await measureInvoiceStage("mistral_response_decode", { model }, () => tracedMistralJson(response).catch(() => ({})));
-  if (!response.ok) throw new Error(`Mistral OCR failed (${response.status}): ${safeError(raw)}`);
+  if (!result.response.ok) throw providerResponseError(result.response, "Mistral OCR");
+  raw = result.raw;
+  }
   return traceInvoiceSync("parse", Buffer.byteLength(cleanBase64, "base64"), { operation: "annotation_validation_and_evidence", model }, () => {
   const annotationRaw = raw.document_annotation;
   const annotation = typeof annotationRaw === "string" ? JSON.parse(annotationRaw) : annotationRaw;
@@ -162,7 +171,7 @@ export async function readWithMistral(input: { base64: string; mimeType: string;
     rawResponse: raw,
     evidence,
     pagesProcessed: pageCount,
-    costMicros: Number.isFinite(costPerAnnotatedPageMicros) ? pageCount * costPerAnnotatedPageMicros : null,
+    costMicros: Number.isFinite(costPerAnnotatedPageMicros) ? Math.ceil(pageCount * costPerAnnotatedPageMicros * (batch ? 0.5 : 1)) : null,
   };
   });
 }

@@ -7,7 +7,12 @@ export function dispatchInvoiceProcessing(documentId: number) {
   after(async () => {
     try {
       const { runQueuedInvoiceJobs } = await import("./processor");
-      await runQueuedInvoiceJobs(1, documentId);
+      const results = await runQueuedInvoiceJobs(1, documentId);
+      const retryInMs = results?.find(result => result.retryInMs != null)?.retryInMs;
+      if (retryInMs != null && retryInMs <= 30_000) {
+        await new Promise(resolve => setTimeout(resolve, retryInMs));
+        await runQueuedInvoiceJobs(1, documentId);
+      }
     } catch (error) {
       console.error("invoice_immediate_processing_failed", { documentId, error: String(error) });
     }

@@ -1,3 +1,7 @@
+import { recordProviderUsage, estimateChatCost, providerContext } from "@/lib/invoice-intelligence/provider-usage";
+import { mistralJsonRequest } from "@/lib/invoice-intelligence/mistral-http";
+import { ProviderRequestError, ProviderCapacityError, providerResponseError, reservationWasRejected } from "@/lib/invoice-intelligence/provider-errors";
+import { mistralOcrModel, mistralChatModel } from "@/lib/invoice-intelligence/mistral-config";
 import { VAT_EXTRACTION_PROMPT } from "@/lib/invoice-intelligence/extraction-prompt";
 import { neon } from "@neondatabase/serverless";
 import { invoiceJsonSchema, normalizedInvoiceSchema, type NormalizedInvoice } from "@/lib/invoice-intelligence/types";
@@ -37,7 +41,7 @@ export async function ocrBulkPages(args: {
 
   // Read the original PDF in bounded page ranges instead of fetching it once
   // per page. Lower-tier workspaces can still override this down to one page.
-  const providerPagesPerRequest = envInt("MISTRAL_BULK_OCR_PAGES_PER_REQUEST", 25, 1, 25);
+  const providerPagesPerRequest = envInt("MISTRAL_BULK_OCR_PAGES_PER_REQUEST", 500, 1, 500);
   const pagesThisBatch = Math.min(
     args.batchPages,
     providerPagesPerRequest,
@@ -46,10 +50,10 @@ export async function ocrBulkPages(args: {
   );
   const endPage = Math.min(args.pageCount - 1, args.startPage + pagesThisBatch - 1);
   const pages = Array.from({ length: endPage - args.startPage + 1 }, (_, i) => args.startPage + i);
-  const reservedPages = pages.length;
-  const reservation = await reserveOcrProviderBudget({ clerkUserId: args.clerkUserId, provider: "mistral", pages: pages.length });
+  let reservedPages = pages.length;
+  const reservation = await reserveOcrProviderBudget({ clerkUserId: args.clerkUserId, provider: "mistral", pages: pages.length, costPerPageMicros: envInt("MISTRAL_PLAIN_OCR_PAGE_COST_MICROS", 4000, 0, 10_000_000) });
   const requestBody = () => JSON.stringify({
-    model: process.env.MISTRAL_OCR_MODEL || "mistral-ocr-latest",
+    model: mistralOcrModel(),
     document: { type: "document_url", document_url: args.documentUrl },
     pages,
     include_image_base64: false,
@@ -60,50 +64,49 @@ export async function ocrBulkPages(args: {
 
   try {
     const deadline = Date.now() + 150_000;
-    for (let attempt = 1; attempt <= 3; attempt += 1) {
-      const response = await measureInvoiceStage("bulk_ocr_request", { startPage: args.startPage, pages: pages.length, attempt }, () => tracedMistralFetch(OCR_ENDPOINT, {
+    for (let attempt = 1; attempt <= 2; attempt += 1) {
+      const { response, raw } = await measureInvoiceStage("bulk_ocr_request", { startPage: args.startPage, pages: pages.length, attempt }, () => mistralJsonRequest(OCR_ENDPOINT, {
         method: "POST",
         headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
         body: requestBody(),
         signal: providerAttemptSignal(deadline, Number(process.env.INVOICE_OCR_TIMEOUT_MS ?? 90_000)),
       }, null, { operation: "bulk_page_ocr", start_page: args.startPage, pages: pages.length, attempt }));
-      const raw = await tracedMistralJson(response).catch(() => ({}));
       if (response.ok) {
         const responsePages = Array.isArray(raw.pages) ? raw.pages : [];
         if (responsePages.length !== pages.length) {
-          throw new Error(`Mistral bulk OCR returned ${responsePages.length}/${pages.length} requested pages`);
+          throw new ProviderRequestError(`Mistral bulk OCR returned ${responsePages.length}/${pages.length} requested pages`,200,"unknown",0,true);
         }
         if (reservedPages > pages.length) {
           await releaseUnusedOcrProviderBudget({ reservation, pages: reservedPages - pages.length });
         }
         return {
-          pages: responsePages.map((page: Record<string, any>, i: number) => ({
-            pageNumber: Number.isInteger(page.index) ? Number(page.index) : args.startPage + i,
-            markdown: pageOcrText(page),
-            confidence: pageConfidence(page),
-          })),
-          model: String(raw.model || process.env.MISTRAL_OCR_MODEL || "mistral-ocr-latest"),
+          pages: mapOcrPages(responsePages, args.startPage, pages.length),
+          model: String(raw.model || mistralOcrModel()),
           nextPage: args.startPage + pages.length,
           done: args.startPage + pages.length >= args.pageCount,
         };
       }
 
-      const retryable = response.status === 429 || response.status >= 500;
-      if (!retryable || attempt === 3) {
-        throw new Error(`Mistral bulk OCR failed (${response.status}): ${providerError(raw)}`);
+      const retryable = response.status === 429;
+      if (!retryable || attempt === 2) {
+        throw providerResponseError(response, "Mistral bulk OCR", attempt === 2);
       }
       const delayMs = retryDelayMs(response.headers.get("Retry-After"), attempt);
       // A page-rate-limited workspace may reject a 25-page range forever.
       // Retry only its first page; the durable cursor preserves the remainder.
-      if (response.status === 429 && pages.length > 1) pages.splice(1);
-      console.warn(`[bulk-invoices] Mistral bulk OCR returned ${response.status}; retrying in ${delayMs}ms (attempt ${attempt + 1}/3)`);
+      if (response.status === 429 && pages.length > 1) {
+        pages.splice(1);
+        await releaseUnusedOcrProviderBudget({ reservation, pages: reservedPages - pages.length });
+        reservedPages = pages.length;
+      }
+      console.warn(`[bulk-invoices] Mistral bulk OCR returned ${response.status}; retrying in ${delayMs}ms (attempt ${attempt + 1}/2)`);
       await providerRetryDelay(delayMs, deadline, response.status);
     }
     throw new Error("Mistral bulk OCR failed after retries");
   } catch (error) {
     // A provider rejection must not consume the customer's internal allowance.
     // The same pages will be reserved again only when a later attempt runs.
-    await releaseUnusedOcrProviderBudget({ reservation, pages: reservedPages }).catch((releaseError) => {
+    if (reservationWasRejected(error)) await releaseUnusedOcrProviderBudget({ reservation, pages: reservedPages }).catch((releaseError) => {
       console.error("[bulk-invoices] Failed to release unused OCR reservation", releaseError);
     });
     throw error;
@@ -145,7 +148,7 @@ export async function createMistralOcrBatch(args: {
   );
   if (pagesThisBatch <= 0) throw new Error("Bulk OCR has no remaining pages to submit");
   const pages = Array.from({ length: pagesThisBatch }, (_, i) => args.startPage + i);
-  const model = process.env.MISTRAL_OCR_MODEL || "mistral-ocr-latest";
+  const model = mistralOcrModel();
   const reservation = await reserveOcrProviderBudget({
     clerkUserId: args.clerkUserId,
     provider: "mistral",
@@ -154,7 +157,7 @@ export async function createMistralOcrBatch(args: {
   });
 
   try {
-    const response = await tracedMistralFetch(BATCH_ENDPOINT, {
+    const { response, raw } = await mistralJsonRequest(BATCH_ENDPOINT, {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -180,9 +183,8 @@ export async function createMistralOcrBatch(args: {
       }),
       signal: AbortSignal.timeout(90_000),
     }, null, { operation: "batch_ocr_submit", pages: pages.length });
-    const raw = await tracedMistralJson(response).catch(() => ({}));
     if (!response.ok || typeof raw.id !== "string") {
-      throw new Error(`Mistral Batch OCR submission failed (${response.status}): ${providerError(raw)}`);
+      throw response.ok ? new ProviderRequestError("Mistral Batch OCR submission returned no batch ID; completion is unknown", null, "unknown", 0, true) : providerResponseError(response, "Mistral Batch OCR submission", true);
     }
     return {
       batchId: raw.id as string,
@@ -192,7 +194,7 @@ export async function createMistralOcrBatch(args: {
       status: String(raw.status || "QUEUED"),
     };
   } catch (error) {
-    await releaseUnusedOcrProviderBudget({ reservation, pages: pages.length }).catch((releaseError) => {
+    if (reservationWasRejected(error)) await releaseUnusedOcrProviderBudget({ reservation, pages: pages.length }).catch((releaseError) => {
       console.error("[bulk-invoices] Failed to release rejected Batch OCR reservation", releaseError);
     });
     throw error;
@@ -212,12 +214,12 @@ export async function pollMistralOcrBatch(args: {
   }, null, { operation: "batch_ocr_poll", batch_id: args.batchId });
   const raw = await tracedMistralJson(response).catch(() => ({}));
   if (!response.ok) {
-    throw new Error(`Mistral Batch OCR status failed (${response.status}): ${providerError(raw)}`);
+    throw providerResponseError(response,"Mistral Batch OCR status",true);
   }
   recordBatchTiming(raw, args.batchId, "ocr");
 
   const status = String(raw.status || "").toUpperCase() as MistralOcrBatchState["status"];
-  const model = String(raw.model || process.env.MISTRAL_OCR_MODEL || "mistral-ocr-latest");
+  const model = String(raw.model || mistralOcrModel());
   if (status === "QUEUED" || status === "RUNNING" || status === "CANCELLATION_REQUESTED") {
     return { status, pages: [], model, error: null };
   }
@@ -239,19 +241,16 @@ export async function pollMistralOcrBatch(args: {
   }
 
   const body = batchResponseBody(records[0]);
+  await recordProviderUsage({ raw: body, status: 200, operation: "batch_ocr", model, batchId: args.batchId }).catch(() => console.error("mistral_usage_record_failed"));
   const responsePages = Array.isArray(body?.pages) ? body.pages : [];
   if (responsePages.length !== args.expectedPageCount) {
-    throw new Error(`Mistral Batch OCR returned ${responsePages.length}/${args.expectedPageCount} requested pages`);
+    throw new ProviderRequestError(`Mistral Batch OCR returned ${responsePages.length}/${args.expectedPageCount} requested pages`,200,"unknown",0,true);
   }
   return {
     status,
     model: String(body?.model || model),
     error: null,
-    pages: responsePages.map((page: Record<string, any>, i: number) => ({
-      pageNumber: Number.isInteger(page.index) ? Number(page.index) : args.startPage + i,
-      markdown: pageOcrText(page),
-      confidence: pageConfidence(page),
-    })),
+    pages: mapOcrPages(responsePages, args.startPage, args.expectedPageCount),
   };
 }
 
@@ -312,7 +311,7 @@ export type BulkPageClassification = {
 function classificationRequest(args:{pages:Array<{pageNumber:number;markdown:string}>;previousPage?:{pageNumber:number;markdown:string}|null}) {
   const input=args.pages.map(p=>({pageNumber:p.pageNumber,markdown:p.markdown.slice(0,5000)}));
   const previous=args.previousPage?{pageNumber:args.previousPage.pageNumber,markdown:args.previousPage.markdown.slice(-3500)}:null;
-  return {model:process.env.MISTRAL_BULK_CLASSIFIER_MODEL||"mistral-small-latest",name:"invoice_page_boundaries",schema:classificationSchema,prompt:["You split a scanned PDF containing multiple accounting documents into invoice groups.","For EACH supplied page decide whether that page starts a new invoice/document or continues the previous page.","Invoices can have multiple pages. Never assume one page equals one invoice.","A new invoice is likely when invoice number, supplier/issuer, title (Invoice/Račun/Rechnung/Fattura/Credit note/Proforma) or document identity clearly changes.","Continuation pages often repeat headers, carry line items, totals, terms or attachments belonging to the same invoice.","If uncertain, prefer continuation and lower confidence rather than creating a false split.","Page numbers are zero-based and MUST match the supplied pageNumber values.","Page 0 of the complete document must start a new invoice.",previous?`Previous context before this batch: ${JSON.stringify(previous)}`:"There is no previous page before this batch.",`Pages to classify: ${JSON.stringify(input)}`].join("\n")};
+  return {model:mistralChatModel("classifier"),name:"invoice_page_boundaries",schema:classificationSchema,prompt:["You split a scanned PDF containing multiple accounting documents into invoice groups.","For EACH supplied page decide whether that page starts a new invoice/document or continues the previous page.","Invoices can have multiple pages. Never assume one page equals one invoice.","A new invoice is likely when invoice number, supplier/issuer, title (Invoice/Račun/Rechnung/Fattura/Credit note/Proforma) or document identity clearly changes.","Continuation pages often repeat headers, carry line items, totals, terms or attachments belonging to the same invoice.","If uncertain, prefer continuation and lower confidence rather than creating a false split.","Page numbers are zero-based and MUST match the supplied pageNumber values.","Page 0 of the complete document must start a new invoice.",previous?`Previous context before this batch: ${JSON.stringify(previous)}`:"There is no previous page before this batch.",`Pages to classify: ${JSON.stringify(input)}`].join("\n")};
 }
 function parseClassifications(raw:any):BulkPageClassification[]{const rows=Array.isArray(raw?.pages)?raw.pages:[];return rows.map((row:Record<string,any>)=>({pageNumber:Number(row.pageNumber),startsNewInvoice:Boolean(row.startsNewInvoice),continuationOfPrevious:Boolean(row.continuationOfPrevious),invoiceNumber:row.invoiceNumber==null?null:String(row.invoiceNumber),supplierName:row.supplierName==null?null:String(row.supplierName),confidence:clamp01(Number(row.confidence)),reason:String(row.reason||"")}));}
 export async function createMistralClassificationBatch(args:{pages:Array<{pageNumber:number;markdown:string}>;previousPage?:{pageNumber:number;markdown:string}|null}){return createMistralStructuredBatch(classificationRequest(args),"bulk-classify");}
@@ -322,10 +321,12 @@ export async function classifyBulkPages(args: {
   pages: Array<{ pageNumber: number; markdown: string }>;
   previousPage?: { pageNumber: number; markdown: string } | null;
 }): Promise<BulkPageClassification[]> {
+  if (args.pages.length === 1 && args.pages[0].pageNumber === 0 && !args.previousPage) return classifyBulkPagesDeterministically(args);
   let raw: any;
   try {
     raw = await mistralStructured(classificationRequest(args));
   } catch (error) {
+    if (error instanceof ProviderRequestError && error.status != null && error.status < 500 && error.status !== 429) throw error;
     console.warn(`[bulk-invoices] Mistral classification unavailable; using deterministic boundaries: ${error instanceof Error ? error.message : String(error)}`);
     return classifyBulkPagesDeterministically(args);
   }
@@ -439,10 +440,10 @@ export function hasUsableBulkOcrMarkdown(markdown: string) {
     && /(?:invoice|receipt|ra[čc]un|rechnung|fattura|predra[čc]un|proforma|dobropis|credit\s+note|vat|ddv|total|skupaj|za\s+pla[čc]ilo)/i.test(text);
 }
 
-function invoiceExtractionRequest(markdown:string,ocrConfidence:number|null){return{model:process.env.MISTRAL_BULK_EXTRACT_MODEL||"mistral-small-latest",name:"normalized_invoice",schema:invoiceJsonSchema,prompt:[VAT_EXTRACTION_PROMPT,"Extract one accounting document from the OCR markdown below.","The page group has already been split and should represent exactly one invoice, credit note, receipt, proforma or quotation.","Never invent missing values. Return null when genuinely absent.","Ignore OCR page separators such as --- PAGE 1 ---; they are never supplier names or invoice data.","Read invoiceNumber only from a labelled invoice-number field, never from a logo, brand name or supplier name.","Read VAT/tax IDs only from explicitly labelled tax-ID fields; never derive them from city names or ordinary words.","Dates may use numeric or written English month formats. Extract all labelled issue and due dates.","Normalize dates to YYYY-MM-DD, currency to ISO 4217 and monetary values to decimal strings without currency symbols.","Supplier is the issuer/seller; buyer is the recipient/customer.","Keep the supplier name with the supplier VAT, address, email and IBAN block; keep the buyer name with the buyer VAT and address block.","Never copy the buyer name into the supplier. If the names match but VAT numbers or addresses differ, re-check the OCR text.","Preserve document status (including Draft/Osnutek), delivery-note number, supply/place of delivery, shipping method, total before discount, VAT breakdown, totals, IBAN, BIC, payment reference and terms when visible.","For EVERY visible line item return productCode/SKU, full description, quantity, unit, unitPriceBeforeDiscount, unitPriceNet after discount, discountPercent, discountAmount, vatRate, netAmount, vatAmount and grossAmount. Never omit a visible item description.","Only rows from the actual items/services table are line items. Never use payment instructions, QR captions, slogans, footer text, 'Slikaj in plačaj', 'Scan and pay', 'Plačilo', 'Payment', 'Sklic', 'IBAN' or similar payment text as a line-item description.","Set validationStatus to pending. Deterministic validation runs after extraction.",`OCR page confidence available to the system: ${ocrConfidence==null?"unknown":ocrConfidence.toFixed(4)}.`,"OCR markdown:",markdown.slice(0,120000)].join("\n")};}
-function finalizeStructuredInvoice(raw:any,markdown:string,ocrConfidence:number|null,model:string){const invoice=normalizeInvoiceValues(reconcileMistralInvoiceWithOcrText(normalizedInvoiceSchema.parse(raw),markdown));if(ocrConfidence!=null)invoice.confidence.overall=Math.min(invoice.confidence.overall??1,ocrConfidence);const validation=validateInvoice(invoice);invoice.validationStatus=validation.status==="failed"?"needs_review":validation.status;return{invoice,validation,raw,provider:"mistral" as const,model};}
+function invoiceExtractionRequest(markdown:string,ocrConfidence:number|null){return{model:mistralChatModel("extract"),name:"normalized_invoice",schema:invoiceJsonSchema,prompt:[VAT_EXTRACTION_PROMPT,"Extract one accounting document from the OCR markdown below.","The page group has already been split and should represent exactly one invoice, credit note, receipt, proforma or quotation.","Never invent missing values. Return null when genuinely absent.","Ignore OCR page separators such as --- PAGE 1 ---; they are never supplier names or invoice data.","Read invoiceNumber only from a labelled invoice-number field, never from a logo, brand name or supplier name.","Read VAT/tax IDs only from explicitly labelled tax-ID fields; never derive them from city names or ordinary words.","Dates may use numeric or written English month formats. Extract all labelled issue and due dates.","Normalize dates to YYYY-MM-DD, currency to ISO 4217 and monetary values to decimal strings without currency symbols.","Supplier is the issuer/seller; buyer is the recipient/customer.","Keep the supplier name with the supplier VAT, address, email and IBAN block; keep the buyer name with the buyer VAT and address block.","Never copy the buyer name into the supplier. If the names match but VAT numbers or addresses differ, re-check the OCR text.","Preserve document status (including Draft/Osnutek), delivery-note number, supply/place of delivery, shipping method, total before discount, VAT breakdown, totals, IBAN, BIC, payment reference and terms when visible.","For EVERY visible line item return productCode/SKU, full description, quantity, unit, unitPriceBeforeDiscount, unitPriceNet after discount, discountPercent, discountAmount, vatRate, netAmount, vatAmount and grossAmount. Never omit a visible item description.","Only rows from the actual items/services table are line items. Never use payment instructions, QR captions, slogans, footer text, 'Slikaj in plačaj', 'Scan and pay', 'Plačilo', 'Payment', 'Sklic', 'IBAN' or similar payment text as a line-item description.","Set validationStatus to pending. Deterministic validation runs after extraction.",`OCR page confidence available to the system: ${ocrConfidence==null?"unknown":ocrConfidence.toFixed(4)}.`,"OCR markdown:",markdown.slice(0,120000)].join("\n")};}
+function finalizeStructuredInvoice(raw:any,markdown:string,ocrConfidence:number|null,model:string){const invoice=normalizeInvoiceValues(reconcileMistralInvoiceWithOcrText(normalizedInvoiceSchema.parse(raw),markdown));if(ocrConfidence!=null)invoice.confidence.overall=Math.min(invoice.confidence.overall??1,ocrConfidence);const validation=validateInvoice(invoice);invoice.validationStatus=validation.status==="failed"?"needs_review":validation.status;return{invoice,validation,raw,provider:"mistral" as const,model:String(raw?._provider?.model||model),costMicros:raw?._provider?.estimatedCostMicros??null};}
 export async function createMistralInvoiceExtractionBatch(markdown:string,ocrConfidence:number|null){return createMistralStructuredBatch(invoiceExtractionRequest(markdown,ocrConfidence),"bulk-extract");}
-export async function pollMistralInvoiceExtractionBatch(args:{batchId:string;markdown:string;ocrConfidence:number|null}){const state=await pollMistralStructuredBatch(args.batchId,"invoice extraction");return{...state,result:state.result?finalizeStructuredInvoice(state.result,args.markdown,args.ocrConfidence,process.env.MISTRAL_BULK_EXTRACT_MODEL||"mistral-small-latest"):null};}
+export async function pollMistralInvoiceExtractionBatch(args:{batchId:string;markdown:string;ocrConfidence:number|null}){const state=await pollMistralStructuredBatch(args.batchId,"invoice extraction");return{...state,result:state.result?finalizeStructuredInvoice(state.result,args.markdown,args.ocrConfidence,mistralChatModel("extract")):null};}
 
 export async function extractBulkInvoice(markdown: string, ocrConfidence: number | null, previousInvoice: NormalizedInvoice | null = null): Promise<{
   invoice: NormalizedInvoice;
@@ -450,6 +451,7 @@ export async function extractBulkInvoice(markdown: string, ocrConfidence: number
   raw: unknown;
   provider: "mistral" | "deterministic";
   model: string;
+  costMicros?: number | null;
 }> {
   const request=invoiceExtractionRequest(markdown,ocrConfidence);const model=request.model;
   try {
@@ -457,7 +459,7 @@ export async function extractBulkInvoice(markdown: string, ocrConfidence: number
     return finalizeStructuredInvoice(raw,markdown,ocrConfidence,model);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    if (/\b429\b|rate limit/i.test(message)) {
+    if (!(error instanceof ProviderCapacityError) && /\b429\b|rate limit/i.test(message)) {
       const parsedInvoice = normalizeInvoiceValues(parseInvoiceTextDeterministically(markdown));
       const invoice = previousInvoice
         ? preserveMissingFallbackValues(parsedInvoice, previousInvoice)
@@ -481,7 +483,7 @@ export async function extractBulkInvoice(markdown: string, ocrConfidence: number
       };
     }
     console.warn(`[bulk-invoices] Mistral structured extraction is temporarily unavailable; invoice remains queued. ${message}`);
-    throw new Error(`Mistral OCR extraction is required and will be retried: ${message}`);
+    throw error;
   }
 }
 
@@ -507,12 +509,13 @@ function preserveMissingFallbackValues(fresh: NormalizedInvoice, previous: Norma
   return normalizeInvoiceValues(normalizedInvoiceSchema.parse(merged));
 }
 
-export async function extractBulkInvoiceFromDocument(documentUrl: string, ocrConfidence: number | null): Promise<{
+export async function extractBulkInvoiceFromDocument(documentUrl: string, ocrConfidence: number | null, sourcePages = 1): Promise<{
   invoice: NormalizedInvoice;
   validation: ReturnType<typeof validateInvoice>;
   raw: unknown;
   provider: "mistral";
   model: string;
+  costMicros?: number | null;
 }> {
   const apiKey = process.env.MISTRAL_API_KEY;
   if (!apiKey) throw new Error("MISTRAL_API_KEY is not configured");
@@ -520,25 +523,10 @@ export async function extractBulkInvoiceFromDocument(documentUrl: string, ocrCon
   const deadline = Date.now() + 150_000;
   if (parsedUrl.protocol !== "https:") throw new Error("Bulk OCR document URL must use HTTPS");
 
-  // Mistral OCR accepts base64 PDFs only when the complete encoded PDF is
-  // embedded in a data URL. Fetch the private child PDF first, encode the
-  // actual bytes, then send data:application/pdf;base64,{base64_pdf}.
-  const sourceResponse = await traceInvoiceStage("file_read",null,{operation:"child_pdf_download_headers"},()=>fetch(documentUrl, {
-    signal: providerAttemptSignal(deadline, 60_000),
-  }));
-  if (!sourceResponse.ok) {
-    throw new Error(`Could not download bulk PDF for OCR (${sourceResponse.status})`);
-  }
-  const pdfBytes = Buffer.from(await traceInvoiceStage("file_read", null, { operation: "child_pdf_download_body" }, () => sourceResponse.arrayBuffer()));
-  if (!pdfBytes.length || pdfBytes.subarray(0, 4).toString("ascii") !== "%PDF") {
-    throw new Error("Bulk OCR source is not a valid PDF");
-  }
-  const pdfDataUrl = traceInvoiceSync("preprocess", pdfBytes.length, { operation: "child_pdf_base64" }, () => `data:application/pdf;base64,${pdfBytes.toString("base64")}`);
-
-  const model = process.env.MISTRAL_OCR_MODEL || "mistral-ocr-latest";
+  const model = mistralOcrModel();
   const requestBody = JSON.stringify({
     model,
-    document: { type: "document_url", document_url: pdfDataUrl },
+    document: { type: "document_url", document_url: documentUrl },
     include_image_base64: false,
     include_blocks: true,
     table_format: "html",
@@ -562,14 +550,16 @@ export async function extractBulkInvoiceFromDocument(documentUrl: string, ocrCon
     },
   });
 
-  for (let attempt = 1; attempt <= 3; attempt += 1) {
-    const response = await tracedMistralFetch(OCR_ENDPOINT, {
+  const owner = providerContext();
+  const reservation = owner ? await reserveOcrProviderBudget({ clerkUserId: owner.clerkUserId, provider: "mistral", pages: sourcePages }) : null;
+  try {
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    const { response, raw } = await mistralJsonRequest(OCR_ENDPOINT, {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: requestBody,
       signal: providerAttemptSignal(deadline, 90_000),
-    }, pdfBytes.length, { operation: "child_annotated_ocr", model, attempt });
-    const raw = await tracedMistralJson(response).catch(() => ({}));
+    }, null, { operation: "child_annotated_ocr", model, attempt });
     if (response.ok) {
       const annotationRaw = raw.document_annotation;
       const annotation = typeof annotationRaw === "string" ? JSON.parse(annotationRaw) : annotationRaw;
@@ -579,23 +569,39 @@ export async function extractBulkInvoiceFromDocument(documentUrl: string, ocrCon
       if (ocrConfidence != null) invoice.confidence.overall = Math.min(invoice.confidence.overall ?? 1, ocrConfidence);
       const validation = validateInvoice(invoice);
       invoice.validationStatus = validation.status === "failed" ? "needs_review" : validation.status;
-      return { invoice, validation, raw, provider: "mistral", model: String(raw.model || model) };
+      return { invoice, validation, raw, provider: "mistral", model: String(raw.model || model), costMicros: Number(raw.usage_info?.pages_processed ?? sourcePages) * Number(process.env.MISTRAL_ANNOTATED_PAGE_COST_MICROS ?? 5000) };
     }
-    if (response.status !== 429 && response.status < 500) {
-      throw new Error(`Mistral OCR annotation failed (${response.status}): ${providerError(raw)}`);
+    if (response.status !== 429) {
+      throw providerResponseError(response, "Mistral OCR annotation", attempt === 2);
     }
-    if (attempt === 3) throw new Error(`Mistral OCR annotation failed (${response.status}): ${providerError(raw)}`);
+    if (attempt === 2) throw providerResponseError(response, "Mistral OCR annotation", attempt === 2);
     const delayMs = retryDelayMs(response.headers.get("Retry-After"), attempt);
-    console.warn(`[bulk-invoices] Mistral OCR annotation returned ${response.status}; retrying in ${delayMs}ms (attempt ${attempt + 1}/3)`);
+    console.warn(`[bulk-invoices] Mistral OCR annotation returned ${response.status}; retrying in ${delayMs}ms (attempt ${attempt + 1}/2)`);
     await providerRetryDelay(delayMs, deadline, response.status);
   }
   throw new Error("Mistral OCR annotation failed after retries");
+  } catch (error) {
+    if (reservation && reservationWasRejected(error)) await releaseUnusedOcrProviderBudget({ reservation, pages: sourcePages }).catch(() => console.error("bulk_fallback_reservation_release_failed"));
+    throw error;
+  }
 }
 
 type StructuredRequest={model:string;name:string;schema:unknown;prompt:string;retryRateLimit?:boolean};
 type StructuredBatchStatus="QUEUED"|"RUNNING"|"SUCCESS"|"FAILED"|"TIMEOUT_EXCEEDED"|"CANCELLATION_REQUESTED"|"CANCELLED";
-async function createMistralStructuredBatch(args:StructuredRequest,source:string){const apiKey=process.env.MISTRAL_API_KEY;if(!apiKey)throw new Error("MISTRAL_API_KEY is not configured");const response=await tracedMistralFetch(BATCH_ENDPOINT,{method:"POST",headers:{Authorization:`Bearer ${apiKey}`,"Content-Type":"application/json"},body:JSON.stringify({endpoint:"/v1/chat/completions",model:args.model,timeout_hours:24,metadata:{source},requests:[{custom_id:source,body:structuredRequestBody(args)}]}),signal:AbortSignal.timeout(90000)},null,{operation:"batch_structured_submit",source});const raw=await tracedMistralJson(response).catch(()=>({}));if(!response.ok||typeof raw.id!=="string")throw new Error(`Mistral Batch ${source} submission failed (${response.status}): ${providerError(raw)}`);return{batchId:String(raw.id),status:String(raw.status||"QUEUED") as StructuredBatchStatus};}
-async function pollMistralStructuredBatch(batchId:string,label:string):Promise<{status:StructuredBatchStatus;result:any|null;error:string|null}>{const apiKey=process.env.MISTRAL_API_KEY;if(!apiKey)throw new Error("MISTRAL_API_KEY is not configured");const response=await tracedMistralFetch(`${BATCH_ENDPOINT}/${encodeURIComponent(batchId)}?inline=true`,{headers:{Authorization:`Bearer ${apiKey}`},signal:AbortSignal.timeout(60000)},null,{operation:"batch_structured_poll",batch_id:batchId,label});const raw=await tracedMistralJson(response).catch(()=>({}));if(!response.ok)throw new Error(`Mistral Batch ${label} status failed (${response.status}): ${providerError(raw)}`);recordBatchTiming(raw,batchId,label);const status=String(raw.status||"").toUpperCase() as StructuredBatchStatus;if(status==="QUEUED"||status==="RUNNING"||status==="CANCELLATION_REQUESTED")return{status,result:null,error:null};if(status!=="SUCCESS")return{status,result:null,error:batchError(raw,label)};let records:unknown[]=Array.isArray(raw.outputs)?raw.outputs:[];if(!records.length&&typeof raw.output_file==="string"&&raw.output_file){const output=await tracedMistralFetch(`${FILES_ENDPOINT}/${encodeURIComponent(raw.output_file)}/content`,{headers:{Authorization:`Bearer ${apiKey}`},signal:AbortSignal.timeout(90000)},null,{operation:"batch_structured_result_download"});if(!output.ok)throw new Error(`Mistral Batch ${label} result download failed (${output.status})`);records=parseJsonLines(await tracedMistralText(output));}const body=batchResponseBody(records[0],label);const content=body?.choices?.[0]?.message?.content;const result=typeof content==="string"?traceInvoiceSync("parse",Buffer.byteLength(content),{operation:"batch_structured_content"},()=>JSON.parse(content)):content;if(!result||typeof result!=="object")throw new Error(`Mistral Batch ${label} returned no structured content`);return{status,result,error:null};}
+async function createMistralStructuredBatch(args: StructuredRequest, source: string) {
+  const apiKey = process.env.MISTRAL_API_KEY;
+  if (!apiKey) throw new Error("MISTRAL_API_KEY is not configured");
+  const { response, raw } = await mistralJsonRequest(BATCH_ENDPOINT, {
+    method: "POST", headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ endpoint: "/v1/chat/completions", model: args.model, timeout_hours: 24,
+      metadata: { source }, requests: [{ custom_id: source, body: structuredRequestBody(args) }] }),
+    signal: AbortSignal.timeout(90_000),
+  }, null, { operation: "batch_structured_submit", source });
+  if (!response.ok) throw providerResponseError(response, `Mistral Batch ${source} submission`, true);
+  if (typeof raw.id !== "string") throw new ProviderRequestError("Mistral batch returned no ID; completion is unknown", null, "unknown", 0, true);
+  return { batchId: raw.id as string, status: String(raw.status || "QUEUED") as StructuredBatchStatus };
+}
+async function pollMistralStructuredBatch(batchId:string,label:string):Promise<{status:StructuredBatchStatus;result:any|null;error:string|null}>{const apiKey=process.env.MISTRAL_API_KEY;if(!apiKey)throw new Error("MISTRAL_API_KEY is not configured");const response=await tracedMistralFetch(`${BATCH_ENDPOINT}/${encodeURIComponent(batchId)}?inline=true`,{headers:{Authorization:`Bearer ${apiKey}`},signal:AbortSignal.timeout(60000)},null,{operation:"batch_structured_poll",batch_id:batchId,label});const raw=await tracedMistralJson(response).catch(()=>({}));if(!response.ok)throw providerResponseError(response,`Mistral Batch ${label} status`,true);recordBatchTiming(raw,batchId,label);const status=String(raw.status||"").toUpperCase() as StructuredBatchStatus;if(status==="QUEUED"||status==="RUNNING"||status==="CANCELLATION_REQUESTED")return{status,result:null,error:null};if(status!=="SUCCESS")return{status,result:null,error:batchError(raw,label)};let records:unknown[]=Array.isArray(raw.outputs)?raw.outputs:[];if(!records.length&&typeof raw.output_file==="string"&&raw.output_file){const output=await tracedMistralFetch(`${FILES_ENDPOINT}/${encodeURIComponent(raw.output_file)}/content`,{headers:{Authorization:`Bearer ${apiKey}`},signal:AbortSignal.timeout(90000)},null,{operation:"batch_structured_result_download"});if(!output.ok)throw new Error(`Mistral Batch ${label} result download failed (${output.status})`);records=parseJsonLines(await tracedMistralText(output));}const body=batchResponseBody(records[0],label);await recordProviderUsage({raw:body,status:200,operation:`batch_${label}`,batchId}).catch(()=>console.error("mistral_usage_record_failed"));const content=body?.choices?.[0]?.message?.content;const result=typeof content==="string"?traceInvoiceSync("parse",Buffer.byteLength(content),{operation:"batch_structured_content"},()=>JSON.parse(content)):content;if(!result||typeof result!=="object")throw new Error(`Mistral Batch ${label} returned no structured content`);return{status,result:{...result,_provider:{model:body?.model,usage:body?.usage??null,estimatedCostMicros:estimateChatCost(String(body?.model),body?.usage,true)}},error:null};}
 function structuredRequestBody(args:StructuredRequest){return{model:args.model,temperature:0,messages:[{role:"user",content:args.prompt}],response_format:{type:"json_schema",json_schema:{name:args.name,strict:true,schema:args.schema}}};}
 async function mistralStructured(args: StructuredRequest) {
   const apiKey = process.env.MISTRAL_API_KEY;
@@ -603,28 +609,27 @@ async function mistralStructured(args: StructuredRequest) {
   const requestBody = JSON.stringify(structuredRequestBody(args));
 
   const deadline = Date.now() + 150_000;
-  for (let attempt = 1; attempt <= 3; attempt += 1) {
-    const response = await measureInvoiceStage("bulk_structured_request", { model: args.model, operation: args.name, attempt, requestBytes: Buffer.byteLength(requestBody) }, () => tracedMistralFetch(CHAT_ENDPOINT, {
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    const { response, raw: body } = await measureInvoiceStage("bulk_structured_request", { model: args.model, operation: args.name, attempt, requestBytes: Buffer.byteLength(requestBody) }, () => mistralJsonRequest(CHAT_ENDPOINT, {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: requestBody,
       signal: providerAttemptSignal(deadline, 90_000),
     }, Buffer.byteLength(args.prompt), { operation: args.name, model: args.model, attempt }));
-    const body = await tracedMistralJson(response).catch(() => ({}));
     if (response.ok) {
       const content = body?.choices?.[0]?.message?.content;
-      if (typeof content === "string") return traceInvoiceSync("parse", Buffer.byteLength(content), { operation: args.name }, () => JSON.parse(content));
-      if (content && typeof content === "object") return content;
+      const parsed = typeof content === "string" ? traceInvoiceSync("parse", Buffer.byteLength(content), { operation: args.name }, () => JSON.parse(content)) : content;
+      if (parsed && typeof parsed === "object") return { ...parsed, _provider: { model: String(body.model || args.model), usage: body.usage ?? null, estimatedCostMicros: estimateChatCost(String(body.model || args.model), body.usage) } };
       throw new Error("Mistral returned no structured content");
     }
 
-    const retryable = (response.status === 429 && args.retryRateLimit !== false) || response.status >= 500;
-    if (!retryable || attempt === 3) {
-      throw new Error(`Mistral structured extraction failed (${response.status}): ${providerError(body)}`);
+    const retryable = response.status === 429 && args.retryRateLimit !== false;
+    if (!retryable || attempt === 2) {
+      throw providerResponseError(response, "Mistral structured extraction", attempt === 2);
     }
 
     const delayMs = retryDelayMs(response.headers.get("Retry-After"), attempt);
-    console.warn(`[bulk-invoices] Mistral request returned ${response.status}; retrying in ${delayMs}ms (attempt ${attempt + 1}/3)`);
+    console.warn(`[bulk-invoices] Mistral request returned ${response.status}; retrying in ${delayMs}ms (attempt ${attempt + 1}/2)`);
     await providerRetryDelay(delayMs, deadline, response.status);
   }
 
@@ -632,7 +637,7 @@ async function mistralStructured(args: StructuredRequest) {
 }
 
 function retryDelayMs(retryAfter: string | null, attempt: number) {
-  const fallbackMs = attempt === 1 ? 10_000 : 30_000;
+  const fallbackMs = 2000;
   if (!retryAfter) return fallbackMs;
 
   const seconds = Number(retryAfter);
@@ -664,7 +669,7 @@ async function providerRetryDelay(delayMs: number, deadline: number, status: num
   // Never start a retry that cannot fit within the worker's HTTP timeout.
   // Long Retry-After values yield to durable recovery rather than retry early.
   if (Date.now() + delayMs + 1000 >= deadline) {
-    throw new Error(`Mistral request failed (${status}); Retry-After exceeds the remaining retry time budget`);
+    throw new ProviderRequestError(`Mistral request failed (${status}); Retry-After exceeds the operation deadline`, status, "rejected", delayMs, true);
   }
   await new Promise((resolve) => setTimeout(resolve, delayMs));
 }
@@ -733,3 +738,15 @@ function batchError(raw: any, label="OCR") {
   return (errors || `Mistral Batch ${label} ended with status ${String(raw?.status || "unknown")}`).slice(0, 1000);
 }
 
+
+export function mapOcrPages(responsePages: Array<Record<string, any>>, startPage: number, count: number) {
+  if (responsePages.length !== count) throw new ProviderRequestError("Mistral returned incomplete page coverage; review before retrying",200,"unknown",0,true);
+  const pages = responsePages.map((page, i) => ({
+    pageNumber: Number.isInteger(page.index) ? Number(page.index) : startPage + i,
+    markdown: pageOcrText(page), confidence: pageConfidence(page),
+  }));
+  if (new Set(pages.map(page => page.pageNumber)).size !== count || pages.some(page => page.pageNumber < startPage || page.pageNumber >= startPage + count)) {
+    throw new ProviderRequestError("Mistral returned invalid page indices; review before retrying",200,"unknown",0,true);
+  }
+  return pages.sort((a,b) => a.pageNumber-b.pageNumber);
+}

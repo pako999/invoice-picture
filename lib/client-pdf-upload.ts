@@ -12,6 +12,7 @@ export async function queuePdfUpload(
   file: File,
   metadata: {
     subject: string;
+    preferBatch?: boolean;
     companyId?: number;
     messageBody?: string;
   },
@@ -52,6 +53,7 @@ export async function queuePdfUpload(
     objectKey,
     filename: file.name,
     byteSize: file.size,
+    preferBatch: Boolean(metadata.preferBatch),
     ...(metadata.companyId ? { companyId: metadata.companyId } : {}),
   });
 

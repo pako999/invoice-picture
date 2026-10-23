@@ -1,4 +1,7 @@
-import { createHash } from "node:crypto";
+import { withProviderContext } from "@/lib/invoice-intelligence/provider-usage";
+import { failBulkStage } from "@/lib/bulk-invoices/failure";
+import { ProviderRequestError } from "@/lib/invoice-intelligence/provider-errors";
+import { createHash, randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { queueInvoiceDelivery } from "@/lib/invoice-intelligence/delivery";
 export const maxDuration = 300;
@@ -27,7 +30,7 @@ export async function POST(req:Request){
  try{
   const jobs=await sql`SELECT * FROM "bulkInvoiceJobs" WHERE "id"=${data.jobId} LIMIT 1`;
   if(!jobs.length||jobs[0].stage!=='extract')return NextResponse.json({error:"Bulk job is not ready for extraction"},{status:409});
-  const job:any=jobs[0];
+  const job:any=jobs[0]; return await withProviderContext({ clerkUserId: String(job.clerkUserId), bulkJobId: data.jobId }, async () => {
   let recipientEmail:string|null=typeof job.recipientEmail==="string"&&job.recipientEmail?job.recipientEmail:null;const deliveryMode=normalizeDeliveryMode(job.deliveryMode);
   if(job.companyId){
     const [company]=await db.select().from(companies).where(and(eq(companies.id,Number(job.companyId)),eq(companies.clerkUserId,String(job.clerkUserId)))).limit(1);
@@ -86,10 +89,11 @@ export async function POST(req:Request){
     // fallback for empty/unusable page text.
     const started=Date.now();let extracted;
     if(hasUsableBulkOcrMarkdown(markdown) && !data.forceDocumentOcr){
-      if(!group.extractionBatchId&&useRealtimeBulkProcessing(Number(job.pageCount))){
+      if(!group.extractionBatchId&&useRealtimeBulkProcessing(Number(job.pageCount),Boolean(job.preferBatch))){
         extracted=await measureInvoiceStage("bulk_extract",{jobId:data.jobId,groupIndex:Number(group.groupIndex),mode:"realtime"},()=>extractBulkInvoice(markdown,avg,previousInvoice));
       }else{
-      if(!group.extractionBatchId){const batch=await createMistralInvoiceExtractionBatch(markdown,avg);await sql`UPDATE "bulkInvoiceGroups" SET "extractionBatchId"=${batch.batchId},"extractionBatchCreatedAt"=now(),"updatedAt"=now() WHERE "id"=${group.id}`;await sql`UPDATE "bulkInvoiceJobs" SET "lockedAt"=NULL,"lastError"=NULL,"updatedAt"=now() WHERE "id"=${data.jobId}`;return NextResponse.json({success:true,batchSubmitted:true,batchId:batch.batchId},{status:202});}
+      if(String(group.extractionBatchId??"").startsWith("submitting:"))throw new ProviderRequestError("Previous extraction batch has unknown completion; review before manually retrying",null,"unknown",0,true);
+      if(!group.extractionBatchId){const intent=`submitting:${randomUUID()}`;const claim=await sql`UPDATE "bulkInvoiceGroups" SET "extractionBatchId"=${intent},"updatedAt"=now() WHERE "id"=${group.id} AND "extractionBatchId" IS NULL RETURNING "id"`;if(!claim.length)return NextResponse.json({success:true,batchPending:true},{status:202});const batch=await createMistralInvoiceExtractionBatch(markdown,avg);await sql`UPDATE "bulkInvoiceGroups" SET "extractionBatchId"=${batch.batchId},"extractionBatchCreatedAt"=now(),"updatedAt"=now() WHERE "id"=${group.id}`;await sql`UPDATE "bulkInvoiceJobs" SET "lockedAt"=NULL,"lastError"=NULL,"updatedAt"=now() WHERE "id"=${data.jobId}`;return NextResponse.json({success:true,batchSubmitted:true,batchId:batch.batchId},{status:202});}
       const state=await pollMistralInvoiceExtractionBatch({batchId:String(group.extractionBatchId),markdown,ocrConfidence:avg});
       if(["QUEUED","RUNNING","CANCELLATION_REQUESTED"].includes(state.status)){await sql`UPDATE "bulkInvoiceJobs" SET "lockedAt"=NULL,"updatedAt"=now() WHERE "id"=${data.jobId}`;return NextResponse.json({success:true,batchPending:true,status:state.status},{status:202});}
       if(!state.result){
@@ -100,8 +104,12 @@ export async function POST(req:Request){
         throw new Error(message);
       }extracted=state.result;
       }
-    }else if(documentUrl)extracted=await extractBulkInvoiceFromDocument(documentUrl,avg);else throw new Error("Bulk OCR returned no usable text for structured extraction");
+    }else if(documentUrl)extracted=await extractBulkInvoiceFromDocument(documentUrl,avg,Number(group.endPage)-Number(group.startPage)+1);else throw new Error("Bulk OCR returned no usable text for structured extraction");
     const autoApprove=canAutoApprove(extracted.invoice,extracted.validation.status,avg,Boolean(group.needsBoundaryReview));
+    const [shared]=await sql`SELECT sum("estimatedCostMicros")::int AS cost, bool_or("completionUnknown" OR ("httpStatus"=200 AND "estimatedCostMicros" IS NULL)) AS incomplete
+      FROM "invoiceProviderUsage" WHERE "bulkJobId"=${data.jobId} AND "operation" IN ('bulk_page_ocr','batch_ocr','invoice_page_boundaries','batch_classification')`;
+    const extractionCost="costMicros" in extracted ? extracted.costMicros : extracted.provider==="deterministic" ? 0 : null;
+    const estimatedCost=shared?.incomplete || extractionCost==null ? null : extractionCost+Math.ceil(Number(shared?.cost??0)*(Number(group.endPage)-Number(group.startPage)+1)/Number(job.pageCount));
     const normalizedJson=JSON.stringify(extracted.invoice);
     const warningList=[...extracted.invoice.warnings,...extracted.validation.warnings,...extracted.validation.errors];
     if(!sourceInvoiceId){
@@ -118,7 +126,7 @@ export async function POST(req:Request){
       documentType:extracted.invoice.documentType,documentLanguage:extracted.invoice.documentLanguage,provider:extracted.provider,model:extracted.model,
       rawText:markdown,rawProviderResponse:JSON.stringify(extracted.raw),normalizedJson,approvedJson:autoApprove?normalizedJson:null,
       overallConfidenceBps:avg==null?null:Math.round(avg*10000),validationStatus:(autoApprove?"valid":"needs_review") as "valid"|"needs_review",
-      warningsJson:JSON.stringify(warningList),processingCostMicros:null,processingStartedAt:new Date(started),processedAt:new Date(),approvedAt:autoApprove?new Date():null,retentionUntil,updatedAt:new Date()
+      warningsJson:JSON.stringify(warningList),processingCostMicros:estimatedCost,processingStartedAt:new Date(started),processedAt:new Date(),approvedAt:autoApprove?new Date():null,retentionUntil,updatedAt:new Date()
     };
     if(documentId){
       await db.update(invoiceDocuments).set(values).where(eq(invoiceDocuments.id,documentId));
@@ -128,7 +136,7 @@ export async function POST(req:Request){
     }
     if(!documentId)throw new Error("Could not create bulk child invoice document");
     await db.insert(invoiceValidationResults).values({documentId,status:autoApprove?"valid":"needs_review",warningsJson:JSON.stringify(extracted.validation.warnings),errorsJson:JSON.stringify(extracted.validation.errors),differencesJson:JSON.stringify(extracted.validation.differences)});
-    await db.insert(invoiceProcessingAttempts).values({documentId,provider:extracted.provider,model:extracted.model,status:"succeeded",durationMs:Date.now()-started,pagesProcessed:Number(group.endPage)-Number(group.startPage)+1,costMicros:null,completedAt:new Date()});
+    await db.insert(invoiceProcessingAttempts).values({documentId,provider:extracted.provider,model:extracted.model,status:"succeeded",durationMs:Date.now()-started,pagesProcessed:Number(group.endPage)-Number(group.startPage)+1,costMicros:extractionCost,completedAt:new Date()});
     await db.insert(invoiceAuditLogs).values({documentId,clerkUserId:String(job.clerkUserId),action:autoApprove?"auto_approved":"sent_to_review",metadataJson:JSON.stringify({bulkJobId:data.jobId,groupIndex:Number(group.groupIndex),pages:[Number(group.startPage),Number(group.endPage)]})});
     if(autoApprove && documentId) {
       try { await queueInvoiceDelivery(documentId); }
@@ -146,12 +154,14 @@ export async function POST(req:Request){
   if(processed>=total&&total>0&&pendingDelivery===0)await complete(sql,data.jobId,total);
   else await sql`UPDATE "bulkInvoiceJobs" SET "processedInvoices"=${processed},"lockedAt"=NULL,"lastError"=NULL,"updatedAt"=now() WHERE "id"=${data.jobId}`;
   return NextResponse.json({success:true,processed,total,deliveryItems,done:processed>=total&&pendingDelivery===0});
+ });
  }catch(error){
   const msg=error instanceof Error?error.message:String(error);
+  if(error instanceof ProviderRequestError){const failure=await failBulkStage(sql,data.jobId,error,"extract");return NextResponse.json({error:failure.message,retrying:failure.retrying},{status:failure.status});}
   if(/\b429\b|rate limit/i.test(msg)){
    const previous=await sql`SELECT "lastError" FROM "bulkInvoiceJobs" WHERE "id"=${data.jobId} LIMIT 1`;
    const rateLimitAttempt=nextRateLimitAttempt(previous[0]?.lastError);
-   const exhausted=rateLimitAttempt>=3;
+   const exhausted=rateLimitAttempt>=2;
    const storedError=`[rate-limit:${rateLimitAttempt}] ${msg}`.slice(0,2000);
    await sql`UPDATE "bulkInvoiceJobs" SET "status"=${exhausted?'failed':'processing'},"stage"=${exhausted?'failed':'extract'},"lockedAt"=NULL,"lastError"=${storedError},"completedAt"=${exhausted?new Date():null},"updatedAt"=now() WHERE "id"=${data.jobId}`;
    if(exhausted){
@@ -176,8 +186,7 @@ export async function POST(req:Request){
    }
    return NextResponse.json({error:exhausted?"OCR provider is temporarily unavailable. Retry the PDF package later.":msg,code:"ocr_rate_limited",retrying:!exhausted},{status:exhausted?503:429});
   }
-  await sql`UPDATE "bulkInvoiceJobs" SET "lockedAt"=NULL,"lastError"=${msg.slice(0,2000)},"updatedAt"=now() WHERE "id"=${data.jobId}`;
-  return NextResponse.json({error:msg},{status:500});
+  const failure=await failBulkStage(sql,data.jobId,error,"extract");return NextResponse.json({error:failure.message,retrying:failure.retrying},{status:failure.status});
  }
 }
 function childFilename(filename:string,index:number){const base=filename.replace(/\.pdf$/i,"").slice(0,180);return `${base}-racun-${String(index+1).padStart(3,"0")}.pdf`;}

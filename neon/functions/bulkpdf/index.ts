@@ -1,3 +1,4 @@
+import { createProviderFileUrl, verifyProviderFileUrl } from "../../../lib/bulk-invoices/provider-file";
 import { beginInvoiceTrace, traceInvoiceStage } from "../../../lib/invoice-intelligence/trace";
 import { createHash, randomUUID } from "node:crypto";
 import { GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
@@ -7,7 +8,7 @@ import { PDFDocument } from "pdf-lib";
 
 const MAX_BYTES = 200 * 1024 * 1024;
 const MAX_PAGES = 500;
-const OCR_BATCH_PAGES = 25;
+const OCR_BATCH_PAGES = 500;
 const EXTRACT_BATCH_SIZE = 1;
 const SPLIT_BATCH_SIZE = 20;
 const SIGNED_URL_SECONDS = 30 * 60;
@@ -56,6 +57,16 @@ export default {
       if (request.method === "OPTIONS") return cors(new Response(null, { status: 204 }));
       if (request.method === "GET" && url.pathname === "/health") {
         return json({ ok: true, bucket: BUCKET, maxBytes: MAX_BYTES, maxPages: MAX_PAGES });
+      }
+      if (request.method === "GET" && url.pathname === "/provider-file") {
+        const key = verifyProviderFileUrl(url, INTERNAL_SECRET);
+        if (!key) return json({ error: "Invalid or expired document capability" }, 403);
+        const object = await s3.send(new GetObjectCommand({ Bucket: BUCKET, Key: key }));
+        if (!object.Body || !object.ContentLength || object.ContentLength > MAX_BYTES) return json({ error: "Invalid PDF object" }, 404);
+        return new Response(object.Body.transformToWebStream() as ReadableStream, { headers: {
+          "Content-Type": "application/pdf", "Content-Length": String(object.ContentLength),
+          "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff",
+        } });
       }
       if (request.method === "POST" && url.pathname === "/sign-upload") return signUpload(request);
       if (request.method === "POST" && url.pathname === "/sign-download") return signDownload(request);
@@ -143,7 +154,11 @@ async function work(scope: { jobId?: number; ownerId?: string }, sourceCache: { 
 
   let claimedJobId: number | null = null;
   try {
-    const next = await appPost<{ job: BulkJob | null }>("/api/internal/bulk/next", scope);
+    const next = await appPost<{ job: BulkJob | null; documentJob?: { documentId: number } }>("/api/internal/bulk/next", scope);
+    if (next.documentJob) {
+      const result = await appPost("/api/internal/invoice-batch", { documentId: next.documentJob.documentId });
+      return json({ok:true,stage:"document_batch",result});
+    }
     const job = next.job;
     if (!job) return json({ ok: true, idle: true });
     claimedJobId = Number(job.id);
@@ -161,7 +176,7 @@ async function work(scope: { jobId?: number; ownerId?: string }, sourceCache: { 
     }
 
     if (job.stage === "ocr") {
-      const documentUrl = await signedDownloadUrl(job.objectKey);
+      const documentUrl = createProviderFileUrl(process.env.BULK_PUBLIC_URL || "https://br-weathered-frog-alr3b4zn-bulkpdf.compute.c-3.eu-central-1.aws.neon.tech", job.objectKey, INTERNAL_SECRET);
       const result = await appPost("/api/internal/bulk/ocr", {
         jobId: job.id,
         documentUrl,
