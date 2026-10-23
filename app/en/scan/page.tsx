@@ -234,7 +234,7 @@ export default function ScanPage() {
         try {
           let responseStatus: number;
           let json: Record<string, any>;
-          if (selected.file.type === "application/pdf" && (await pdfPageCount(selected.file) !== 1 || selected.file.size > MAX_INLINE_SOURCE_BYTES)) {
+          if (selected.file.type === "application/pdf" && (selected.file.size > MAX_INLINE_SOURCE_BYTES || await pdfPageCount(selected.file) !== 1)) {
             const result = await queuePdfUpload(selected.file, { preferBatch: selectedFiles.length >= 100, subject: subject || "Invoice", ...(selectedCompanyId ? { companyId: selectedCompanyId } : {}) });
             responseStatus = result.status;
             json = result.json;
