@@ -5,6 +5,7 @@ import { normalizeInvoiceValues, validateInvoice } from "@/lib/invoice-intellige
 import { releaseUnusedOcrProviderBudget, reserveOcrProviderBudget } from "@/lib/invoice-intelligence/safety";
 import { getOcrUsageSummary, quotaPageError } from "@/lib/invoice-intelligence/quota";
 import { parseInvoiceTextDeterministically, reconcileMistralInvoiceWithOcrText } from "@/lib/invoice-intelligence/providers";
+import { measureInvoiceStage } from "@/lib/invoice-intelligence/timing";
 
 const OCR_ENDPOINT = "https://api.mistral.ai/v1/ocr";
 const CHAT_ENDPOINT = "https://api.mistral.ai/v1/chat/completions";
@@ -33,11 +34,9 @@ export async function ocrBulkPages(args: {
     throw quotaPageError(usage, remainingDailyPages <= 0 ? "daily_pages" : "pages");
   }
 
-  // OCR limits are enforced in pages per minute. Large page arrays can be
-  // rejected forever on lower Mistral tiers even when the account has prepaid
-  // credit, so keep each real-time request deliberately small. The worker can
-  // still ask for a larger batch; this service advances the job incrementally.
-  const providerPagesPerRequest = envInt("MISTRAL_BULK_OCR_PAGES_PER_REQUEST", 1, 1, 25);
+  // Read the original PDF in bounded page ranges instead of fetching it once
+  // per page. Lower-tier workspaces can still override this down to one page.
+  const providerPagesPerRequest = envInt("MISTRAL_BULK_OCR_PAGES_PER_REQUEST", 25, 1, 25);
   const pagesThisBatch = Math.min(
     args.batchPages,
     providerPagesPerRequest,
@@ -46,30 +45,35 @@ export async function ocrBulkPages(args: {
   );
   const endPage = Math.min(args.pageCount - 1, args.startPage + pagesThisBatch - 1);
   const pages = Array.from({ length: endPage - args.startPage + 1 }, (_, i) => args.startPage + i);
+  const reservedPages = pages.length;
   const reservation = await reserveOcrProviderBudget({ clerkUserId: args.clerkUserId, provider: "mistral", pages: pages.length });
-  const requestBody = JSON.stringify({
+  const requestBody = () => JSON.stringify({
     model: process.env.MISTRAL_OCR_MODEL || "mistral-ocr-latest",
     document: { type: "document_url", document_url: args.documentUrl },
     pages,
     include_image_base64: false,
-    include_blocks: true,
+    include_blocks: false,
     table_format: "html",
     confidence_scores_granularity: "page",
   });
 
   try {
+    const deadline = Date.now() + 150_000;
     for (let attempt = 1; attempt <= 3; attempt += 1) {
-      const response = await fetch(OCR_ENDPOINT, {
+      const response = await measureInvoiceStage("bulk_ocr_request", { startPage: args.startPage, pages: pages.length, attempt }, () => fetch(OCR_ENDPOINT, {
         method: "POST",
         headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-        body: requestBody,
-        signal: AbortSignal.timeout(Math.max(90_000, Number(process.env.INVOICE_OCR_TIMEOUT_MS ?? 90_000))),
-      });
+        body: requestBody(),
+        signal: providerAttemptSignal(deadline, Number(process.env.INVOICE_OCR_TIMEOUT_MS ?? 90_000)),
+      }));
       const raw = await response.json().catch(() => ({}));
       if (response.ok) {
         const responsePages = Array.isArray(raw.pages) ? raw.pages : [];
         if (responsePages.length !== pages.length) {
           throw new Error(`Mistral bulk OCR returned ${responsePages.length}/${pages.length} requested pages`);
+        }
+        if (reservedPages > pages.length) {
+          await releaseUnusedOcrProviderBudget({ reservation, pages: reservedPages - pages.length });
         }
         return {
           pages: responsePages.map((page: Record<string, any>, i: number) => ({
@@ -78,8 +82,8 @@ export async function ocrBulkPages(args: {
             confidence: pageConfidence(page),
           })),
           model: String(raw.model || process.env.MISTRAL_OCR_MODEL || "mistral-ocr-latest"),
-          nextPage: endPage + 1,
-          done: endPage + 1 >= args.pageCount,
+          nextPage: args.startPage + pages.length,
+          done: args.startPage + pages.length >= args.pageCount,
         };
       }
 
@@ -88,14 +92,17 @@ export async function ocrBulkPages(args: {
         throw new Error(`Mistral bulk OCR failed (${response.status}): ${providerError(raw)}`);
       }
       const delayMs = retryDelayMs(response.headers.get("Retry-After"), attempt);
+      // A page-rate-limited workspace may reject a 25-page range forever.
+      // Retry only its first page; the durable cursor preserves the remainder.
+      if (response.status === 429 && pages.length > 1) pages.splice(1);
       console.warn(`[bulk-invoices] Mistral bulk OCR returned ${response.status}; retrying in ${delayMs}ms (attempt ${attempt + 1}/3)`);
-      await new Promise((resolve) => setTimeout(resolve, delayMs));
+      await providerRetryDelay(delayMs, deadline, response.status);
     }
     throw new Error("Mistral bulk OCR failed after retries");
   } catch (error) {
     // A provider rejection must not consume the customer's internal allowance.
     // The same pages will be reserved again only when a later attempt runs.
-    await releaseUnusedOcrProviderBudget({ reservation, pages: pages.length }).catch((releaseError) => {
+    await releaseUnusedOcrProviderBudget({ reservation, pages: reservedPages }).catch((releaseError) => {
       console.error("[bulk-invoices] Failed to release unused OCR reservation", releaseError);
     });
     throw error;
@@ -164,7 +171,7 @@ export async function createMistralOcrBatch(args: {
             document: { type: "document_url", document_url: args.documentUrl },
             pages,
             include_image_base64: false,
-            include_blocks: true,
+            include_blocks: false,
             table_format: "html",
             confidence_scores_granularity: "page",
           },
@@ -206,6 +213,7 @@ export async function pollMistralOcrBatch(args: {
   if (!response.ok) {
     throw new Error(`Mistral Batch OCR status failed (${response.status}): ${providerError(raw)}`);
   }
+  recordBatchTiming(raw, args.batchId, "ocr");
 
   const status = String(raw.status || "").toUpperCase() as MistralOcrBatchState["status"];
   const model = String(raw.model || process.env.MISTRAL_OCR_MODEL || "mistral-ocr-latest");
@@ -508,13 +516,14 @@ export async function extractBulkInvoiceFromDocument(documentUrl: string, ocrCon
   const apiKey = process.env.MISTRAL_API_KEY;
   if (!apiKey) throw new Error("MISTRAL_API_KEY is not configured");
   const parsedUrl = new URL(documentUrl);
+  const deadline = Date.now() + 150_000;
   if (parsedUrl.protocol !== "https:") throw new Error("Bulk OCR document URL must use HTTPS");
 
   // Mistral OCR accepts base64 PDFs only when the complete encoded PDF is
   // embedded in a data URL. Fetch the private child PDF first, encode the
   // actual bytes, then send data:application/pdf;base64,{base64_pdf}.
   const sourceResponse = await fetch(documentUrl, {
-    signal: AbortSignal.timeout(60_000),
+    signal: providerAttemptSignal(deadline, 60_000),
   });
   if (!sourceResponse.ok) {
     throw new Error(`Could not download bulk PDF for OCR (${sourceResponse.status})`);
@@ -557,7 +566,7 @@ export async function extractBulkInvoiceFromDocument(documentUrl: string, ocrCon
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: requestBody,
-      signal: AbortSignal.timeout(180_000),
+      signal: providerAttemptSignal(deadline, 90_000),
     });
     const raw = await response.json().catch(() => ({}));
     if (response.ok) {
@@ -577,7 +586,7 @@ export async function extractBulkInvoiceFromDocument(documentUrl: string, ocrCon
     if (attempt === 3) throw new Error(`Mistral OCR annotation failed (${response.status}): ${providerError(raw)}`);
     const delayMs = retryDelayMs(response.headers.get("Retry-After"), attempt);
     console.warn(`[bulk-invoices] Mistral OCR annotation returned ${response.status}; retrying in ${delayMs}ms (attempt ${attempt + 1}/3)`);
-    await new Promise((resolve) => setTimeout(resolve, delayMs));
+    await providerRetryDelay(delayMs, deadline, response.status);
   }
   throw new Error("Mistral OCR annotation failed after retries");
 }
@@ -585,20 +594,21 @@ export async function extractBulkInvoiceFromDocument(documentUrl: string, ocrCon
 type StructuredRequest={model:string;name:string;schema:unknown;prompt:string;retryRateLimit?:boolean};
 type StructuredBatchStatus="QUEUED"|"RUNNING"|"SUCCESS"|"FAILED"|"TIMEOUT_EXCEEDED"|"CANCELLATION_REQUESTED"|"CANCELLED";
 async function createMistralStructuredBatch(args:StructuredRequest,source:string){const apiKey=process.env.MISTRAL_API_KEY;if(!apiKey)throw new Error("MISTRAL_API_KEY is not configured");const response=await fetch(BATCH_ENDPOINT,{method:"POST",headers:{Authorization:`Bearer ${apiKey}`,"Content-Type":"application/json"},body:JSON.stringify({endpoint:"/v1/chat/completions",model:args.model,timeout_hours:24,metadata:{source},requests:[{custom_id:source,body:structuredRequestBody(args)}]}),signal:AbortSignal.timeout(90000)});const raw=await response.json().catch(()=>({}));if(!response.ok||typeof raw.id!=="string")throw new Error(`Mistral Batch ${source} submission failed (${response.status}): ${providerError(raw)}`);return{batchId:String(raw.id),status:String(raw.status||"QUEUED") as StructuredBatchStatus};}
-async function pollMistralStructuredBatch(batchId:string,label:string):Promise<{status:StructuredBatchStatus;result:any|null;error:string|null}>{const apiKey=process.env.MISTRAL_API_KEY;if(!apiKey)throw new Error("MISTRAL_API_KEY is not configured");const response=await fetch(`${BATCH_ENDPOINT}/${encodeURIComponent(batchId)}?inline=true`,{headers:{Authorization:`Bearer ${apiKey}`},signal:AbortSignal.timeout(60000)});const raw=await response.json().catch(()=>({}));if(!response.ok)throw new Error(`Mistral Batch ${label} status failed (${response.status}): ${providerError(raw)}`);const status=String(raw.status||"").toUpperCase() as StructuredBatchStatus;if(status==="QUEUED"||status==="RUNNING"||status==="CANCELLATION_REQUESTED")return{status,result:null,error:null};if(status!=="SUCCESS")return{status,result:null,error:batchError(raw,label)};let records:unknown[]=Array.isArray(raw.outputs)?raw.outputs:[];if(!records.length&&typeof raw.output_file==="string"&&raw.output_file){const output=await fetch(`${FILES_ENDPOINT}/${encodeURIComponent(raw.output_file)}/content`,{headers:{Authorization:`Bearer ${apiKey}`},signal:AbortSignal.timeout(90000)});if(!output.ok)throw new Error(`Mistral Batch ${label} result download failed (${output.status})`);records=parseJsonLines(await output.text());}const body=batchResponseBody(records[0],label);const content=body?.choices?.[0]?.message?.content;const result=typeof content==="string"?JSON.parse(content):content;if(!result||typeof result!=="object")throw new Error(`Mistral Batch ${label} returned no structured content`);return{status,result,error:null};}
+async function pollMistralStructuredBatch(batchId:string,label:string):Promise<{status:StructuredBatchStatus;result:any|null;error:string|null}>{const apiKey=process.env.MISTRAL_API_KEY;if(!apiKey)throw new Error("MISTRAL_API_KEY is not configured");const response=await fetch(`${BATCH_ENDPOINT}/${encodeURIComponent(batchId)}?inline=true`,{headers:{Authorization:`Bearer ${apiKey}`},signal:AbortSignal.timeout(60000)});const raw=await response.json().catch(()=>({}));if(!response.ok)throw new Error(`Mistral Batch ${label} status failed (${response.status}): ${providerError(raw)}`);recordBatchTiming(raw,batchId,label);const status=String(raw.status||"").toUpperCase() as StructuredBatchStatus;if(status==="QUEUED"||status==="RUNNING"||status==="CANCELLATION_REQUESTED")return{status,result:null,error:null};if(status!=="SUCCESS")return{status,result:null,error:batchError(raw,label)};let records:unknown[]=Array.isArray(raw.outputs)?raw.outputs:[];if(!records.length&&typeof raw.output_file==="string"&&raw.output_file){const output=await fetch(`${FILES_ENDPOINT}/${encodeURIComponent(raw.output_file)}/content`,{headers:{Authorization:`Bearer ${apiKey}`},signal:AbortSignal.timeout(90000)});if(!output.ok)throw new Error(`Mistral Batch ${label} result download failed (${output.status})`);records=parseJsonLines(await output.text());}const body=batchResponseBody(records[0],label);const content=body?.choices?.[0]?.message?.content;const result=typeof content==="string"?JSON.parse(content):content;if(!result||typeof result!=="object")throw new Error(`Mistral Batch ${label} returned no structured content`);return{status,result,error:null};}
 function structuredRequestBody(args:StructuredRequest){return{model:args.model,temperature:0,messages:[{role:"user",content:args.prompt}],response_format:{type:"json_schema",json_schema:{name:args.name,strict:true,schema:args.schema}}};}
 async function mistralStructured(args: StructuredRequest) {
   const apiKey = process.env.MISTRAL_API_KEY;
   if (!apiKey) throw new Error("MISTRAL_API_KEY is not configured");
   const requestBody = JSON.stringify(structuredRequestBody(args));
 
+  const deadline = Date.now() + 150_000;
   for (let attempt = 1; attempt <= 3; attempt += 1) {
-    const response = await fetch(CHAT_ENDPOINT, {
+    const response = await measureInvoiceStage("bulk_structured_request", { model: args.model, operation: args.name, attempt, requestBytes: Buffer.byteLength(requestBody) }, () => fetch(CHAT_ENDPOINT, {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: requestBody,
-      signal: AbortSignal.timeout(90_000),
-    });
+      signal: providerAttemptSignal(deadline, 90_000),
+    }));
     const body = await response.json().catch(() => ({}));
     if (response.ok) {
       const content = body?.choices?.[0]?.message?.content;
@@ -614,7 +624,7 @@ async function mistralStructured(args: StructuredRequest) {
 
     const delayMs = retryDelayMs(response.headers.get("Retry-After"), attempt);
     console.warn(`[bulk-invoices] Mistral request returned ${response.status}; retrying in ${delayMs}ms (attempt ${attempt + 1}/3)`);
-    await new Promise((resolve) => setTimeout(resolve, delayMs));
+    await providerRetryDelay(delayMs, deadline, response.status);
   }
 
   throw new Error("Mistral structured extraction failed after retries");
@@ -629,7 +639,33 @@ function retryDelayMs(retryAfter: string | null, attempt: number) {
     ? seconds * 1000
     : Date.parse(retryAfter) - Date.now();
   if (!Number.isFinite(parsedMs) || parsedMs <= 0) return fallbackMs;
-  return Math.min(60_000, Math.ceil(parsedMs));
+  return Math.ceil(parsedMs);
+}
+
+function providerAttemptSignal(deadline: number, requestedMs: number) {
+  const remaining = deadline - Date.now();
+  if (remaining <= 0) throw new Error("Mistral operation exceeded its retry time budget");
+  const timeout = Number.isFinite(requestedMs) && requestedMs > 0 ? requestedMs : 90_000;
+  return AbortSignal.timeout(Math.max(1, Math.floor(Math.min(remaining, timeout))));
+}
+
+function recordBatchTiming(raw: any, batchId: string, operation: string) {
+  const created = Number(raw.created_at), started = Number(raw.started_at), completed = Number(raw.completed_at);
+  if (!Number.isFinite(created) || created <= 0) return;
+  console.info("invoice_stage_timing", {
+    stage: "provider_batch_wait", batchId, operation, status: String(raw.status),
+    queueWaitMs: started > 0 ? Math.max(0, (started - created) * 1000) : Math.max(0, Date.now() - created * 1000),
+    providerProcessingMs: started > 0 && completed > 0 ? Math.max(0, (completed - started) * 1000) : null,
+  });
+}
+
+async function providerRetryDelay(delayMs: number, deadline: number, status: number) {
+  // Never start a retry that cannot fit within the worker's HTTP timeout.
+  // Long Retry-After values yield to durable recovery rather than retry early.
+  if (Date.now() + delayMs + 1000 >= deadline) {
+    throw new Error(`Mistral request failed (${status}); Retry-After exceeds the remaining retry time budget`);
+  }
+  await new Promise((resolve) => setTimeout(resolve, delayMs));
 }
 
 function envInt(name: string, fallback: number, min: number, max: number) {
