@@ -1,5 +1,5 @@
 export type TraceNotes = Record<string, string | number | boolean | null>;
-type TraceStage = "file_read" | "preprocess" | "upload" | "ocr_ttfb" | "ocr_total" | "parse" | "db_write" | "end_to_end" | "mistral_http_ttfb" | "mistral_http_total";
+type TraceStage = "file_read" | "preprocess" | "upload" | "ocr_ttfb" | "ocr_total" | "parse" | "db_write" | "end_to_end" | "mistral_http_ttfb" | "mistral_http_total" | "provider_queue_wait" | "provider_batch_wait";
 
 /** Browser output stays in the browser console. Never send document data to logs. */
 export function invoiceTraceEnabled() {

@@ -1,15 +1,17 @@
 import { recordProviderUsage } from "./provider-usage";
 import { acquireMistralSlot } from "./provider-slots";
 import { ProviderRequestError, providerResponseError } from "./provider-errors";
-import { tracedMistralFetch, tracedMistralJson, type TraceNotes } from "./trace";
+import { beginInvoiceTrace, tracedMistralFetch, tracedMistralJson, type TraceNotes } from "./trace";
 
 /** Global native fetch keeps the runtime's connection pool. Hold admission
  * through the complete body read; no retry is hidden in this transport. */
 export async function mistralJsonRequest(url: string, init: RequestInit, inputBytes: number | null, notes: TraceNotes) {
   const request = typeof init.body === "string" ? JSON.parse(init.body) : {};
+  const finishAdmission = beginInvoiceTrace("provider_queue_wait",inputBytes,notes);
   let release: () => Promise<void>;
-  try { release = await acquireMistralSlot(init.signal); }
+  try { release = await acquireMistralSlot(init.signal); finishAdmission({outcome:"admitted"}); }
   catch (error) {
+    finishAdmission({outcome:"not_sent"});
     if (error instanceof ProviderRequestError) throw error;
     throw new ProviderRequestError("Mistral admission failed; no provider request was sent", 503, "rejected", 0, true);
   }

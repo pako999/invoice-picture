@@ -128,7 +128,7 @@ test("transport releases its slot on an unreadable accepted response and never r
   const mod = load("lib/invoice-intelligence/mistral-http.ts", {
     "./provider-slots":{acquireMistralSlot:async()=>async()=>{releases++;}},
     "./provider-errors":errors, "./provider-usage":{recordProviderUsage:async()=>{}},
-    "./trace":{tracedMistralFetch:async()=>{requests++;return new Response("invalid JSON");},tracedMistralJson:(r:Response)=>r.json()},
+    "./trace":{beginInvoiceTrace:()=>()=>{},tracedMistralFetch:async()=>{requests++;return new Response("invalid JSON");},tracedMistralJson:(r:Response)=>r.json()},
   });
   await assert.rejects(mod.mistralJsonRequest("https://api.mistral.ai/v1/ocr",{},1,{}), (error:any)=>error instanceof errors.ProviderRequestError && error.acceptance === "unknown");
   assert.equal(requests,1); assert.equal(releases,1);

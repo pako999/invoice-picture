@@ -1,4 +1,4 @@
-import { tracedMistralFetch, tracedMistralJson, tracedMistralText } from "./trace";
+import { emitInvoiceTrace, tracedMistralFetch, tracedMistralJson, tracedMistralText } from "./trace";
 import { randomUUID } from "node:crypto";
 import { neon } from "@neondatabase/serverless";
 import { mistralJsonRequest } from "./mistral-http";
@@ -59,6 +59,10 @@ export async function readDocumentBatch(args: { jobId: number; request: Record<s
     await sql`UPDATE "invoiceProcessingJobs" SET "batchStateJson"=${JSON.stringify(state)} WHERE "id"=${args.jobId}`;
     if (state.pollErrors < 2) throw new DocumentBatchPending(error instanceof ProviderRequestError ? Math.max(60_000,error.retryAfterMs) : 60_000);
     throw error;
+  }
+  if (Number(raw.created_at)>0) {
+    const created=Number(raw.created_at)*1000,started=Number(raw.started_at)*1000,completed=Number(raw.completed_at)*1000;
+    emitInvoiceTrace("provider_batch_wait",null,(completed>0?completed:Date.now())-created,{batch_id:state.id,status:String(raw.status),queue_ms:started>0?started-created:null,processing_ms:started>0&&completed>0?completed-started:null});
   }
   if (["QUEUED","RUNNING","CANCELLATION_REQUESTED"].includes(String(raw.status))) throw new DocumentBatchPending();
   if (raw.status !== "SUCCESS") {
