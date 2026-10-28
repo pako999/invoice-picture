@@ -5,7 +5,7 @@ import { Check, ExternalLink, AlertCircle } from "lucide-react";
 import { pageMetadata } from "@/lib/seo";
 
 export const metadata = pageMetadata({
-  title: "Integracija računovodski program + OCR računov",
+  title: "OCR računov in računovodske integracije",
   description: "Integracija z računovodskim programom za prejete račune: OCR, email uvoz, UBL, eSLOG in API. Povežite Slikaj Račun z Minimax, Birokrat, Pantheon, SAOP in drugimi sistemi.",
   slug: "integracije",
 });
