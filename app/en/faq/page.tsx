@@ -6,7 +6,7 @@ import { HelpCircle } from "lucide-react";
 import { pageMetadata } from "@/lib/seo";
 
 export const metadata = pageMetadata({
-  title: "Invoice OCR and scanning: frequently asked questions",
+  title: "Invoice OCR processing: frequently asked questions",
   description:
     "15 answers to the most common questions: how the app works, supported programs, data security, pricing, OCR processing, supported formats, cancellation.",
   slug: "pogosta-vprasanja",
