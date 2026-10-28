@@ -3,11 +3,11 @@ import type { Metadata } from "next";
 import { Camera, ScanText, Building2, ArrowRight, ShieldCheck } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Program za račune z OCR za prejete račune",
-  description: "Program za prejete račune: fotografirajte ali naložite PDF, OCR prebere podatke, sistem jih preveri in račun pošlje v računovodski workflow. Za slovenske in tuje račune.",
+  title: "Program za obdelavo prejetih računov",
+  description: "Obdelava prejetih računov z AI OCR: naložite PDF ali fotografijo, preverite podatke in jih pripravite za računovodski program, UBL, eSLOG ali API.",
   alternates: { canonical: "/program-za-racune" },
   openGraph: {
-    title: "Program za račune z OCR – Slikaj Račun",
+    title: "Program za obdelavo računov – Slikaj Račun",
     description: "Zajem, OCR ekstrakcija, validacija in pošiljanje prejetih računov brez menjave računovodskega sistema.",
     url: "https://www.posljiracun.si/program-za-racune",
     type: "website",
