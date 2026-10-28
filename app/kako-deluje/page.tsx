@@ -5,7 +5,7 @@ import { Camera, FileSearch, ShieldCheck, Send, FileText, CheckCircle } from "lu
 import { pageMetadata } from "@/lib/seo";
 
 export const metadata = pageMetadata({
-  title: "Kako deluje OCR računov: naloži, preberi, preveri, pošlji",
+  title: "Kako deluje OCR obdelava računov",
   description: "Kako deluje Slikaj Račun: naložite PDF ali fotografijo, OCR prebere podatke, sistem preveri DDV, IBAN in zneske, nato račun potrdite in pošljete naprej.",
   slug: "kako-deluje",
 });
