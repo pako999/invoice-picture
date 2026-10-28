@@ -4,8 +4,8 @@ import { CheckCircle2, FileSearch, Languages, ShieldCheck, Workflow, ArrowRight 
 import { pageMetadata } from "@/lib/seo";
 
 export const metadata = pageMetadata({
-  title: "OCR računov: avtomatsko branje prejetih računov",
-  description: "OCR računov za slovenska podjetja in računovodstva. Samodejno prebere PDF ali sliko računa, preveri DDV, IBAN in zneske ter pripravi podatke za UBL, eSLOG ali API.",
+  title: "OCR obdelava računov za podjetja",
+  description: "Avtomatizirajte obdelavo prejetih računov z AI OCR. Naložite PDF ali fotografijo, preverite DDV, IBAN in zneske ter pripravite podatke za UBL, eSLOG ali API.",
   slug: "ocr-racunov",
   altPaths: { sl: "/ocr-racunov", en: "/en/invoice-ocr-slovenia" },
 });
