@@ -38,7 +38,7 @@ export function LogoWordmark({ className = "" }: { className?: string }) {
     <span className={`inline-flex h-8 min-w-0 items-center ${className}`}>
       <Image
         src="/logo.svg"
-        alt="Slikaj Račun"
+        alt="Pošlji račun OCR"
         width={190}
         height={40}
         priority
