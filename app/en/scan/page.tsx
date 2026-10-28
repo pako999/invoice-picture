@@ -300,7 +300,10 @@ export default function ScanPage() {
       {showLimitModal && <FreeLimitModal onClose={() => setShowLimitModal(false)} />}
       {ocrLimit && <OcrLimitUpgradeModal locale="en" plan={ocrLimit.plan} message={ocrLimit.message} originalSent={ocrLimit.originalSent} onClose={() => setOcrLimit(null)} />}
 
-      <div className="mb-2 flex items-center gap-3">\n        <Logo size={36} />\n        <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white">Send invoice</h1>\n      </div>
+      <div className="mb-2 flex items-center gap-3">
+        <Logo size={36} />
+        <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white">Send invoice</h1>
+      </div>
       <p className="text-gray-500 dark:text-slate-400 mb-6">
         Photograph or upload an invoice (image or PDF) and send it in one click.
       </p>
