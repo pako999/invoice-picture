@@ -4,7 +4,7 @@ import { Camera, Mail, Archive, Smartphone, Shield, Zap, Clock, FileCheck, Users
 import { pageMetadata } from "@/lib/seo";
 
 export const metadata = pageMetadata({
-  title: "Features",
+  title: "Invoice OCR app features",
   description:
     "One click to send an invoice, unlimited photographs, archive with preview, real-time status, secure Clerk authentication. Everything you need for fast bookkeeping.",
   slug: "funkcionalnosti",
