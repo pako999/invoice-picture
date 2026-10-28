@@ -1,3 +1,5 @@
+import Image from "next/image";
+
 export function Logo({ size = 32 }: { size?: number }) {
   return (
     <svg
@@ -33,11 +35,23 @@ export function Logo({ size = 32 }: { size?: number }) {
 
 export function LogoWordmark({ className = "" }: { className?: string }) {
   return (
-    <span className={`inline-flex items-center gap-2 ${className}`}>
-      <Logo size={28} />
-      <span className="font-extrabold text-gray-900 dark:text-white tracking-tight">
-        Slikaj <span className="text-blue-600 dark:text-blue-400">Račun</span>
-      </span>
+    <span className={`inline-flex h-8 min-w-0 items-center ${className}`}>
+      <Image
+        src="/logo.svg"
+        alt="Slikaj Račun"
+        width={160}
+        height={40}
+        priority
+        className="block h-8 w-auto max-w-full dark:hidden"
+      />
+      <Image
+        src="/logo-dark.svg"
+        alt=""
+        aria-hidden="true"
+        width={160}
+        height={40}
+        className="hidden h-8 w-auto max-w-full dark:block"
+      />
     </span>
   );
 }
