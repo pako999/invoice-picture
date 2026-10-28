@@ -5,7 +5,7 @@ import { pageMetadata } from "@/lib/seo";
 import { posts } from "@/lib/blog";
 
 export const metadata = pageMetadata({
-  title: "Blog: skeniranje računov, OCR in PDF vodniki",
+  title: "OCR računov: vodniki za obdelavo in skeniranje",
   description:
     "Praktični vodniki za skeniranje računov s telefonom, OCR, razdelitev PDF-ja in pretvorbo računa v XML eSLOG. Navodila za podjetnike in računovodstva.",
   slug: "blog",
