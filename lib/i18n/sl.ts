@@ -60,9 +60,9 @@ const sl = {
     upgrade: "Nadgradi naročnino",
   },
   home: {
-    metaTitle: "OCR računov in skeniranje računov | Slikaj Račun",
+    metaTitle: "OCR obdelava računov in skeniranje | Slikaj Račun",
     metaDescription:
-      "Skenirajte račune s telefonom ali naložite PDF. AI OCR prebere podatke, razdeli več računov in omogoča pregled ter izvoz XML eSLOG ali UBL za računovodstvo.",
+      "Obdelajte prejete račune z AI OCR. Fotografirajte račun ali naložite PDF, preverite prepoznane podatke in jih pripravite za UBL, eSLOG ali računovodski program.",
     heroBadge: "Za slovenske podjetnike",
     heroTitle1: "Pošlji račun v računovodski program",
     heroTitle2: "z enim klikom",
