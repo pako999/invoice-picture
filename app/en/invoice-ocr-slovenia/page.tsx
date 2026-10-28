@@ -4,8 +4,8 @@ import { CheckCircle2, FileSearch, Languages, ShieldCheck, Workflow, ArrowRight 
 import { pageMetadata } from "@/lib/seo";
 
 export const metadata = pageMetadata({
-  title: "Invoice OCR in Slovenia: AI data extraction for invoices",
-  description: "Invoice OCR for Slovenian businesses and accounting firms. Extract invoice data from PDF or images, validate VAT, IBAN and totals, then export via UBL, eSLOG or API.",
+  title: "Invoice OCR processing for businesses",
+  description: "Automate incoming invoice processing with AI OCR. Upload a PDF or photo, validate VAT, IBAN and totals, then prepare data for UBL, eSLOG or API.",
   slug: "invoice-ocr-slovenia",
   locale: "en",
   altPaths: { sl: "/ocr-racunov", en: "/en/invoice-ocr-slovenia" },
