@@ -7,7 +7,7 @@ import { HelpCircle } from "lucide-react";
 import { pageMetadata } from "@/lib/seo";
 
 export const metadata = pageMetadata({
-  title: "OCR in skeniranje računov: pogosta vprašanja",
+  title: "OCR obdelava računov: pogosta vprašanja",
   description: "15 odgovorov na najpogostejša vprašanja: kako deluje aplikacija, podprti programi, varnost podatkov, cena, OCR obdelava, podprti formati, odpoved.",
   slug: "pogosta-vprasanja",
 });
