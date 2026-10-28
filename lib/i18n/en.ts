@@ -60,9 +60,9 @@ const en: Dict = {
     upgrade: "Upgrade subscription",
   },
   home: {
-    metaTitle: "Invoice OCR and Scanning in Slovenia",
+    metaTitle: "Invoice OCR & Processing App | Slikaj Račun",
     metaDescription:
-      "Scan invoices with your phone or upload a PDF. AI extracts invoice fields, splits multi-invoice PDFs and supports review, eSLOG and UBL exports for accounting.",
+      "Process incoming invoices with AI OCR. Upload a PDF or photo, review extracted details and prepare data for UBL, eSLOG or your accounting workflow.",
     heroBadge: "For Slovenian businesses",
     heroTitle1: "Send invoices to your accounting software",
     heroTitle2: "in one click",
