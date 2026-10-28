@@ -35,14 +35,14 @@ export function Logo({ size = 32 }: { size?: number }) {
 
 export function LogoWordmark({ className = "" }: { className?: string }) {
   return (
-    <span className={`inline-flex h-8 min-w-0 items-center ${className}`}>
+    <span className={`inline-flex h-10 min-w-0 items-center ${className}`}>
       <Image
         src="/logo.svg"
         alt="Pošlji račun OCR"
         width={190}
         height={40}
         priority
-        className="block h-8 w-auto max-w-full dark:hidden"
+        className="block h-10 w-auto max-w-full dark:hidden"
       />
       <Image
         src="/logo-dark.svg"
@@ -50,7 +50,7 @@ export function LogoWordmark({ className = "" }: { className?: string }) {
         aria-hidden="true"
         width={190}
         height={40}
-        className="hidden h-8 w-auto max-w-full dark:block"
+        className="hidden h-10 w-auto max-w-full dark:block"
       />
     </span>
   );
