@@ -5,7 +5,7 @@ import { Camera, Mail, Archive, Smartphone, Shield, Zap, Clock, FileCheck, Users
 import { pageMetadata } from "@/lib/seo";
 
 export const metadata = pageMetadata({
-  title: "Funkcionalnosti",
+  title: "Funkcionalnosti OCR aplikacije za račune",
   description: "En klik za pošiljanje računa, neomejeno fotografij, arhiv s predogledom, status v realnem času, varna Clerk avtentikacija. Vse, kar potrebujete za hitro knjiženje.",
   slug: "funkcionalnosti",
 });
