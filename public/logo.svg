@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 380 80" width="380" height="80" role="img" aria-label="SlikajRačun">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 380 80" width="380" height="80" role="img" aria-label="Pošlji račun">
   <defs>
     <linearGradient id="brand" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
       <stop offset="0%" stop-color="#2563EB"/>
@@ -24,7 +24,7 @@
 
   <!-- Wordmark -->
   <g transform="translate(92 0)">
-    <text x="0" y="54" class="word" font-size="36" fill="#0F172A">Slikaj</text>
-    <text x="118" y="54" class="word" font-size="36" fill="#2563EB">Račun</text>
+    <text x="0" y="54" class="word" font-size="36" fill="#0F172A">Pošlji</text>
+    <text x="127" y="54" class="word" font-size="36" fill="#2563EB">račun</text>
   </g>
 </svg>
