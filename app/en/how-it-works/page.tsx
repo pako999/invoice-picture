@@ -4,7 +4,7 @@ import { Settings, Camera, Send, FileText, Mail, CheckCircle } from "lucide-reac
 import { pageMetadata } from "@/lib/seo";
 
 export const metadata = pageMetadata({
-  title: "How it works",
+  title: "How invoice OCR processing works",
   description:
     "Three simple steps to automated invoice processing: configure your OCR email, photograph the invoice, send in one tap. Verified with Minimax, Birokrat, Pantheon.",
   slug: "kako-deluje",
