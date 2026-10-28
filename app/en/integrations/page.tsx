@@ -5,7 +5,7 @@ import { Check, ExternalLink, AlertCircle } from "lucide-react";
 import { pageMetadata } from "@/lib/seo";
 
 export const metadata = pageMetadata({
-  title: "Invoice OCR & Accounting Integrations in Slovenia",
+  title: "Invoice OCR and accounting integrations",
   description: "Connect invoice OCR with accounting workflows in Slovenia. Forward original PDFs or deliver approved data through UBL, eSLOG or JSON API for Minimax, Birokrat, Pantheon and other systems.",
   slug: "integracije",
   locale: "en",
