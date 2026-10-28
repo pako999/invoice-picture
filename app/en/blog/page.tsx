@@ -5,7 +5,7 @@ import { pageMetadata } from "@/lib/seo";
 import { posts } from "@/lib/blog";
 
 export const metadata = pageMetadata({
-  title: "Blog: invoice scanning, OCR and PDF guides",
+  title: "Invoice OCR guides: processing and scanning",
   description:
     "Practical guides to phone invoice scanning, OCR review, multi-invoice PDF splitting, eSLOG XML exports and accounting imports in Slovenia.",
   slug: "blog",
