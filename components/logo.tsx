@@ -39,7 +39,7 @@ export function LogoWordmark({ className = "" }: { className?: string }) {
       <Image
         src="/logo.svg"
         alt="Slikaj Račun"
-        width={160}
+        width={190}
         height={40}
         priority
         className="block h-8 w-auto max-w-full dark:hidden"
@@ -48,7 +48,7 @@ export function LogoWordmark({ className = "" }: { className?: string }) {
         src="/logo-dark.svg"
         alt=""
         aria-hidden="true"
-        width={160}
+        width={190}
         height={40}
         className="hidden h-8 w-auto max-w-full dark:block"
       />
