@@ -76,7 +76,7 @@ export default {
         const body = await request.json().catch(() => ({})) as Record<string, unknown>;
         const jobId = Number(body.jobId);
         if (!Number.isSafeInteger(jobId) || jobId <= 0) return json({ error: "Invalid job" }, 400);
-        return drain({ jobId, ownerId }, 60_000);
+        return drain({ jobId, ownerId }, 240_000);
       }
       if ((request.method === "GET" || request.method === "POST") && url.pathname === "/work") {
         console.log(`[bulkpdf] /work ${request.method} trigger=${Boolean(request.headers.get("x-neon-trigger-invocation-id"))}`);
@@ -130,7 +130,7 @@ async function drain(scope: { jobId?: number; ownerId?: string }, budgetMs: numb
   // Invocation-local only: reuse the parsed original across split chunks.
   const sourceCache: { key?: string; pdf?: PDFDocument } = {};
   let steps = 0;
-  for (; steps < 100 && Date.now() < deadline; steps++) {
+  for (; steps < 500 && Date.now() < deadline; steps++) {
     const started = Date.now();
     const response = await work(scope, sourceCache);
     const body = await response.json() as Record<string, any>;
@@ -139,8 +139,9 @@ async function drain(scope: { jobId?: number; ownerId?: string }, budgetMs: numb
     const result = body.result || {};
     if (result.retrying || result.success === false) return json({ ...body, steps });
     if (result.batchPending || result.batchSubmitted || (result.batch && result.pages === 0)) {
-      // Leave long provider batches to the scheduled recovery run; no idle DB loop.
-      return json({ ...body, steps, providerPending: true });
+      // Poll only this user's active job while its provider batch is pending.
+      if (Date.now() + 30_000 >= deadline) return json({ ...body, steps, providerPending: true });
+      await new Promise((resolve) => setTimeout(resolve, 30_000));
     }
   }
   return json({ ok: true, steps, continuation: true });
