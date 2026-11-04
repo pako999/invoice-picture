@@ -50,6 +50,15 @@ export async function POST(req:Request){
   // request-per-minute limit. The worker may still send the historical batch
   // size, so clamp here instead of rejecting its request.
   const groups=await sql`SELECT * FROM "bulkInvoiceGroups" WHERE "jobId"=${data.jobId} AND "status" IN ('pending','reprocess') ORDER BY "groupIndex" LIMIT ${Math.min(data.batchSize,1)}`;
+  if(groups.length===0){
+    const [progress]=await sql`SELECT count(*)::int AS total FROM "bulkInvoiceGroups" WHERE "jobId"=${data.jobId} AND "status" <> 'deleted'`;
+    const total=Number(progress?.total??0);
+    if(total===0){
+      const message="Bulk job stopped because no invoice groups remain to process.";
+      await sql`UPDATE "bulkInvoiceJobs" SET "status"='failed',"stage"='failed',"lockedAt"=NULL,"lastError"=${message},"completedAt"=now(),"updatedAt"=now() WHERE "id"=${data.jobId} AND "status"='processing' AND "stage"='extract'`;
+      return NextResponse.json({success:false,done:true,error:message,processed:0,total:0});
+    }
+  }
   const documentUrls=new Map((data.documents??[]).map(item=>[item.groupIndex,item.documentUrl]));
   if(deliveryMode==="split_pdf_email"){
     for(const group of groups as any[]){
