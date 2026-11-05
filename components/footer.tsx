@@ -172,7 +172,7 @@ export function Footer() {
             </div>
 
             <div>
-              <h4 className="text-white font-bold text-sm mb-4 tracking-wide">{t.productTitle}</h4>
+              <h3 className="text-white font-bold text-sm mb-4 tracking-wide">{t.productTitle}</h3>
               <ul className="flex flex-col gap-3">
                 {productLinks.map((l) => (
                   <li key={`${l.label}-${l.href}`}>
@@ -183,7 +183,7 @@ export function Footer() {
             </div>
 
             <div>
-              <h4 className="text-white font-bold text-sm mb-4 tracking-wide">{t.helpTitle}</h4>
+              <h3 className="text-white font-bold text-sm mb-4 tracking-wide">{t.helpTitle}</h3>
               <ul className="flex flex-col gap-3">
                 {helpLinks.map((l) => (
                   <li key={l.label}>
@@ -194,7 +194,7 @@ export function Footer() {
             </div>
 
             <div>
-              <h4 className="text-white font-bold text-sm mb-4 tracking-wide">{t.legalTitle}</h4>
+              <h3 className="text-white font-bold text-sm mb-4 tracking-wide">{t.legalTitle}</h3>
               <ul className="flex flex-col gap-3">
                 {legalLinks.map((l) => (
                   <li key={l.label}>

@@ -14,7 +14,7 @@ const articleJsonLd = {
   description: post.descriptionEn,
   image: post.coverImage,
   datePublished: post.publishedAt,
-  dateModified: post.publishedAt,
+  dateModified: post.updatedAt ?? post.publishedAt,
   inLanguage: "en",
   keywords: post.keywordEn,
   author: { "@type": "Organization", name: "Slikaj Račun" },

@@ -70,7 +70,7 @@ export default function InvoiceOcrSloveniaPage() {
           <h1 className="text-4xl font-black tracking-tight text-slate-950 sm:text-6xl">Invoice OCR and data extraction for Slovenian businesses</h1>
           <p className="mt-6 text-xl leading-relaxed text-slate-600">Upload an invoice PDF or image. Slikaj Račun extracts accounting fields, validates totals, VAT and IBAN, and prepares the document for approval or automated downstream processing. The OCR workflow supports <strong>Slovenian and English invoices</strong>.</p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <Link href="/en/sign-up" className="inline-flex items-center gap-2 rounded-xl bg-slate-950 px-6 py-3 font-bold text-white hover:bg-slate-800">Try invoice OCR <ArrowRight className="h-4 w-4" /></Link>
+            <Link href="/sign-up" className="inline-flex items-center gap-2 rounded-xl bg-slate-950 px-6 py-3 font-bold text-white hover:bg-slate-800">Try invoice OCR <ArrowRight className="h-4 w-4" /></Link>
             <Link href="/en/integrations" className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-6 py-3 font-bold text-slate-900 hover:bg-slate-50">Accounting integrations</Link>
           </div>
         </div>
@@ -121,7 +121,7 @@ export default function InvoiceOcrSloveniaPage() {
         <div className="not-prose mt-12 rounded-2xl bg-blue-700 p-8 text-white">
           <h2 className="text-2xl font-black">Test OCR on one of your invoices</h2>
           <p className="mt-2 text-blue-100">Upload a PDF or image and review the extracted fields before sending data to your accounting workflow.</p>
-          <Link href="/en/sign-up" className="mt-5 inline-flex items-center gap-2 rounded-xl bg-white px-5 py-3 font-bold text-blue-800">Create an account <ArrowRight className="h-4 w-4" /></Link>
+          <Link href="/sign-up" className="mt-5 inline-flex items-center gap-2 rounded-xl bg-white px-5 py-3 font-bold text-blue-800">Create an account <ArrowRight className="h-4 w-4" /></Link>
         </div>
       </article>
       <OcrLearningLinks locale="en" />

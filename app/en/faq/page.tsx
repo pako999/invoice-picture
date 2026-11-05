@@ -44,7 +44,7 @@ export default function FAQ() {
               <CardHeader>
                 <div className="flex gap-3">
                   <HelpCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-1" />
-                  <CardTitle className="text-lg">{faq.question}</CardTitle>
+                  <CardTitle as="h2" className="text-lg">{faq.question}</CardTitle>
                 </div>
               </CardHeader>
               <CardContent>

@@ -7,7 +7,7 @@ import Link from "next/link";
 import { AlertTriangle, Check, CheckCircle2, FileText, Loader2, Mail, RefreshCw, Upload, XCircle } from "lucide-react";
 import { flowItems, flowPollDelay, isOcrReady, isOcrWorking, shouldPollFlow, type FlowDelivery, type FlowSnapshot, type FlowUpload } from "@/lib/invoice-processing-flow";
 
-const InvoiceEditor = dynamic(() => import("@/app/invoice-review/[id]/review-client").then((module) => module.InvoiceReviewClient), {
+const InvoiceEditor = dynamic(() => import("@/app/(sl)/invoice-review/[id]/review-client").then((module) => module.InvoiceReviewClient), {
   loading: () => <p className="p-8 text-center text-slate-500">…</p>,
 });
 

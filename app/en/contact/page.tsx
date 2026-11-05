@@ -50,7 +50,7 @@ export default function Contact() {
               <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mx-auto mb-3">
                 <Mail className="w-6 h-6 text-blue-600" />
               </div>
-              <CardTitle className="text-lg">Email support</CardTitle>
+              <CardTitle as="h2" className="text-lg">Email support</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-slate-600 mb-3">Write to us at</p>
@@ -66,7 +66,7 @@ export default function Contact() {
               <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mx-auto mb-3">
                 <MessageSquare className="w-6 h-6 text-green-600" />
               </div>
-              <CardTitle className="text-lg">Phone support</CardTitle>
+              <CardTitle as="h2" className="text-lg">Phone support</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-slate-600 mb-3">Call us</p>
@@ -82,7 +82,7 @@ export default function Contact() {
               <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mx-auto mb-3">
                 <HelpCircle className="w-6 h-6 text-purple-600" />
               </div>
-              <CardTitle className="text-lg">Help &amp; FAQ</CardTitle>
+              <CardTitle as="h2" className="text-lg">Help &amp; FAQ</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-slate-600 mb-3">Browse common questions</p>
@@ -96,7 +96,7 @@ export default function Contact() {
 
         <Card className="border-slate-200">
           <CardHeader>
-            <CardTitle className="text-2xl">Send us a message</CardTitle>
+            <CardTitle as="h2" className="text-2xl">Send us a message</CardTitle>
           </CardHeader>
           <CardContent>
             {status === "sent" ? (

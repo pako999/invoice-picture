@@ -100,7 +100,7 @@ export default function HomeEn() {
                   <CardHeader>
                     <div className="flex items-center justify-between mb-3">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={p.logo} alt={p.name} className="h-8 object-contain" />
+                      <img src={p.logo} alt={p.name} width={120} height={32} loading="lazy" decoding="async" className="h-8 w-auto object-contain" />
                       <ExternalLink className="w-4 h-4 text-slate-400" />
                     </div>
                     <CardTitle className="flex items-center justify-between">

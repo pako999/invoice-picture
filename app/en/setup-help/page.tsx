@@ -31,7 +31,7 @@ export default function SetupHelp() {
                 <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
                   <Wrench className="w-5 h-5 text-blue-600" />
                 </div>
-                <CardTitle className="text-xl">Help with the basics</CardTitle>
+                <CardTitle as="h2" className="text-xl">Help with the basics</CardTitle>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -57,7 +57,7 @@ export default function SetupHelp() {
                 <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
                   <BookOpen className="w-5 h-5 text-green-600" />
                 </div>
-                <CardTitle className="text-xl">Per-program guides</CardTitle>
+                <CardTitle as="h2" className="text-xl">Per-program guides</CardTitle>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -98,7 +98,7 @@ export default function SetupHelp() {
                 <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
                   <Video className="w-5 h-5 text-purple-600" />
                 </div>
-                <CardTitle className="text-xl">Video tutorials</CardTitle>
+                <CardTitle as="h2" className="text-xl">Video tutorials</CardTitle>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -120,7 +120,7 @@ export default function SetupHelp() {
                 <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
                   <Phone className="w-5 h-5 text-orange-600" />
                 </div>
-                <CardTitle className="text-xl">Personal support</CardTitle>
+                <CardTitle as="h2" className="text-xl">Personal support</CardTitle>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
