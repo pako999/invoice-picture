@@ -13,7 +13,7 @@ export async function acquireMistralSlot(signal?: AbortSignal | null) {
     throw new Error("DATABASE_URL is not set");
   }
   const sql = sqlClient ??= neon(process.env.DATABASE_URL);
-  const token = randomUUID(), deadline = Date.now() + 20_000;
+  const token = randomUUID(), deadline = Date.now() + 120_000;
   do {
     signal?.throwIfAborted();
     const rows = await sql`
@@ -25,8 +25,9 @@ export async function acquireMistralSlot(signal?: AbortSignal | null) {
       const slot = Number(rows[0].slot);
       return async () => { await sql`UPDATE "invoiceProviderSlots" SET "expiresAt"='1970-01-01',"token"=NULL WHERE "slot"=${slot} AND "token"=${token}`; };
     }
-    // Only active requests wait; there is no resident worker or idle polling.
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    // Contended requests wait in place with jitter; no provider request is sent
+    // until a slot is acquired, and idle systems never poll this table.
+    await new Promise(resolve => setTimeout(resolve, 2_000 + Math.floor(Math.random() * 1_000)));
   } while (Date.now() < deadline);
   throw new ProviderCapacityError();
 }
