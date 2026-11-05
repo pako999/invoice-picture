@@ -41,7 +41,7 @@ test("background failures are logged without breaking the accepted upload", asyn
   assert.equal(errors.length, 1);
 });
 
-function worker(responses: unknown[], overrides: Record<string, unknown> = {}) {
+function worker(responses: unknown[], overrides: Record<string, unknown> = {}, globals: Record<string, unknown> = {}) {
   const calls: Array<{ path: string; body: any }> = [];
   const mod = loadModule("neon/functions/bulkpdf/index.ts", {
     "node:crypto": {},
@@ -63,6 +63,7 @@ function worker(responses: unknown[], overrides: Record<string, unknown> = {}) {
       if (!responses.length) throw new Error("Unexpected extra request");
       return Response.json(responses.shift());
     },
+    ...globals,
   });
   return { api: mod.default, calls };
 }
@@ -89,11 +90,21 @@ test("scheduled worker drains document batches and stops when both queues are id
   assert.deepEqual(calls[1].body,{documentId:231});
 });
 
-test("bulk run yields pending provider batch instead of busy-polling the database", async () => {
-  const { api, calls } = worker([{ job: { id: 9, stage: "ocr", objectKey: "bulk/owner-a/a.pdf", ocrNextPage: 0 } }, { success: true, batch: true, pages: 0, status: "RUNNING" }]);
+test("bulk run polls a pending provider batch every 30 seconds, then yields before its budget ends", async () => {
+  // Fake clock: setTimeout advances time instead of waiting.
+  let now = 1_000_000;
+  const sleeps: number[] = [];
+  class FakeDate extends Date { static now() { return now; } }
+  const setTimeout = (resolve: () => void, ms: number) => { sleeps.push(ms); now += ms; resolve(); };
+  const job = { job: { id: 9, stage: "ocr", objectKey: "bulk/owner-a/a.pdf", ocrNextPage: 0 } };
+  const pending = { success: true, batch: true, pages: 0, status: "RUNNING" };
+  const { api, calls } = worker(Array.from({ length: 8 }, () => [job, pending]).flat(), {}, { Date: FakeDate, setTimeout });
   const result = await api.fetch(new Request("https://worker/run", { method: "POST", headers: { Authorization: "Bearer valid" }, body: '{"jobId":9}' }));
   assert.equal((await result.json()).providerPending, true);
-  assert.equal(calls.length, 2);
+  // 240 s budget: polls at 0, 30, ..., 210 s and returns instead of sleeping past the deadline.
+  assert.deepEqual(sleeps, Array(7).fill(30_000));
+  assert.equal(calls.length, 16);
+  assert.ok(calls.every((call, index) => call.path === (index % 2 ? "/api/internal/bulk/ocr" : "/api/internal/bulk/next")));
 });
 
 test("bulk run advances completed real-time OCR immediately instead of waiting for a schedule", async () => {
