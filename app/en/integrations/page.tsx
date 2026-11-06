@@ -6,7 +6,7 @@ import { pageMetadata } from "@/lib/seo";
 
 export const metadata = pageMetadata({
   title: "Invoice OCR and accounting integrations",
-  description: "Connect invoice OCR with accounting workflows in Slovenia. Forward original PDFs or deliver approved data through UBL, eSLOG or JSON API for Minimax, Birokrat, Pantheon and other systems.",
+  description: "Connect invoice OCR with accounting in Slovenia. Forward original PDFs or send approved data via UBL, eSLOG or JSON API to Minimax, Birokrat and Pantheon.",
   slug: "integracije",
   locale: "en",
 });
@@ -56,7 +56,7 @@ export default function Integrations() {
               <Card className="h-full border-slate-200 transition-shadow hover:shadow-lg">
                 <CardHeader>
                   <div className="mb-3 flex items-center justify-between">
-                    {p.logo ? <img src={p.logo} alt={`${p.name} accounting software`} className="h-10 object-contain" /> : <div className="flex h-10 items-center rounded-lg bg-slate-100 px-3 text-sm font-black text-slate-700">SAOP</div>}
+                    {p.logo ? <img src={p.logo} alt={`${p.name} accounting software`} width={150} height={40} loading="lazy" decoding="async" className="h-10 w-auto object-contain" /> : <div className="flex h-10 items-center rounded-lg bg-slate-100 px-3 text-sm font-black text-slate-700">SAOP</div>}
                     <ExternalLink className="h-4 w-4 text-slate-400" />
                   </div>
                   <CardTitle className="flex items-center justify-between text-xl">{p.name}<Check className="h-5 w-5 text-green-600" /></CardTitle>

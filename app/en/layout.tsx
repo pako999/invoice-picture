@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import { getDict } from "@/lib/i18n";
 import { SITE_URL } from "@/lib/i18n/config";
-import { LangEffect } from "./lang-effect";
+import { SiteShell } from "@/components/site-shell";
 
 const enDict = getDict("en");
 
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: {
     default: enDict.home.metaTitle,
     template: "%s — Slikaj Račun",
@@ -43,13 +44,24 @@ export const metadata: Metadata = {
     title: enDict.home.metaTitle,
     description: enDict.home.metaDescription,
   },
+  authors: [{ name: "Sport Group d.o.o." }],
+  creator: "Sport Group d.o.o.",
+  publisher: "Sport Group d.o.o.",
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
+  },
+  manifest: "/site.webmanifest",
+  category: "business",
 };
 
 export default function EnLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <>
-      <LangEffect />
-      {children}
-    </>
-  );
+  return <SiteShell lang="en">{children}</SiteShell>;
 }

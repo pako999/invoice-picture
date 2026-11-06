@@ -58,7 +58,7 @@ export default function Features() {
                 <div className={`w-12 h-12 rounded-lg flex items-center justify-center mb-4 ${colorClasses[f.color]}`}>
                   <f.Icon className="w-6 h-6" />
                 </div>
-                <CardTitle>{f.title}</CardTitle>
+                <CardTitle as="h2">{f.title}</CardTitle>
                 <CardDescription className="mt-3">{f.desc}</CardDescription>
               </CardHeader>
             </Card>

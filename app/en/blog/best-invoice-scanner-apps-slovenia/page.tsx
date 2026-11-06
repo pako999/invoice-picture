@@ -110,7 +110,7 @@ export default function Page() {
           <div className="not-prose mt-10 rounded-2xl bg-slate-950 p-7 text-white">
             <h2 className="text-2xl font-black">Test OCR on a real invoice</h2>
             <p className="mt-2 text-slate-300">Instead of comparing scanner apps only, upload an invoice and review which accounting fields can be extracted and validated.</p>
-            <Link href="/en/sign-up" className="mt-5 inline-flex rounded-xl bg-white px-5 py-3 font-bold text-slate-950">Try Slikaj Račun</Link>
+            <Link href="/sign-up" className="mt-5 inline-flex rounded-xl bg-white px-5 py-3 font-bold text-slate-950">Try Slikaj Račun</Link>
           </div>
         </div>
 

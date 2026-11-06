@@ -5,7 +5,7 @@ import robots from "../app/robots";
 import { posts } from "../lib/blog";
 import { ocrGuides } from "../lib/ocr-guides";
 import { blogMetadata, privateMetadata, SITE_URL } from "../lib/seo";
-import { metadata as slPricing } from "../app/cenik/layout";
+import { metadata as slPricing } from "../app/(sl)/cenik/layout";
 import { metadata as enPricing } from "../app/en/pricing/layout";
 
 test("published blog URLs are unique and discoverable in both languages", () => {

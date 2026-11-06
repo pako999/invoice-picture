@@ -33,7 +33,7 @@ export default function HowItWorks() {
                   <Settings className="w-8 h-8 text-blue-600" />
                 </div>
                 <div>
-                  <CardTitle className="text-2xl">1. Set up your email once</CardTitle>
+                  <CardTitle as="h2" className="text-2xl">1. Set up your email once</CardTitle>
                   <CardDescription>One-time configuration</CardDescription>
                 </div>
               </div>
@@ -58,7 +58,7 @@ export default function HowItWorks() {
                   <Camera className="w-8 h-8 text-green-600" />
                 </div>
                 <div>
-                  <CardTitle className="text-2xl">2. Photograph the invoice</CardTitle>
+                  <CardTitle as="h2" className="text-2xl">2. Photograph the invoice</CardTitle>
                   <CardDescription>Snap the paper document</CardDescription>
                 </div>
               </div>
@@ -86,7 +86,7 @@ export default function HowItWorks() {
                   <Send className="w-8 h-8 text-purple-600" />
                 </div>
                 <div>
-                  <CardTitle className="text-2xl">3. One click — sent</CardTitle>
+                  <CardTitle as="h2" className="text-2xl">3. One click — sent</CardTitle>
                   <CardDescription>Push the invoice to your accounting program</CardDescription>
                 </div>
               </div>

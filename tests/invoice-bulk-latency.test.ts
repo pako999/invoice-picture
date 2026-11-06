@@ -40,16 +40,19 @@ function load(path: string, modules: Record<string, unknown>, globals: Record<st
   return exports;
 }
 
-test("small packages use real-time and bulk remains configurable, including batch-only rollback", () => {
+test("bulk uses the Batch API by default and small packages can opt into real-time", () => {
   const saved = process.env.MISTRAL_BULK_REALTIME_MAX_PAGES;
   try {
     delete process.env.MISTRAL_BULK_REALTIME_MAX_PAGES;
+    for (const count of [1, 25, 32, 50, 500]) assert.equal(useRealtimeBulkProcessing(count), false);
+    process.env.MISTRAL_BULK_REALTIME_MAX_PAGES = "50";
     for (const count of [1, 25, 32, 50]) assert.equal(useRealtimeBulkProcessing(count), true);
     for (const count of [0, -1, 51, 500, NaN]) assert.equal(useRealtimeBulkProcessing(count), false);
+    assert.equal(useRealtimeBulkProcessing(1, true), false);
     process.env.MISTRAL_BULK_REALTIME_MAX_PAGES = "0";
     assert.equal(useRealtimeBulkProcessing(1), false);
     process.env.MISTRAL_BULK_REALTIME_MAX_PAGES = "invalid";
-    assert.equal(useRealtimeBulkProcessing(32), true);
+    assert.equal(useRealtimeBulkProcessing(32), false);
   } finally {
     if (saved === undefined) delete process.env.MISTRAL_BULK_REALTIME_MAX_PAGES;
     else process.env.MISTRAL_BULK_REALTIME_MAX_PAGES = saved;

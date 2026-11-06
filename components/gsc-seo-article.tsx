@@ -128,7 +128,7 @@ export function GscSeoArticle({ topic, locale }: { topic: Topic; locale: Locale 
           <div className="not-prose mt-10 rounded-2xl bg-slate-950 p-7 text-white">
             <h2 className="text-2xl font-bold">{locale === "sl" ? "Želite hitrejši zajem prejetih računov?" : "Want a faster incoming-invoice workflow?"}</h2>
             <p className="mt-2 text-slate-300">{locale === "sl" ? "Z enim računom upravljajte več podjetij, naložite tudi 100+ dokumentov in jih pošljite na prave OCR emaile." : "Manage multiple companies from one account, upload 100+ documents and route them to the correct OCR inboxes."}</p>
-            <Link href={locale === "sl" ? "/sign-up" : "/en/sign-up"} className="mt-5 inline-flex rounded-xl bg-white px-5 py-3 font-semibold text-slate-950">
+            <Link href="/sign-up" className="mt-5 inline-flex rounded-xl bg-white px-5 py-3 font-semibold text-slate-950">
               {locale === "sl" ? "Preizkusi Slikaj Račun" : "Try Slikaj Račun"}
             </Link>
           </div>
