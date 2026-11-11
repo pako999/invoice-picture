@@ -2,6 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Settings, Camera, Send, FileText, Mail, CheckCircle } from "lucide-react";
 import { pageMetadata } from "@/lib/seo";
+import { VideoGuide } from "@/components/video-guide";
 
 export const metadata = pageMetadata({
   title: "How invoice OCR processing works",
@@ -24,6 +25,8 @@ export default function HowItWorks() {
             The app is designed for fast, simple use. Follow these steps to get started.
           </p>
         </div>
+
+        <VideoGuide locale="en" className="mb-12" />
 
         <div className="space-y-12">
           <Card className="border-slate-200">

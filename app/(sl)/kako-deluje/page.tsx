@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Camera, FileSearch, ShieldCheck, Send, FileText, CheckCircle } from "lucide-react";
 import { pageMetadata } from "@/lib/seo";
+import { VideoGuide } from "@/components/video-guide";
 
 export const metadata = pageMetadata({
   title: "Kako deluje OCR obdelava računov",
@@ -19,6 +20,8 @@ export default function KakoDeluje() {
           <h1 className="mb-6 text-4xl font-bold tracking-tight sm:text-5xl">Od PDF-ja ali fotografije do preverjenih podatkov računa</h1>
           <p className="mx-auto max-w-3xl text-xl text-slate-600">Slikaj Račun lahko deluje kot preprost pošiljatelj originalnega dokumenta ali kot AI OCR workflow, ki račun prebere, validira in pripravi za nadaljnjo dostavo.</p>
         </div>
+
+        <VideoGuide locale="sl" className="mb-12" />
 
         <div className="space-y-10">
           <StepCard number="1" icon={<Camera className="h-8 w-8 text-blue-600" />} title="Naložite ali fotografirajte račun" description="PDF, slika ali strukturiran dokument">
