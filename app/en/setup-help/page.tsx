@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Wrench, BookOpen, Video, Phone } from "lucide-react";
+import { VideoGuide } from "@/components/video-guide";
 import { pageMetadata } from "@/lib/seo";
 
 export const metadata = pageMetadata({
@@ -102,15 +103,8 @@ export default function SetupHelp() {
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              <p className="text-slate-700">Watch our video tutorials that walk you through the whole process:</p>
-              <ul className="list-disc list-inside space-y-2 text-slate-700 ml-4">
-                <li>Getting started with the app (5 min)</li>
-                <li>Configuring the OCR email address (3 min)</li>
-                <li>Photographing and sending your first invoice (2 min)</li>
-                <li>Using the archive and send history (4 min)</li>
-                <li>Advanced PRO features (6 min)</li>
-              </ul>
-              <p className="text-sm text-slate-600 mt-4">Coming soon on our YouTube channel.</p>
+              <p className="text-slate-700">In under two minutes, the video guide walks you through the whole process: setting up a company and OCR email, sending an invoice, and reviewing and approving the data.</p>
+              <VideoGuide locale="en" heading={false} className="border-0 p-0 shadow-none sm:p-0" />
             </CardContent>
           </Card>
 

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Wrench, BookOpen, Video, Phone } from "lucide-react";
+import { VideoGuide } from "@/components/video-guide";
 
 import { pageMetadata } from "@/lib/seo";
 
@@ -103,15 +104,8 @@ export default function Pomoc() {
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              <p className="text-slate-700">Oglejte si naše video tutoriale, ki vas vodijo skozi celoten proces:</p>
-              <ul className="list-disc list-inside space-y-2 text-slate-700 ml-4">
-                <li>Kako začeti z aplikacijo (5 min)</li>
-                <li>Nastavitev OCR email naslova (3 min)</li>
-                <li>Fotografiranje in pošiljanje prvega računa (2 min)</li>
-                <li>Uporaba arhiva in zgodovina pošiljanj (4 min)</li>
-                <li>Napredne funkcije PRO paketa (6 min)</li>
-              </ul>
-              <p className="text-sm text-slate-600 mt-4">Kmalu na voljo na našem YouTube kanalu.</p>
+              <p className="text-slate-700">Video vodič vas v slabih dveh minutah vodi skozi celoten postopek: nastavitev podjetja in OCR e-maila, pošiljanje računa ter pregled in potrditev podatkov.</p>
+              <VideoGuide locale="sl" heading={false} className="border-0 p-0 shadow-none sm:p-0" />
             </CardContent>
           </Card>
 

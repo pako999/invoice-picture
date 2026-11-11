@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { VideoGuide } from "@/components/video-guide";
 
 type Locale = "sl" | "en";
 
@@ -184,7 +185,9 @@ export function UserGuideContent({ locale }: { locale: Locale }) {
         </div>
       </header>
 
-      <nav className="mt-12 rounded-3xl border border-blue-100 bg-white p-5 shadow-sm" aria-label={t.contents}>
+      <VideoGuide locale={locale} className="mt-12" />
+
+      <nav className="mt-10 rounded-3xl border border-blue-100 bg-white p-5 shadow-sm" aria-label={t.contents}>
         <p className="mb-3 text-xs font-black uppercase tracking-widest text-blue-600">{t.contents}</p>
         <div className="flex flex-wrap gap-2">{t.nav.map(([id, label]) => <a key={id} href={`#${id}`} className="rounded-full bg-slate-100 px-3 py-2 text-sm font-bold text-slate-700 hover:bg-blue-100 hover:text-blue-700">{label}</a>)}</div>
       </nav>
