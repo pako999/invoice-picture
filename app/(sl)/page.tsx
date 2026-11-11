@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { VideoGuide } from "@/components/video-guide";
 import { OcrLearningLinks } from "@/components/ocr-learning-links";
 import { HomeHero } from "@/components/home-hero";
 import { HomeBusinessHero } from "@/components/home-business-hero";
@@ -178,6 +179,8 @@ export default function Home() {
               </CardHeader>
             </Card>
           </div>
+
+          <VideoGuide locale="sl" className="mx-auto mt-12 max-w-5xl" />
         </div>
       </section>
 

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { VideoGuide } from "@/components/video-guide";
 import { OcrLearningLinks } from "@/components/ocr-learning-links";
 import { HomeHero } from "@/components/home-hero";
 import { PAID_PLANS, PLAN_CONFIGS } from "@/lib/plans";
@@ -177,6 +178,8 @@ export default function HomeEn() {
               </CardHeader>
             </Card>
           </div>
+
+          <VideoGuide locale="en" className="mx-auto mt-12 max-w-5xl" />
         </div>
       </section>
 
