@@ -62,7 +62,7 @@ export function VideoGuide({ locale = "sl", className = "", heading = true }: { 
         </div>
       </div>
       <div className={`mx-auto mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-slate-900 ${variant === "mobile" ? "max-w-[340px]" : "w-full"}`}>
-        <video key={variant} controls playsInline preload="none" poster={video.poster} width={video.width} height={video.height} className="block h-auto w-full">
+        <video key={variant} controls playsInline preload="metadata" poster={video.poster} width={video.width} height={video.height} className="block h-auto w-full">
           <source src={video.src} type="video/mp4" />
           {t.fallback}
         </video>
