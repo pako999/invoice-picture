@@ -1,22 +1,24 @@
 import type { BlogPost } from "@/lib/blog";
+import { invoiceSoftwareGuides } from "@/lib/guides-invoice-software";
 
 export type GuideSection = { title: string; paragraphs: string[]; items?: string[]; ordered?: boolean; table?: { headings: string[]; rows: string[][] } };
-export type GuideContent = { intro: string; sections: GuideSection[]; faq: [string, string][]; sources?: { label: string; href: string }[] };
+export type GuideContent = { intro: string; sections: GuideSection[]; faq: [string, string][]; sources?: { label: string; href: string }[]; related?: { label: string; href: string }[] };
 export type OcrGuide = { post: BlogPost; sl: GuideContent; en: GuideContent };
 
 export const ocrGuides: OcrGuide[] = [
+  ...invoiceSoftwareGuides,
   {
     post: {
-      id: "phone-invoice-scanning", publishedAt: "2026-10-21", updatedAt: "2026-10-21",
+      id: "phone-invoice-scanning", publishedAt: "2026-10-21", updatedAt: "2026-11-23",
       coverImage: "https://images.unsplash.com/photo-1450101499163-c8848c66ca85?auto=format&fit=crop&w=1200&q=70",
-      slug: "skeniranje-racunov-s-telefonom", keyword: "skeniranje računov s telefonom",
-      title: "Skeniranje računov s telefonom: od fotografije do OCR podatkov",
-      description: "Kako skenirati račun z iPhonom ali Androidom, izboljšati fotografijo, preveriti OCR podatke in poslati račun računovodji. Praktičen vodnik po korakih.",
+      slug: "skeniranje-racunov-s-telefonom", keyword: "skeniranje računov s telefonom, skeniranje dokumentov s telefonom",
+      title: "Skeniranje računov s telefonom (iPhone in Android) + OCR",
+      description: "Kako skenirati račun ali dokument s telefonom brez dodatne aplikacije: 6 korakov do ostrega posnetka, samodejno prebranih zneskov (OCR) in pošiljanja računovodji.",
       readingMinutes: 6, excerpt: "Fotografija računa je šele začetek. Preverite, kako iz telefona dobite berljiv dokument, preverjene podatke in račun za pravo podjetje.",
       coverAlt: "Priprava poslovnih dokumentov za zajem s telefonom",
-      slugEn: "scan-invoices-with-phone", keywordEn: "scan invoices with phone",
-      titleEn: "Scan Invoices With Your Phone: From Photo to OCR Data",
-      descriptionEn: "How to scan invoices on iPhone or Android, improve image quality, review OCR fields and send documents to accounting. A practical step-by-step workflow.",
+      slugEn: "scan-invoices-with-phone", keywordEn: "how to scan an invoice with phone",
+      titleEn: "How to Scan an Invoice With Your Phone (iPhone & Android)",
+      descriptionEn: "How to scan an invoice or receipt with your phone in 6 steps: get a sharp image, let OCR read totals and VAT, then send it straight to your accountant.",
       readingMinutesEn: 6, excerptEn: "Turn a phone photo into a readable invoice, reviewed accounting fields and a document delivered to the right company.",
       coverAltEn: "Business documents prepared for mobile invoice capture",
     },
@@ -36,6 +38,7 @@ export const ocrGuides: OcrGuide[] = [
         ["Ali lahko skeniram račun z več stranmi?", "Da. Ohranite vse strani istega računa. Če PDF vsebuje več različnih računov, uporabite pregled PDF paketov in preverite predlagane meje med dokumenti."],
         ["Ali fotografiranje pomeni, da je račun že poknjižen?", "Ne. Zajem, OCR, pregled, dostava in knjiženje so različni koraki. Stanje dostave preverite v aplikaciji, nadaljnjo obdelavo pa v računovodskem programu."],
       ],
+      related: [{ label: "Aplikacija za račune: slikaj in pošlji prejete račune", href: "/aplikacija-za-racune" }, { label: "Program za vodenje prejetih računov", href: "/blog/program-za-vodenje-prejetih-racunov" }],
       sources: [{ label: "Minimax: izboljšanje kakovosti fotografij računov", href: "https://help.minimax.si/help/kako-lahko-izboljsamo-kvaliteto-slik-raucnov-ki-jih-posiljamo-preko-mobilne-aplikacije-v-minimax" }],
     },
     en: {
@@ -58,16 +61,16 @@ export const ocrGuides: OcrGuide[] = [
   },
   {
     post: {
-      id: "split-invoice-pdf", publishedAt: "2026-10-21", updatedAt: "2026-10-21",
+      id: "split-invoice-pdf", publishedAt: "2026-10-21", updatedAt: "2026-11-23",
       coverImage: "https://images.unsplash.com/photo-1554224155-6726b3ff858f?auto=format&fit=crop&w=1200&q=70",
-      slug: "razdelitev-pdf-vec-racunov", keyword: "razdelitev PDF več računov",
-      title: "Kako razdeliti PDF z več računi in ohraniti vse strani računa",
-      description: "PDF z več računi razdelite po dokumentih, ne po eni strani. Vodnik za večstranske račune, pregled mej, ločene PDF-je in OCR obdelavo za računovodstvo.",
+      slug: "razdelitev-pdf-vec-racunov", keyword: "razdeli račun, razdelitev PDF več računov",
+      title: "Kako razdeliti PDF z več računi na posamezne račune",
+      description: "En PDF, več računov? Razdelite ga na ločene račune, ne da bi izgubili nadaljevalne strani. Pregled mej, ločeni PDF-ji in OCR za računovodstvo.",
       readingMinutes: 6, excerpt: "En PDF, več dobaviteljev in različno dolgi računi: kako pravilno določiti meje, pregledati razdelitev in poslati vsak dokument posebej.",
       coverAlt: "Papirni računi pred pripravo skupnega PDF dokumenta",
-      slugEn: "split-pdf-multiple-invoices", keywordEn: "split PDF multiple invoices",
-      titleEn: "Split a PDF With Multiple Invoices Without Losing Continuation Pages",
-      descriptionEn: "Split a batch PDF into complete invoices, including multi-page documents. Review boundaries, send separate PDFs and choose when to extract accounting data.",
+      slugEn: "split-pdf-multiple-invoices", keywordEn: "split invoice PDF, split PDF multiple invoices",
+      titleEn: "Split Invoice PDF: Separate Multiple Invoices Into Files",
+      descriptionEn: "Split one PDF with several invoices into separate files without losing continuation pages. Review boundaries, export one PDF per invoice and run OCR.",
       readingMinutesEn: 6, excerptEn: "Keep continuation pages with the right invoice when splitting a PDF containing several suppliers and documents of different lengths.",
       coverAltEn: "Paper invoices prepared for a combined PDF file",
     },

@@ -54,6 +54,7 @@ export function OcrGuideArticle({ guide, locale = "sl" }: { guide: OcrGuide; loc
         </div>
       </div>
       <aside className="mt-10 rounded-2xl border border-slate-200 bg-white p-6"><h2 className="text-xl font-bold">{en ? "Continue reading" : "Preberite še"}</h2><ul className="mt-4 space-y-3 text-blue-700">
+        {content.related?.map(link => <li key={link.href}><Link href={link.href} className="hover:underline">{link.label} →</Link></li>)}
         <li><Link href={en ? "/en/invoice-ocr-slovenia" : "/ocr-racunov"} className="hover:underline">{en ? "Invoice OCR: extraction and review" : "OCR računov: prepoznavanje in pregled podatkov"} →</Link></li>
         {ocrGuides.filter(g => g.post.id !== post.id).map(g => <li key={g.post.id}><Link className="hover:underline" href={`${prefix}/blog/${en ? g.post.slugEn : g.post.slug}`}>{en ? g.post.titleEn : g.post.title} →</Link></li>)}
         <li><Link href={en ? "/en/user-guide" : "/navodila-za-uporabo"} className="hover:underline">{en ? "Application user guide" : "Navodila za uporabo aplikacije"} →</Link></li>

@@ -4,8 +4,8 @@ import { DEFAULT_OG_IMAGE, DEFAULT_TWITTER_IMAGE } from "@/lib/seo";
 import { ArrowRight, Smartphone, Camera, ScanText, Archive, ShieldCheck } from "lucide-react";
 
 export const metadata: Metadata = {
-  title: "Aplikacija za račune z AI OCR",
-  description: "S telefonom skenirajte prejete račune ali naložite PDF. AI OCR prebere podatke, vi jih preverite, nato jih pripravite za UBL, eSLOG ali računovodski program.",
+  title: { absolute: "Aplikacija za račune: slikaj in pošlji prejete račune" },
+  description: "Aplikacija za prejete račune: račun slikate s telefonom ali naložite PDF, AI OCR prebere zneske in DDV, vi pa ga pošljete v Minimax, Birokrat ali Pantheon. Brezplačen začetek.",
   alternates: { canonical: "/aplikacija-za-racune", languages: { "sl-SI": "/aplikacija-za-racune", "x-default": "/aplikacija-za-racune" } },
   openGraph: {
     title: "Aplikacija za račune z AI OCR – Slikaj Račun",

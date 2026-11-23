@@ -86,6 +86,7 @@ export const posts: BlogPost[] = [
   {
     id: "minimax-email-import",
     publishedAt: "2026-05-04",
+    updatedAt: "2026-11-23",
     coverImage: "https://images.unsplash.com/photo-1450101499163-c8848c66ca85?auto=format&fit=crop&w=1600&q=80",
     slug: "minimax-email-uvoz-racunov",
     keyword: "minimax ocr",
@@ -96,8 +97,8 @@ export const posts: BlogPost[] = [
     coverAlt: "Pametni telefon, ki fotografira papirnat račun za Minimax OCR",
     slugEn: "minimax-email-invoice-import",
     keywordEn: "minimax invoice OCR email import",
-    titleEn: "Minimax OCR & Email Invoice Import: Step-by-Step Guide (2026)",
-    descriptionEn: "Minimax OCR guide: find your Minimax import email, send invoice photos correctly and automate incoming invoice processing from your phone.",
+    titleEn: "Minimax OCR: Import Invoices by Email (Step-by-Step)",
+    descriptionEn: "Find your Minimax invoice import email, send invoice photos or PDFs to it and let Minimax OCR read them. Includes common import errors and how to fix them.",
     readingMinutesEn: 7,
     excerptEn: "How Minimax OCR and email invoice import work, from finding the right import address to sending an invoice photo from your phone.",
     coverAltEn: "Smartphone photographing a paper invoice for Minimax OCR",
