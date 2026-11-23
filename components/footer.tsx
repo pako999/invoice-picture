@@ -87,8 +87,7 @@ export function Footer() {
     { label: t.productBlog,         href: localeUrl(locale, "blog") },
     ...(locale === "sl"
       ? [
-          { label: "Primerjava programov", href: "/programi-za-racune" },
-          { label: "OCR za prejete račune", href: "/program-za-racune" },
+          { label: "Program za račune", href: "/programi-za-racune" },
           { label: "Aplikacija za skeniranje", href: "/aplikacija-za-racune" },
         ]
       : []),

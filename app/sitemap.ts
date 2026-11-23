@@ -29,7 +29,6 @@ const pairedSeoRoutes = [
 
 const slOnlySeoRoutes: { slug: string; priority: number }[] = [
   { slug: "programi-za-racune", priority: 0.95 },
-  { slug: "program-za-racune", priority: 0.9 },
   { slug: "aplikacija-za-racune", priority: 0.9 },
 ];
 
