@@ -115,3 +115,30 @@ test("forwards an original eSLOG 2.0 XML unchanged", () => {
   assert.equal(result.format, "eslog_2_0");
   assert.equal(result.fallback, false);
 });
+
+test("attaches the original PDF/image alongside structured XML delivery", async () => {
+  const { buildOriginalAttachments } = await import("../lib/invoice-intelligence/delivery-format");
+  const pdf = Buffer.from("%PDF-1.4 test").toString("base64");
+  const result = buildOriginalAttachments([
+    { filename: "racun.pdf", mimeType: "application/pdf", originalBase64: pdf },
+    { filename: "racun.pdf", mimeType: "application/pdf", originalBase64: pdf },
+    { filename: "foto", mimeType: "image/jpeg", originalBase64: pdf },
+    { filename: "eslog.xml", mimeType: "application/xml", originalBase64: pdf },
+    { filename: "bulk.pdf", mimeType: "application/pdf", originalBase64: null },
+  ]);
+  assert.deepEqual(result.attachments.map((a) => a.filename), ["racun.pdf", "racun-2.pdf", "foto.jpeg"]);
+  assert.equal(result.attachments[0].contentType, "application/pdf");
+  assert.equal(result.attachments[0].content, pdf);
+  assert.equal(result.skipped, 1);
+});
+
+test("skips originals that would exceed the email size cap", async () => {
+  const { buildOriginalAttachments } = await import("../lib/invoice-intelligence/delivery-format");
+  const big = Buffer.alloc(1000).toString("base64");
+  const result = buildOriginalAttachments([
+    { filename: "a.pdf", mimeType: "application/pdf", originalBase64: big },
+    { filename: "b.pdf", mimeType: "application/pdf", originalBase64: big },
+  ], 1500);
+  assert.equal(result.attachments.length, 1);
+  assert.equal(result.skipped, 1);
+});
