@@ -176,3 +176,51 @@ function xml(value: string) {
 }
 function safeBase(value: string) { return value.replace(/[^a-zA-Z0-9._-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 100) || "invoice"; }
 function replaceExt(value: string, ext: string) { const clean = value.replace(/\.[^.]+$/, ""); return `${safeBase(clean)}${ext}`; }
+
+/** Resend allows ~40 MB per email after base64 encoding; keep the raw
+ * originals well below that so the XML/ZIP attachment always fits too. */
+export const MAX_ORIGINAL_ATTACHMENT_BYTES = 25 * 1024 * 1024;
+
+export type OriginalAttachmentSource = {
+  filename: string;
+  mimeType: string;
+  originalBase64: string | null;
+};
+
+/** Builds the email attachment for the original (human-readable) invoice that
+ * accompanies structured XML delivery. XML originals are skipped because the
+ * structured attachment already carries them; documents without inline
+ * content (private storage) are skipped and reported to the caller. */
+export function buildOriginalAttachments(sources: OriginalAttachmentSource[], maxBytes = MAX_ORIGINAL_ATTACHMENT_BYTES) {
+  const attachments: Array<{ filename: string; content: string; contentType: string }> = [];
+  let skipped = 0;
+  let totalBytes = 0;
+  const usedNames = new Set<string>();
+  for (const source of sources) {
+    const isXml = /xml/i.test(source.mimeType) || /\.xml$/i.test(source.filename);
+    if (isXml) continue;
+    if (!source.originalBase64) { skipped++; continue; }
+    const bytes = Math.floor((source.originalBase64.length * 3) / 4);
+    if (totalBytes + bytes > maxBytes) { skipped++; continue; }
+    totalBytes += bytes;
+    attachments.push({
+      filename: uniqueName(originalFilename(source), usedNames),
+      content: source.originalBase64,
+      contentType: source.mimeType || "application/octet-stream",
+    });
+  }
+  return { attachments, skipped };
+}
+
+function originalFilename(source: OriginalAttachmentSource) {
+  const ext = /\.[A-Za-z0-9]{1,5}$/.exec(source.filename)?.[0]
+    ?? (source.mimeType === "application/pdf" ? ".pdf" : source.mimeType.startsWith("image/") ? `.${source.mimeType.slice(6).replace(/[^a-z0-9]/gi, "")}` : "");
+  return replaceExt(source.filename || "invoice", ext.toLowerCase());
+}
+
+function uniqueName(name: string, used: Set<string>) {
+  let candidate = name;
+  for (let i = 2; used.has(candidate.toLowerCase()); i++) candidate = name.replace(/(\.[^.]+)?$/, `-${i}$1`);
+  used.add(candidate.toLowerCase());
+  return candidate;
+}

@@ -5,7 +5,7 @@ import { bulkInvoiceJobs, companies, invoiceAuditLogs, invoiceDocuments, invoice
 import { getResend } from "@/lib/resend";
 import { brandedEmail } from "@/lib/email-template";
 import { normalizedInvoiceSchema } from "./types";
-import { buildInvoiceApiPayload, resolveXmlDelivery } from "./delivery-format";
+import { buildInvoiceApiPayload, buildOriginalAttachments, resolveXmlDelivery } from "./delivery-format";
 import { getCompanyDeliverySettings, getDeliverySecret } from "./delivery-settings";
 import { createZip } from "@/lib/zip";
 import { dispatchInvoiceDelivery } from "./dispatch";
@@ -141,9 +141,11 @@ export async function deliverInvoiceDocument(documentId: number) {
     if (documents.some((item) => item.status !== "approved" || !item.approvedJson)) return { mode: settings.mode, waitingForApproval: true };
     const entries=documents.map((item,index)=>{const parsed=normalizedInvoiceSchema.parse(JSON.parse(item.approvedJson!));const resolved=resolveXmlDelivery({format:settings.xmlFormat,invoice:parsed,originalBase64:item.originalBase64,originalMimeType:item.mimeType,originalFilename:item.filename});return{name:`${String(index+1).padStart(3,"0")}-${resolved.filename}`,data:resolved.xml};});
     const zip=createZip(entries);
-    const result=await getResend().emails.send({from:process.env.RESEND_FROM??"onboarding@resend.dev",to:company.recipientEmail,subject:`ZIP e-računov · ${entries.length} računov`,html:brandedEmail({preheader:`${entries.length} strukturiranih računov v ZIP datoteki`,eyebrow:"Slikaj Račun · ZIP",title:"ZIP za skupinski uvoz računov",introHtml:`<p style="margin:0">V priponki je ZIP z <strong>${entries.length} ločenimi XML računi</strong> za skupinski uvoz v E-računi ali drug združljiv računovodski program.</p>`,noticeHtml:"Vsak račun je v ZIP arhivu shranjen kot samostojna UBL/eSLOG XML datoteka."}),attachments:[{filename:`e-racuni-${document.bulkJobId??document.id}.zip`,content:zip.toString("base64"),contentType:"application/zip"}]},{idempotencyKey:`xml-zip/${document.clerkUserId}/${document.bulkJobId??document.id}`});
+    const originals=buildOriginalAttachments(documents.map((item)=>({filename:item.filename,mimeType:item.mimeType,originalBase64:item.originalBase64})));
+    const originalsNotice=originals.attachments.length?` Priloženih je tudi ${originals.attachments.length} originalnih računov (PDF/slika).`:"";
+    const result=await getResend().emails.send({from:process.env.RESEND_FROM??"onboarding@resend.dev",to:company.recipientEmail,subject:`ZIP e-računov · ${entries.length} računov`,html:brandedEmail({preheader:`${entries.length} strukturiranih računov v ZIP datoteki`,eyebrow:"Slikaj Račun · ZIP",title:"ZIP za skupinski uvoz računov",introHtml:`<p style="margin:0">V priponki je ZIP z <strong>${entries.length} ločenimi XML računi</strong> za skupinski uvoz v E-računi ali drug združljiv računovodski program.</p>`,noticeHtml:`Vsak račun je v ZIP arhivu shranjen kot samostojna UBL/eSLOG XML datoteka.${originalsNotice}`}),attachments:[{filename:`e-racuni-${document.bulkJobId??document.id}.zip`,content:zip.toString("base64"),contentType:"application/zip"},...originals.attachments]},{idempotencyKey:`xml-zip-v2/${document.clerkUserId}/${document.bulkJobId??document.id}`});
     if(result.error)throw new Error(`XML ZIP email delivery failed: ${result.error.message}`);
-    for(const item of documents){await markSourceInvoice(item.id,true);await audit(item.id,"structured_zip_delivery_success",{mode:settings.mode,bulkJobId:document.bulkJobId,invoices:entries.length,to:company.recipientEmail});}
+    for(const item of documents){await markSourceInvoice(item.id,true);await audit(item.id,"structured_zip_delivery_success",{mode:settings.mode,bulkJobId:document.bulkJobId,invoices:entries.length,originalsAttached:originals.attachments.length,originalsSkipped:originals.skipped,to:company.recipientEmail});}
     return {mode:settings.mode,invoices:entries.length};
   }
 
@@ -189,6 +191,9 @@ export async function deliverInvoiceDocument(documentId: number) {
     ? "eSLOG 2.0 XML je bil pripravljen iz potrjenih podatkov računa oziroma je bil originalni eSLOG posredovan nespremenjen."
     : "UBL 2.1 XML je bil pripravljen iz potrjenih podatkov računa. Originalni dokument ostane shranjen v Slikaj Račun.";
 
+  const originals = buildOriginalAttachments([{ filename: document.filename, mimeType: document.mimeType, originalBase64: document.originalBase64 }]);
+  const originalNotice = originals.attachments.length ? " Priložen je tudi originalni račun (PDF/slika)." : "";
+
   const result = await getResend().emails.send({
     from: process.env.RESEND_FROM ?? "onboarding@resend.dev",
     to: company.recipientEmail,
@@ -197,11 +202,14 @@ export async function deliverInvoiceDocument(documentId: number) {
       preheader: "Strukturiran XML račun",
       eyebrow: "Slikaj Račun · XML",
       title: "Strukturiran račun za uvoz",
-      introHtml: `<p style="margin:0">V priponki je <strong>${formatLabel}</strong> XML za uvoz v računovodski sistem.</p>`,
+      introHtml: `<p style="margin:0">V priponki je <strong>${formatLabel}</strong> XML za uvoz v računovodski sistem.${originalNotice}</p>`,
       noticeHtml: fallbackNotice,
     }),
-    attachments: [{ filename: resolved.filename, content: Buffer.from(resolved.xml, "utf8").toString("base64"), contentType: "application/xml" }],
-  }, { idempotencyKey: `invoice-xml/${document.clerkUserId}/${documentId}` });
+    attachments: [
+      { filename: resolved.filename, content: Buffer.from(resolved.xml, "utf8").toString("base64"), contentType: "application/xml" },
+      ...originals.attachments,
+    ],
+  }, { idempotencyKey: `invoice-xml-v2/${document.clerkUserId}/${documentId}` });
   if (result.error) throw new Error(`XML email delivery failed: ${result.error.message}`);
   await markSourceInvoice(documentId, true);
   await audit(documentId, "structured_delivery_success", {
@@ -209,6 +217,7 @@ export async function deliverInvoiceDocument(documentId: number) {
     requestedXmlFormat: settings.xmlFormat,
     xmlFormat: resolved.format,
     fallback: resolved.fallback,
+    originalsAttached: originals.attachments.length,
     to: company.recipientEmail,
   });
   return { mode: settings.mode, xmlFormat: resolved.format, fallback: resolved.fallback };
